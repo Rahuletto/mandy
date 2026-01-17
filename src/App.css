@@ -1,1 +1,73 @@
 @import "tailwindcss";
+
+*[data-tauri-drag-region] {
+    app-region: drag;
+}
+
+.no-drag {
+    app-region: no-drag;
+}
+
+:root {
+    --background: #171313;
+    --inset: #1d1919;
+    --card: #231f1f;
+    --inputbox: #2d2929;
+    --accent: #ff6141;
+}
+
+@theme {
+    --color-background: var(--background);
+    --color-inset: var(--inset);
+    --color-card: var(--card);
+    --color-inputbox: var(--inputbox);
+    --color-accent: var(--accent);
+    --color-text: #f2f2f2;
+}
+
+.env-var {
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+.env-valid {
+    color: var(--accent);
+    background: #ff614133;
+
+}
+
+.env-invalid {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.2);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+select option {
+    background: var(--inset);
+    color: white;
+}
+
+/* Disable spellcheck and autocapitalize globally */
+input,
+textarea,
+[contenteditable] {
+    -webkit-text-size-adjust: none;
+}
