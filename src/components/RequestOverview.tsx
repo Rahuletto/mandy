@@ -91,7 +91,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
         setEditingProperty(null);
     };
 
-    const renderProperty = (key: string, value: any, context?: string, allowDescription?: boolean) => {
+    const renderProperty = (key: string, value: any, context?: string, allowDescription?: boolean, showTypes: boolean = true) => {
         const type = Array.isArray(value) ? 'array' : typeof value;
         const isObject = type === 'object' && value !== null;
         const isObjectArray = type === 'array' && value.length > 0 && typeof value[0] === 'object';
@@ -107,15 +107,17 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
             <div key={key} className="py-2 border-b border-white/5 last:border-0 group">
                 <div className="flex items-center gap-3">
                     <span className="text-xs font-mono text-white font-medium">{key}</span>
-                    {targetId ? (
-                        <button
-                            onClick={() => scrollToId(targetId)}
-                            className={`text-[10px] lowercase font-mono cursor-pointer hover:underline ${getTypeColor(type)}`}
-                        >
-                            {type}
-                        </button>
-                    ) : (
-                        <span className={`text-[10px] lowercase font-mono ${getTypeColor(type)}`}>{type}</span>
+                    {showTypes && (
+                        targetId ? (
+                            <button
+                                onClick={() => scrollToId(targetId)}
+                                className={`text-[10px] lowercase font-mono cursor-pointer hover:underline ${getTypeColor(type)}`}
+                            >
+                                {type}
+                            </button>
+                        ) : (
+                            <span className={`text-[10px] lowercase font-mono ${getTypeColor(type)}`}>{type}</span>
+                        )
                     )}
                     {key === 'id' && (
                         <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded leading-none">read-only</span>
@@ -167,7 +169,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
                     )}
                 </div>
                 <div className="space-y-1">
-                    {Object.entries(data).map(([key, value]) => renderProperty(key, value, context, allowDescription))}
+                    {Object.entries(data).map(([key, value]) => renderProperty(key, value, context, allowDescription, showSwitch || context === "response" || context === "request"))}
                 </div>
             </div>
         );
@@ -212,7 +214,21 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
                             }}
                         />
 
-                        <section className="flex flex-col gap-16">
+                        <section className="flex flex-col gap-8">
+
+                            {Object.keys(activeRequest.request.query_params).length > 0 && (
+                                <div className="mt-4">
+                                    <h3 className="text-sm font-semibold text-white/70 mb-2">Query Parameters</h3>
+                                    <div className="space-y-1">
+                                        {Object.entries(activeRequest.request.query_params).map(([key, value]) =>
+                                            renderProperty(key, value, 'params', true, false)
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+
+
                             {(() => {
                                 const body = activeRequest.request.body;
                                 if (body !== "None" && "Raw" in body && body.Raw.content_type?.includes("json")) {
@@ -240,7 +256,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
                                                     <h4 className="text-sm font-mono font-semibold text-accent/70">{def.name}</h4>
                                                 </div>
                                                 <div className="space-y-1 ml-2 border-l border-white/5 pl-8">
-                                                    {Object.entries(def.properties).map(([key, value]) => renderProperty(key, value, def.name, false))}
+                                                    {Object.entries(def.properties).map(([key, value]) => renderProperty(key, value, def.name, false, true))}
                                                 </div>
                                             </div>
                                         ))}

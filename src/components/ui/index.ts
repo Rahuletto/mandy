@@ -5,4 +5,4 @@ export { ContextMenu } from "./ContextMenu";
 export type { MenuItem } from "./ContextMenu";
 export { HoverPopover } from "./HoverPopover";
 export { ToastContainer } from "./Toast";
-export { EnvInput, UrlInput } from "./Input";
+export { EnvInput, UrlInput } from "./Input";export * from './Dialog';

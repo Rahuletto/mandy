@@ -119,6 +119,7 @@ interface ProjectState {
   projects: Project[];
   activeProjectId: string | null;
   activeRequestId: string | null;
+  selectedItemId: string | null;
   unsavedChanges: Set<string>;
 
   createProject: (name: string) => string;
@@ -139,6 +140,7 @@ interface ProjectState {
   resolveVariables: (text: string, projectId?: string) => string;
 
   setActiveRequestId: (id: string | null) => void;
+  setSelectedItem: (id: string | null) => void;
   addRequest: (parentFolderId: string, name?: string) => string;
   addFolder: (parentFolderId: string, name?: string) => string;
   renameItem: (itemId: string, newName: string) => void;
@@ -155,6 +157,10 @@ interface ProjectState {
   markSaved: (requestId: string) => void;
   markUnsaved: (requestId: string) => void;
   isUnsaved: (requestId: string) => boolean;
+  clipboard: { id: string; type: "cut" | "copy" } | null;
+  copyToClipboard: (id: string) => void;
+  cutToClipboard: (id: string) => void;
+  pasteItem: (targetFolderId: string) => void;
 }
 
 const initialProject = createEmptyProject("My Project");
@@ -165,7 +171,9 @@ export const useProjectStore = create<ProjectState>()(
       projects: [initialProject],
       activeProjectId: initialProject.id,
       activeRequestId: null,
+      selectedItemId: null,
       unsavedChanges: new Set(),
+      clipboard: null,
 
       createProject: (name) => {
         const newProject = createEmptyProject(name);
@@ -178,7 +186,7 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       selectProject: (id) => {
-        set({ activeProjectId: id, activeRequestId: null });
+        set({ activeProjectId: id, activeRequestId: null, selectedItemId: null });
       },
 
       renameProject: (id, name) => {
@@ -350,6 +358,7 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       setActiveRequestId: (id) => set({ activeRequestId: id }),
+      setSelectedItem: (id) => set({ selectedItemId: id }),
 
       addRequest: (parentFolderId, name = "New Request") => {
         const newId = generateId();
@@ -565,6 +574,33 @@ export const useProjectStore = create<ProjectState>()(
       isUnsaved: (requestId) => {
         return get().unsavedChanges.has(requestId);
       },
+
+      copyToClipboard: (id) => set({ clipboard: { id, type: "copy" } }),
+      cutToClipboard: (id) => set({ clipboard: { id, type: "cut" } }),
+
+      pasteItem: (targetFolderId) => {
+        const { clipboard, activeProjectId, projects, moveItem } = get();
+        if (!clipboard) return;
+
+        const project = projects.find((p) => p.id === activeProjectId);
+        if (!project) return;
+
+        const item = findItem(project.root, clipboard.id);
+        if (!item) return;
+
+        if (clipboard.type === "cut") {
+          moveItem(clipboard.id, targetFolderId, 0);
+          set({ clipboard: null });
+        } else {
+          // Copy logic
+          const targetFolder = findFolder(project.root, targetFolderId);
+          if (targetFolder) {
+            const cloned = cloneTreeItem(item);
+            targetFolder.children.push(cloned);
+            set({ projects: [...projects] });
+          }
+        }
+      },
     }),
     {
       name: "matchstick-projects",
@@ -572,6 +608,7 @@ export const useProjectStore = create<ProjectState>()(
         projects: state.projects,
         activeProjectId: state.activeProjectId,
         activeRequestId: state.activeRequestId,
+        selectedItemId: state.selectedItemId,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

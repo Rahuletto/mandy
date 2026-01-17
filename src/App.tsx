@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Methods, ResponseRenderer, HttpProtocol } from "./bindings";
+import { isMac } from "./utils/platform";
 import {
   sendRequest,
   parseCurlCommand,
@@ -10,15 +11,15 @@ import {
 } from "./reqhelpers/rest";
 import { formatBytes, getStatusColor } from "./utils/format";
 import { CodeViewer } from "./components/CodeMirror";
-import { BodyEditor } from "./components/BodyEditor";
-import { AuthEditor } from "./components/AuthEditor";
+import { BodyEditor } from "./components/editors/BodyEditor";
+import { AuthEditor } from "./components/editors/AuthEditor";
 import { Sidebar } from "./components/Sidebar";
-import { Dropdown, MoreButton, UrlInput, ToastContainer } from "./components/ui";
+import { Dropdown, MoreButton, UrlInput, ToastContainer, Dialog } from "./components/ui";
 import { KeyValueTable } from "./components/KeyValueTable";
 import { OverviewModal } from "./components/OverviewModal";
 import { MethodSelector } from "./components/MethodSelector";
-import { TimingPopover } from "./components/TimingPopover";
-import { SizePopover } from "./components/SizePopover";
+import { TimingPopover } from "./components/popovers/TimingPopover";
+import { SizePopover } from "./components/popovers/SizePopover";
 import { ProtocolToggle } from "./components/ProtocolToggle";
 import { RequestOverview } from "./components/RequestOverview";
 import { useProjectStore } from "./stores/projectStore";
@@ -57,6 +58,12 @@ function App() {
     setRequestResponse,
     getActiveRequest,
     markSaved,
+    clipboard,
+    copyToClipboard,
+    cutToClipboard,
+    pasteItem,
+    selectedItemId,
+    setSelectedItem,
   } = useProjectStore();
 
   const activeProject = getActiveProject();
@@ -87,6 +94,7 @@ function App() {
   const [projectMenuId, setProjectMenuId] = useState<string | null>(null);
   const [showOverview, setShowOverview] = useState(false);
   const [overviewProjectId, setOverviewProjectId] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const [disabledItems, setDisabledItems] = useState<Set<string>>(new Set());
 
@@ -214,16 +222,113 @@ function App() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+      // Check if we are in an input/textarea to allow native behavior (e.g. copy text in body editor)
+      // Exception: Ctrl+S/Cmd+S should always save
+      const isInput = document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA";
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+
+      if (isCmdOrCtrl && e.key === "s") {
         e.preventDefault();
         if (activeRequestId) {
           markSaved(activeRequestId);
+        }
+        return;
+      }
+
+      // Run Request
+      if (isCmdOrCtrl && e.key === "Enter") {
+        e.preventDefault();
+        if (activeRequestId && activeRequest?.request.url) {
+          handleSend();
+        }
+        return;
+      }
+
+      // If we are in an input, don't intercept other keys like C, X, V, Delete
+      if (isInput) return;
+
+      // New Request
+      if (isCmdOrCtrl && e.key === "n") {
+        e.preventDefault();
+        if (activeProject) {
+          addRequest(activeProject.root.id);
+        }
+      }
+
+      // Cut
+      if (isCmdOrCtrl && e.key === "x") {
+        if (selectedItemId) {
+          e.preventDefault();
+          cutToClipboard(selectedItemId);
+        }
+      }
+
+      // Copy
+      if (isCmdOrCtrl && e.key === "c") {
+        if (selectedItemId) {
+          e.preventDefault();
+          copyToClipboard(selectedItemId);
+        }
+      }
+
+      // Paste
+      if (isCmdOrCtrl && e.key === "v") {
+        if (activeProject) { // Paste logic might need specific target folder if any selected
+          e.preventDefault();
+          pasteItem(activeProject.root.id);
+        }
+      }
+
+      // Rename
+      // Mac: Enter/Return, Win: F2
+      const isRename = isMac ? e.key === "Enter" : e.key === "F2";
+      if (isRename) {
+        if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+        if (selectedItemId) {
+          e.preventDefault();
+          // We need a way to trigger rename on the FileTree item.
+          // Since FileTree manages renaming state locally, we might need to expose a method or
+          // trigger it via a prop change or custom event.
+          // OR better: FileTree already listens for shortcuts? No, we moved to global.
+          // IF we want global rename, we need to tell FileTree to start renaming 'selectedItemId'.
+          // We can add a store action 'setRenamingItem(id)' or similar.
+          // BUT FileTree has local state `renamingId`.
+          // Converting `renamingId` to props or store state is the right way.
+          // For now, let's dispatch a custom event or check if we can pass it down.
+          // Let's us use a simple event bus or just rely on FileTree doing it itself if it was focused.
+          // User said "shortcuts dont work".
+          // Let's implement setRenamingItem in a ref or store.
+          // QUICK FIX: Dispatch a custom window event that FileTree listens to.
+          window.dispatchEvent(new CustomEvent('trigger-rename', { detail: { itemId: selectedItemId } }));
+        }
+      }
+
+      // Duplicate
+      if (isCmdOrCtrl && e.key === "d") {
+        e.preventDefault();
+        if (selectedItemId) {
+          duplicateItem(selectedItemId);
+        }
+      }
+
+      // Delete
+      // Mac: Cmd+Backspace (often labeled Delete in menus, but strictly it's Cmd+Delete on full keyboard or Cmd+Backspace on laptop)
+      // User explicitly mentioned "cmd delete"
+      const isDelete = isMac
+        ? (isCmdOrCtrl && (e.key === "Backspace" || e.key === "Delete"))
+        : e.key === "Delete";
+
+      if (isDelete) {
+        if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+        if (selectedItemId) {
+          e.preventDefault();
+          setItemToDelete(selectedItemId);
         }
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeRequestId, markSaved]);
+  }, [activeRequestId, markSaved, activeRequest, activeProject, addRequest, cutToClipboard, copyToClipboard, pasteItem, duplicateItem, deleteItem, selectedItemId]);
 
   const handleMainMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -309,6 +414,11 @@ function App() {
       const preferred: ResponseRenderer[] = ["Json", "Xml", "Html", "HtmlPreview", "Image", "Audio", "Video", "Pdf"];
       const bestRenderer = preferred.find(r => resp.available_renderers.includes(r)) || resp.available_renderers[0] || "Raw";
       setResponseTab(bestRenderer);
+
+      // Auto-switch to a tab that shows the response if we are in "overview"
+      if (activeTab === "overview") {
+        setActiveTab("body"); // Or "params", "headers" etc - "body" (Request Body) view allows split pane
+      }
     } catch (err: any) {
       console.error(err);
       addToast(err.toString(), "error");
@@ -736,23 +846,35 @@ function App() {
             </div>
           )}
         </div>
-      </header>
+
+        <div className="flex-1" />
+
+      </header >
 
       <div className="flex-1 flex overflow-hidden">
 
         <Sidebar
           activeProject={activeProject}
-          activeRequestId={activeRequestId}
           unsavedIds={unsavedChanges}
-          onSelectRequest={setActiveRequestId}
+          onSelect={(id, isFolder) => {
+            setSelectedItem(id);
+            if (!isFolder) {
+              setActiveRequestId(id);
+            }
+          }}
+          selectedItemId={selectedItemId}
           onToggleFolder={toggleFolder}
           onAddRequest={addRequest}
           onAddFolder={addFolder}
           onRename={renameItem}
-          onDelete={deleteItem}
+          onDelete={setItemToDelete}
           onDuplicate={duplicateItem}
           onSort={sortFolder}
           onMoveItem={moveItem}
+          onCut={cutToClipboard}
+          onCopy={copyToClipboard}
+          onPaste={pasteItem}
+          clipboard={clipboard}
           width={sidebarWidth}
           onWidthChange={setSidebarWidth}
         />
@@ -1254,50 +1376,68 @@ function App() {
       </div>
 
 
-      {showOverview && overviewProjectId && (
-        <OverviewModal
-          projectId={overviewProjectId}
-          onClose={() => setShowOverview(false)}
-          onUpdateProject={(updates) => renameProject(overviewProjectId, updates.name || "")}
-          onAddEnvironment={(name) => addEnvironment(overviewProjectId, name)}
-          onUpdateEnvironment={(envId, name) => updateEnvironment(overviewProjectId, envId, name)}
-          onDeleteEnvironment={(envId) => deleteEnvironment(overviewProjectId, envId)}
-          onSetActiveEnvironment={(envId) => setActiveEnvironment(overviewProjectId, envId)}
-          onAddEnvVar={addEnvironmentVariable}
-          onUpdateEnvVar={updateEnvironmentVariable}
-          onDeleteEnvVar={deleteEnvironmentVariable}
-        />
-      )}
+      {
+        showOverview && overviewProjectId && (
+          <OverviewModal
+            projectId={overviewProjectId}
+            onClose={() => setShowOverview(false)}
+            onUpdateProject={(updates) => renameProject(overviewProjectId, updates.name || "")}
+            onAddEnvironment={(name) => addEnvironment(overviewProjectId, name)}
+            onUpdateEnvironment={(envId, name) => updateEnvironment(overviewProjectId, envId, name)}
+            onDeleteEnvironment={(envId) => deleteEnvironment(overviewProjectId, envId)}
+            onSetActiveEnvironment={(envId) => setActiveEnvironment(overviewProjectId, envId)}
+            onAddEnvVar={addEnvironmentVariable}
+            onUpdateEnvVar={updateEnvironmentVariable}
+            onDeleteEnvVar={deleteEnvironmentVariable}
+          />
+        )
+      }
 
 
-      {showCurlImport && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#1a1a1a] rounded-xl p-5 w-full max-w-xl border border-white/10">
-            <div className="text-sm font-medium mb-4">Import cURL Command</div>
-            <textarea
-              value={curlInput}
-              onChange={(e) => setCurlInput(e.target.value)}
-              placeholder="curl https://api.example.com -H 'Content-Type: application/json'"
-              className="w-full h-40 bg-[#0d0d0d] border border-white/10 rounded-lg p-3 text-sm font-mono resize-none focus:outline-none focus:border-accent/50"
-            />
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                onClick={() => setShowCurlImport(false)}
-                className="px-4 py-2 text-sm bg-white/10 hover:bg-white/15 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleImportCurl}
-                disabled={!activeRequest}
-                className="px-4 py-2 text-sm bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-lg transition-colors"
-              >
-                Import
-              </button>
+      {
+        showCurlImport && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+            <div className="bg-[#1a1a1a] rounded-xl p-5 w-full max-w-xl border border-white/10">
+              <div className="text-sm font-medium mb-4">Import cURL Command</div>
+              <textarea
+                value={curlInput}
+                onChange={(e) => setCurlInput(e.target.value)}
+                placeholder="curl https://api.example.com -H 'Content-Type: application/json'"
+                className="w-full h-40 bg-[#0d0d0d] border border-white/10 rounded-lg p-3 text-sm font-mono resize-none focus:outline-none focus:border-accent/50"
+              />
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  onClick={() => setShowCurlImport(false)}
+                  className="px-4 py-2 text-sm bg-white/10 hover:bg-white/15 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImportCurl}
+                  disabled={!activeRequest}
+                  className="px-4 py-2 text-sm bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-lg transition-colors"
+                >
+                  Import
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+      <Dialog
+        isOpen={!!itemToDelete}
+        title="Delete Item"
+        description="Are you sure you want to delete this item? This action cannot be undone."
+        confirmLabel="Delete"
+        isDestructive
+        onConfirm={() => {
+          if (itemToDelete) {
+            deleteItem(itemToDelete);
+            setItemToDelete(null);
+          }
+        }}
+        onCancel={() => setItemToDelete(null)}
+      />
       <ToastContainer />
     </div>
   );

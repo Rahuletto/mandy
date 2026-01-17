@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -16,13 +16,19 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+  VscChevronRight,
+  VscChevronDown,
+} from "react-icons/vsc";
+import { FaFolder, FaFolderOpen } from "react-icons/fa6";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
 import { ContextMenu, MenuItem } from "./ui";
+import { getSimpleShortcut, getShortcutDisplay } from "../utils/platform";
 
 interface FileTreeProps {
   root: Folder;
-  activeRequestId: string | null;
-  onSelectRequest: (id: string) => void;
+  selectedItemId: string | null;
+  onSelect: (id: string, isFolder: boolean) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
@@ -31,6 +37,10 @@ interface FileTreeProps {
   onDuplicate: (id: string) => void;
   onSort: (folderId: string, mode: SortMode) => void;
   onMoveItem: (itemId: string, targetFolderId: string, targetIndex: number) => void;
+  onCut: (id: string) => void;
+  onCopy: (id: string) => void;
+  onPaste: (parentId: string) => void;
+  clipboard: { id: string; type: "cut" | "copy" } | null;
   searchQuery: string;
   unsavedIds: Set<string>;
 }
@@ -80,6 +90,8 @@ interface SortableItemProps {
   onRenameSubmit: () => void;
   onRenameCancel: () => void;
   isDragging?: boolean;
+  isOver?: boolean;
+  isCut?: boolean;
 }
 
 function SortableItem({
@@ -96,6 +108,8 @@ function SortableItem({
   onRenameSubmit,
   onRenameCancel,
   isDragging,
+  isOver,
+  isCut,
 }: SortableItemProps) {
   const {
     attributes,
@@ -108,8 +122,10 @@ function SortableItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.3 : isCut ? 0.5 : 1,
   };
+
+  const isFolder = item.type === "folder";
 
   return (
     <div
@@ -117,21 +133,50 @@ function SortableItem({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-colors ${isActive ? "bg-accent/20 text-accent" : "hover:bg-white/5 text-white/80"
-        }`}
+      className={`group relative flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-colors ${isActive ? "bg-accent/20 text-accent font-medium" : "hover:bg-white/5 text-white/80"
+        } ${isOver && isFolder ? "bg-accent/10 outline outline-1 outline-accent/30" : ""}`}
       onClick={() => {
-        if (item.type === "folder") onToggle();
-        else onSelect();
+        if (item.type === "folder") {
+          onSelect();
+          // Double click or explicit arrow to toggle? 
+          // Logic: click selects, if already selected, toggle?
+          // Or standard tree: click selects, arrow toggles.
+          // For now: let's do click selects AND toggles to not break existing flow too much, 
+          // BUT we need to ensure selection is registered.
+          // Wait, previous logic: if folder, onToggle, else onSelect.
+          // Users usually expect single click to select folder.
+          onToggle();
+        } else {
+          onSelect();
+        }
       }}
       onContextMenu={onContextMenu}
     >
-      <div style={{ width: depth * 12 }} />
+      {/* Indentation Lines */}
+      <div className="absolute left-0 top-0 bottom-0 flex pointer-events-none">
+        {Array.from({ length: depth }).map((_, i) => (
+          <div
+            key={i}
+            className="w-[12px] border-r border-white/5 h-full"
+            style={{ marginLeft: i === 0 ? 8 : 0 }}
+          />
+        ))}
+      </div>
+
+      <div style={{ width: depth * 12 }} className="shrink-0" />
 
       {item.type === "folder" ? (
-        <span className="text-white/40 w-4 text-[10px]">{item.expanded ? "▼" : "▶"}</span>
+        <div className="flex items-center gap-1.5 shrink-0 mr-1">
+          <span className="text-white/40">
+            {item.expanded ? <VscChevronDown size={14} /> : <VscChevronRight size={14} />}
+          </span>
+          <span className="text-white/60">
+            {item.expanded ? <FaFolderOpen size={16} /> : <FaFolder size={16} />}
+          </span>
+        </div>
       ) : (
         <span
-          className="font-mono text-[11px] font-bold shrink-0 mr-2"
+          className="font-mono text-[11px] font-bold shrink-0 mr-2 w-10 text-right"
           style={{ color: METHOD_COLORS[(item as RequestFile).request.method] || "#888" }}
         >
           {(item as RequestFile).request.method}
@@ -170,31 +215,36 @@ function SortableItem({
   );
 }
 
-function DragOverlayItem({ item, depth }: { item: TreeItem; depth: number }) {
+function DragOverlayItem({ item }: { item: TreeItem; depth: number }) {
   return (
     <div
-      className="flex items-center gap-1 px-2 py-1.5 text-xs bg-inset border border-accent/50 rounded shadow-lg"
-      style={{ paddingLeft: depth * 12 + 8 }}
+      className="flex items-center gap-1.5 px-3 py-2 text-xs bg-inset border border-accent/50 rounded shadow-2xl backdrop-blur-md opacity-90"
+      style={{ paddingLeft: 12 }}
     >
       {item.type === "folder" ? (
-        <span className="text-white/40 w-4 text-[10px]">▶</span>
+        <>
+          <FaFolder size={16} className="text-white/60" />
+          <span className="truncate text-white/90 font-medium">{item.name}</span>
+        </>
       ) : (
-        <span
-          className="font-mono text-[11px] font-bold shrink-0 mr-2"
-          style={{ color: METHOD_COLORS[(item as RequestFile).request.method] || "#888" }}
-        >
-          {(item as RequestFile).request.method}
-        </span>
+        <>
+          <span
+            className="font-mono text-[10px] font-bold shrink-0 mr-1"
+            style={{ color: METHOD_COLORS[(item as RequestFile).request.method] || "#888" }}
+          >
+            {(item as RequestFile).request.method}
+          </span>
+          <span className="truncate text-white/90">{item.name}</span>
+        </>
       )}
-      <span className="truncate text-white/80">{item.name}</span>
     </div>
   );
 }
 
 export function FileTree({
   root,
-  activeRequestId,
-  onSelectRequest,
+  selectedItemId,
+  onSelect,
   onToggleFolder,
   onAddRequest,
   onAddFolder,
@@ -203,6 +253,10 @@ export function FileTree({
   onDuplicate,
   onSort,
   onMoveItem,
+  onCut,
+  onCopy,
+  onPaste,
+  clipboard,
   searchQuery,
   unsavedIds,
 }: FileTreeProps) {
@@ -210,7 +264,7 @@ export function FileTree({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [_overFolderId, setOverFolderId] = useState<string | null>(null);
+  const [overFolderId, setOverFolderId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -220,6 +274,19 @@ export function FileTree({
 
   const flatItems = flattenTree(root).filter(({ item }) => matchesSearch(item, searchQuery));
   const itemIds = flatItems.map(({ item }) => item.id);
+
+  useEffect(() => {
+    const handleTriggerRename = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const itemId = customEvent.detail?.itemId;
+      if (itemId) {
+        const item = flatItems.find(f => f.item.id === itemId)?.item;
+        if (item) startRename(item);
+      }
+    };
+    window.addEventListener('trigger-rename', handleTriggerRename);
+    return () => window.removeEventListener('trigger-rename', handleTriggerRename);
+  }, [flatItems]);
 
   function findItemInTree(id: string): { item: TreeItem; depth: number } | null {
     const found = flatItems.find(({ item }) => item.id === id);
@@ -312,14 +379,43 @@ export function FileTree({
   }
 
   function getContextMenuItems(item: TreeItem): MenuItem[] {
+    const commonActions: MenuItem[] = [
+      {
+        label: "Cut",
+        onClick: () => onCut(item.id),
+        shortcut: getSimpleShortcut("Cut")
+      },
+      {
+        label: "Copy",
+        onClick: () => onCopy(item.id),
+        shortcut: getSimpleShortcut("Copy")
+      },
+      {
+        label: "Paste",
+        disabled: !clipboard || item.type !== "folder",
+        onClick: () => item.type === "folder" && onPaste(item.id),
+        shortcut: getSimpleShortcut("Paste")
+      },
+      { label: "", onClick: () => { }, divider: true },
+      {
+        label: "Rename",
+        onClick: () => startRename(item),
+        shortcut: getShortcutDisplay("RENAME")
+      },
+      {
+        label: "Duplicate",
+        onClick: () => onDuplicate(item.id),
+        shortcut: getSimpleShortcut("Duplicate")
+      },
+      { label: "", onClick: () => { }, divider: true },
+    ];
+
     if (item.type === "folder") {
       return [
         { label: "Add Request", onClick: () => onAddRequest(item.id) },
         { label: "Add Folder", onClick: () => onAddFolder(item.id) },
         { label: "", onClick: () => { }, divider: true },
-        { label: "Rename", onClick: () => startRename(item) },
-        { label: "Duplicate", onClick: () => onDuplicate(item.id) },
-        { label: "", onClick: () => { }, divider: true },
+        ...commonActions,
         { label: "Sort by Method", onClick: () => onSort(item.id, "method") },
         { label: "Sort A-Z", onClick: () => onSort(item.id, "alphabetical") },
         { label: "", onClick: () => { }, divider: true },
@@ -327,10 +423,13 @@ export function FileTree({
       ];
     }
     return [
-      { label: "Rename", onClick: () => startRename(item) },
-      { label: "Duplicate", onClick: () => onDuplicate(item.id) },
-      { label: "", onClick: () => { }, divider: true },
-      { label: "Delete", onClick: () => onDelete(item.id), danger: true },
+      ...commonActions,
+      {
+        label: "Delete",
+        onClick: () => onDelete(item.id),
+        danger: true,
+        shortcut: getSimpleShortcut("Delete")
+      },
     ];
   }
 
@@ -358,9 +457,9 @@ export function FileTree({
                 key={item.id}
                 item={item}
                 depth={depth}
-                isActive={item.type === "request" && item.id === activeRequestId}
+                isActive={item.id === selectedItemId}
                 isUnsaved={unsavedIds.has(item.id)}
-                onSelect={() => onSelectRequest(item.id)}
+                onSelect={() => onSelect(item.id, item.type === "folder")}
                 onToggle={() => onToggleFolder(item.id)}
                 onContextMenu={(e) => handleContextMenu(e, item)}
                 isRenaming={renamingId === item.id}
@@ -369,6 +468,8 @@ export function FileTree({
                 onRenameSubmit={handleRenameSubmit}
                 onRenameCancel={handleRenameCancel}
                 isDragging={activeId === item.id}
+                isOver={overFolderId === item.id}
+                isCut={clipboard?.id === item.id && clipboard.type === "cut"}
               />
             ))}
           </SortableContext>

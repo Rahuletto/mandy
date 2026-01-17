@@ -5,6 +5,8 @@ export interface MenuItem {
     onClick: () => void;
     danger?: boolean;
     divider?: boolean;
+    disabled?: boolean;
+    shortcut?: React.ReactNode;
 }
 
 interface ContextMenuProps {
@@ -37,7 +39,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     return (
         <div
             ref={ref}
-            className="fixed z-50 bg-inset border border-white/10 rounded-lg shadow-xl py-1 min-w-[140px]"
+            className="fixed z-50 bg-inset border border-white/10 rounded-lg shadow-xl py-1 min-w-[160px]"
             style={{ left: x, top: y }}
         >
             {items.map((item, i) =>
@@ -46,16 +48,21 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                 ) : (
                     <button
                         key={i}
+                        disabled={item.disabled}
                         onClick={() => {
+                            if (item.disabled) return;
                             item.onClick();
                             onClose();
                         }}
-                        className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${item.danger
-                                ? "text-red-400 hover:bg-red-500/10"
-                                : "text-white/80 hover:bg-white/10"
+                        className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between gap-4 ${item.disabled
+                                ? "opacity-50 cursor-not-allowed text-white/50"
+                                : item.danger
+                                    ? "text-red-400 hover:bg-red-500/10"
+                                    : "text-white/80 hover:bg-white/10"
                             }`}
                     >
-                        {item.label}
+                        <span>{item.label}</span>
+                        {item.shortcut && <span>{item.shortcut}</span>}
                     </button>
                 )
             )}

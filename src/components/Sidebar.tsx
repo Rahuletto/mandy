@@ -6,9 +6,9 @@ import { FaPlus } from "react-icons/fa6";
 
 interface SidebarProps {
   activeProject: Project | null;
-  activeRequestId: string | null;
+  selectedItemId: string | null;
   unsavedIds: Set<string>;
-  onSelectRequest: (id: string) => void;
+  onSelect: (id: string, isFolder: boolean) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
@@ -21,15 +21,19 @@ interface SidebarProps {
     targetFolderId: string,
     targetIndex: number,
   ) => void;
+  onCut: (id: string) => void;
+  onCopy: (id: string) => void;
+  onPaste: (parentId: string) => void;
+  clipboard: { id: string; type: "cut" | "copy" } | null;
   width: number;
   onWidthChange: (width: number) => void;
 }
 
 export function Sidebar({
   activeProject,
-  activeRequestId,
+  selectedItemId,
   unsavedIds,
-  onSelectRequest,
+  onSelect,
   onToggleFolder,
   onAddRequest,
   onAddFolder,
@@ -38,6 +42,10 @@ export function Sidebar({
   onDuplicate,
   onSort,
   onMoveItem,
+  onCut,
+  onCopy,
+  onPaste,
+  clipboard,
   width,
   onWidthChange,
 }: SidebarProps) {
@@ -130,8 +138,8 @@ export function Sidebar({
         {activeProject ? (
           <FileTree
             root={activeProject.root}
-            activeRequestId={activeRequestId}
-            onSelectRequest={onSelectRequest}
+            selectedItemId={selectedItemId}
+            onSelect={onSelect}
             onToggleFolder={onToggleFolder}
             onAddRequest={onAddRequest}
             onAddFolder={onAddFolder}
@@ -140,6 +148,10 @@ export function Sidebar({
             onDuplicate={onDuplicate}
             onSort={onSort}
             onMoveItem={onMoveItem}
+            onCut={onCut}
+            onCopy={onCopy}
+            onPaste={onPaste}
+            clipboard={clipboard}
             searchQuery={searchQuery}
             unsavedIds={unsavedIds}
           />
