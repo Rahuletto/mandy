@@ -1,26 +1,27 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { Methods, ResponseRenderer } from "./bindings";
+import type { Methods, ResponseRenderer, HttpProtocol } from "./bindings";
 import {
   sendRequest,
   parseCurlCommand,
   decodeBody,
   decodeBodyAsJson,
-  formatBytes,
-  formatDuration,
-  getStatusColor,
   BodyType,
   AuthType,
-} from "./helpers/RESTRequest";
-import { CodeViewer } from "./components/CodeViewer";
+} from "./reqhelpers/rest";
+import { formatBytes, getStatusColor } from "./utils/format";
+import { CodeViewer } from "./components/CodeMirror";
 import { BodyEditor } from "./components/BodyEditor";
 import { AuthEditor } from "./components/AuthEditor";
 import { Sidebar } from "./components/Sidebar";
-import { UrlInput } from "./components/EnvInput";
-import { Dropdown, MoreButton } from "./components/Dropdown";
+import { Dropdown, MoreButton, UrlInput, ToastContainer } from "./components/ui";
 import { KeyValueTable } from "./components/KeyValueTable";
 import { OverviewModal } from "./components/OverviewModal";
 import { MethodSelector } from "./components/MethodSelector";
+import { TimingPopover } from "./components/TimingPopover";
+import { SizePopover } from "./components/SizePopover";
+import { ProtocolToggle } from "./components/ProtocolToggle";
 import { useProjectStore } from "./stores/projectStore";
+import { useToastStore } from "./stores/toastStore";
 import "./App.css";
 
 function App() {
@@ -59,6 +60,7 @@ function App() {
 
   const activeProject = getActiveProject();
   const activeRequest = getActiveRequest();
+  const { addToast } = useToastStore();
 
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<
@@ -72,9 +74,8 @@ function App() {
   const [showCurlImport, setShowCurlImport] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
 
-  // Resizable panels
-  const [mainSplitX, setMainSplitX] = useState(50); // percentage for request/response horizontal split
-  const [responseSplitY, setResponseSplitY] = useState(60); // percentage for response body/headers vertical split
+  const [mainSplitX, setMainSplitX] = useState(50);
+  const [responseSplitY, setResponseSplitY] = useState(60);
   const [isResizingMain, setIsResizingMain] = useState(false);
   const [isResizingResponse, setIsResizingResponse] = useState(false);
   const mainPanelRef = useRef<HTMLDivElement>(null);
@@ -86,9 +87,46 @@ function App() {
   const [showOverview, setShowOverview] = useState(false);
   const [overviewProjectId, setOverviewProjectId] = useState<string | null>(null);
 
-  // Track disabled params and headers per request
-  // Key format: "requestId:type:key" where type is "param" or "header"
   const [disabledItems, setDisabledItems] = useState<Set<string>>(new Set());
+
+  const [showTimingPopover, setShowTimingPopover] = useState(false);
+  const [showSizePopover, setShowSizePopover] = useState(false);
+  const timingRef = useRef<HTMLButtonElement>(null);
+  const sizeRef = useRef<HTMLButtonElement>(null);
+  const timingTimeoutRef = useRef<number | null>(null);
+  const sizeTimeoutRef = useRef<number | null>(null);
+
+  const handleTimingEnter = () => {
+    if (timingTimeoutRef.current) {
+      clearTimeout(timingTimeoutRef.current);
+      timingTimeoutRef.current = null;
+    }
+    setShowSizePopover(false);
+    setShowTimingPopover(true);
+  };
+
+  const handleTimingLeave = () => {
+    timingTimeoutRef.current = window.setTimeout(() => {
+      setShowTimingPopover(false);
+    }, 200);
+  };
+
+  const handleSizeEnter = () => {
+    if (sizeTimeoutRef.current) {
+      clearTimeout(sizeTimeoutRef.current);
+      sizeTimeoutRef.current = null;
+    }
+    setShowTimingPopover(false);
+    setShowSizePopover(true);
+  };
+
+  const handleSizeLeave = () => {
+    sizeTimeoutRef.current = window.setTimeout(() => {
+      setShowSizePopover(false);
+    }, 200);
+  };
+
+  const [requestProtocol, setRequestProtocol] = useState<HttpProtocol>("Tcp");
 
   const isItemEnabled = (type: "param" | "header" | "cookie", key: string) => {
     if (!activeRequestId) return true;
@@ -99,7 +137,6 @@ function App() {
     if (!activeRequest) return [];
     const computed = [];
 
-    // 1. Content-Type from body
     const body = activeRequest.request.body;
     let contentType = null;
     if (body !== "None") {
@@ -121,7 +158,6 @@ function App() {
       });
     }
 
-    // 2. Cookie header
     if (activeRequest.request.cookies.length > 0) {
       const enabledCookies = activeRequest.request.cookies.filter(c => isItemEnabled("cookie", c.name));
       if (enabledCookies.length > 0) {
@@ -137,7 +173,6 @@ function App() {
       }
     }
 
-    // 3. Authorization header
     const auth = activeRequest.request.auth;
     if (auth !== "None") {
       let authValue = "";
@@ -176,9 +211,6 @@ function App() {
     return computed;
   }, [activeRequest, disabledItems]);
 
-
-
-  // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
@@ -192,13 +224,11 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeRequestId, markSaved]);
 
-  // Handle main panel horizontal resize
   const handleMainMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizingMain(true);
   }, []);
 
-  // Handle response panel vertical resize
   const handleResponseMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizingResponse(true);
@@ -242,10 +272,9 @@ function App() {
     if (!activeRequest) return;
     setLoading(true);
     try {
-      // The URL already contains only enabled params, just resolve env variables
+
       const resolvedUrl = resolveVariables(activeRequest.request.url);
 
-      // Filter out disabled headers and resolve env variables
       const resolvedHeaders: Record<string, string> = {};
       for (const [key, value] of Object.entries(
         activeRequest.request.headers,
@@ -255,28 +284,33 @@ function App() {
         }
       }
 
-      // Filter out disabled cookies
       const resolvedCookies = activeRequest.request.cookies
         .filter(c => isItemEnabled("cookie", c.name))
         .map(c => ({ ...c }));
 
-      // Clear query_params since they're already in the URL
-      // The Rust backend would otherwise duplicate them
+      const isGet = activeRequest.request.method === "GET";
+
       const resolvedRequest = {
         ...activeRequest.request,
         url: resolvedUrl,
         headers: resolvedHeaders,
         cookies: resolvedCookies,
-        query_params: {}, // Clear - params are already in the URL
+        query_params: {},
+        body: isGet ? "None" : activeRequest.request.body,
       };
       const resp = await sendRequest(resolvedRequest);
       setRequestResponse(activeRequest.id, resp);
-      // Pick the best renderer: prefer structured formats over Raw
+
+      if (resp.status < 200 || resp.status >= 300) {
+        addToast(`Request failed: ${resp.status} ${resp.status_text}`, "error");
+      }
+
       const preferred: ResponseRenderer[] = ["Json", "Xml", "Html", "HtmlPreview", "Image", "Audio", "Video", "Pdf"];
       const bestRenderer = preferred.find(r => resp.available_renderers.includes(r)) || resp.available_renderers[0] || "Raw";
       setResponseTab(bestRenderer);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      addToast(err.toString(), "error");
     } finally {
       setLoading(false);
     }
@@ -297,6 +331,24 @@ function App() {
     setCurlInput("");
   }
 
+  function handleAutoImportCurl(command: string) {
+    if (!activeRequest) return;
+    try {
+      const parsed = parseCurlCommand(command);
+      updateRequest(activeRequest.id, (r) => ({
+        ...r,
+        request: {
+          ...r.request,
+          ...parsed,
+          headers: { ...r.request.headers, ...parsed.headers },
+        },
+      }));
+      addToast("Imported from cURL", "success");
+    } catch (err) {
+      addToast("Failed to parse cURL command", "error");
+    }
+  }
+
   function updateUrl(url: string) {
     if (!activeRequest) return;
     updateRequest(activeRequest.id, (r) => ({
@@ -312,6 +364,10 @@ function App() {
       ...r,
       request: { ...r.request, method },
     }));
+
+    if (method === "GET" && activeTab === "body") {
+      setActiveTab("params");
+    }
   }
 
   function updateBody(body: BodyType) {
@@ -330,7 +386,6 @@ function App() {
     }));
   }
 
-  // Helper to build URL query string from params, preserving {{VAR}} patterns
   function buildQueryString(params: Record<string, string | undefined>, disabledKeys: Set<string> = new Set()): string {
     const enabledParams = Object.entries(params).filter(([key, value]) => !disabledKeys.has(key) && value !== undefined) as [string, string][];
 
@@ -343,7 +398,7 @@ function App() {
         const rawValue = value || '';
 
         if (rawValue.includes('{{')) {
-          // Preserve {{VAR}} patterns without encoding
+
           let result = '';
           let lastIndex = 0;
           const regex = /\{\{[^}]+\}\}/g;
@@ -363,14 +418,13 @@ function App() {
     return queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
   }
 
-
   function syncUrlToQueryParams() {
     if (!activeRequest) return;
     try {
       const urlStr = activeRequest.request.url;
       const queryIndex = urlStr.indexOf('?');
       if (queryIndex === -1) {
-        // No query string, clear params
+
         updateRequest(activeRequest.id, (r) => ({
           ...r,
           request: {
@@ -384,16 +438,15 @@ function App() {
       const queryString = urlStr.slice(queryIndex + 1);
       const params: Record<string, string> = {};
 
-      // Parse query string manually to preserve {{VAR}} patterns
       queryString.split('&').forEach(part => {
         const eqIndex = part.indexOf('=');
         if (eqIndex === -1) {
           params[decodeURIComponent(part)] = '';
         } else {
           const key = decodeURIComponent(part.slice(0, eqIndex));
-          // Don't decode {{VAR}} patterns - they should stay as-is
+
           const rawValue = part.slice(eqIndex + 1);
-          // Check if value contains {{...}} pattern (unencoded)
+
           if (rawValue.includes('{{')) {
             params[key] = rawValue;
           } else {
@@ -410,17 +463,16 @@ function App() {
         },
       }));
     } catch {
-      // Invalid URL, ignore
+
     }
   }
-
 
   function renderResponseBody() {
     if (!activeRequest?.response) return null;
 
     const body = decodeBody(activeRequest.response);
     const response = activeRequest.response;
-    const requestId = activeRequest.id; // Use as key to force re-mount
+    const requestId = activeRequest.id;
 
     switch (responseTab) {
       case "Json": {
@@ -445,20 +497,19 @@ function App() {
           </div>
         );
       case "HtmlPreview": {
-        // Inject <base> tag to resolve relative URLs to the original server
+
         const requestUrl = activeRequest.request.url;
         let baseUrl = "";
         try {
           const url = new URL(requestUrl.startsWith("http") ? requestUrl : `https://${requestUrl}`);
           baseUrl = `${url.protocol}//${url.host}`;
         } catch {
-          // Invalid URL, skip base injection
+
         }
 
-        // Inject base tag if we have a valid base URL
         let previewHtml = body;
         if (baseUrl && !body.includes("<base")) {
-          // Insert base tag after <head> or at the start of the document
+
           if (body.includes("<head>")) {
             previewHtml = body.replace("<head>", `<head><base href="${baseUrl}/">`);
           } else if (body.includes("<head ")) {
@@ -543,7 +594,6 @@ function App() {
     }
   }
 
-  // Helper to get display name for renderer
   function getRendererLabel(renderer: ResponseRenderer): string {
     switch (renderer) {
       case "Raw": return "Raw";
@@ -561,13 +611,13 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-transparent text-text select-none">
-      {/* Header */}
+
       <header
         className="h-10 flex items-center px-4 bg-transparent shrink-0"
         data-tauri-drag-region
       >
         <div className="flex items-center gap-3 ml-[70px] no-drag">
-          {/* Workspace Name */}
+
           <div className="relative">
             <div className="flex items-center gap-1">
               <button
@@ -645,7 +695,7 @@ function App() {
             )}
           </div>
 
-          {/* Environment Tag */}
+
           {activeProject && (
             <div className="relative flex items-center gap-1">
               <button
@@ -688,7 +738,7 @@ function App() {
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
+
         <Sidebar
           activeProject={activeProject}
           activeRequestId={activeRequestId}
@@ -706,7 +756,7 @@ function App() {
           onWidthChange={setSidebarWidth}
         />
 
-        {/* Main Content */}
+
         <main className="flex-1 bg-background rounded-tl-2xl flex flex-col overflow-hidden">
           {activeRequest ? (
             <>
@@ -720,7 +770,9 @@ function App() {
                   <UrlInput
                     value={activeRequest.request.url}
                     onChange={(v) => updateUrl(v)}
-                    placeholder="https://echo.zuplo.io/"
+                    onCurlPaste={handleAutoImportCurl}
+                    onInvalidInput={(msg) => addToast(msg, "info")}
+                    placeholder="Enter URL or paste cURL..."
                     availableVariables={getActiveEnvironmentVariables().map(v => v.key)}
                   />
                 </div>
@@ -737,33 +789,35 @@ function App() {
                 ref={mainPanelRef}
                 className=" flex-1 flex overflow-hidden"
               >
-                {/* Request Panel */}
+
                 <div
                   className="flex p-2 pl-4 flex-col overflow-hidden"
-                  style={{ width: `${mainSplitX}%` }}
+                  style={{ width: activeRequest.response ? `${mainSplitX}%` : "100%" }}
                 >
-                  {/* Request Tabs */}
+
                   <div className="flex items-center gap-1 py-2 shrink-0">
-                    {(["overview", "params", "authorization", "body", "headers", "cookies"] as const).map(
-                      (tab) => (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setActiveTab(tab)}
-                          className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${activeTab === tab
-                            ? "text-accent bg-accent/10"
-                            : "text-white/80 hover:text-white/60"
-                            }`}
-                        >
-                          {tab === "overview"
-                            ? "AI Overview"
-                            : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                        </button>
-                      ),
-                    )}
+                    {(["overview", "params", "authorization", "body", "headers", "cookies"] as const)
+                      .filter(tab => tab !== "body" || activeRequest.request.method !== "GET")
+                      .map(
+                        (tab) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${activeTab === tab
+                              ? "text-accent bg-accent/10"
+                              : "text-white/80 hover:text-white/60"
+                              }`}
+                          >
+                            {tab === "overview"
+                              ? "AI Overview"
+                              : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                          </button>
+                        ),
+                      )}
                   </div>
 
-                  {/* Request Content */}
+
                   <div className="flex-1 overflow-auto ">
                     {activeTab === "authorization" && (
                       <AuthEditor
@@ -788,7 +842,6 @@ function App() {
                             const newDisabledItems = new Set(disabledItems);
                             const activeId = activeRequest.id;
 
-                            // Process current items
                             items.forEach((item) => {
                               if (item.key.trim() || item.value.trim()) {
                                 newQueryParams[item.key] = item.value;
@@ -801,7 +854,6 @@ function App() {
                               }
                             });
 
-                            // Remove old disabled states for keys that no longer exist
                             Object.keys(activeRequest.request.query_params).forEach(oldKey => {
                               if (!newQueryParams[oldKey]) {
                                 newDisabledItems.delete(`${activeId}:param:${oldKey}`);
@@ -924,7 +976,6 @@ function App() {
                               };
                             });
 
-                            // Clean up removed cookies from disabled set
                             Object.keys(activeRequest.request.cookies).forEach(idx => {
                               const oldCookie = activeRequest.request.cookies[Number(idx)];
                               if (!newCookies.find(c => c.name === oldCookie.name)) {
@@ -944,16 +995,7 @@ function App() {
                             value: "value"
                           }}
                         />
-                        {activeRequest?.response && activeRequest.response.cookies.length > 0 && (
-                          <div className="px-4 py-3 border-t border-white/5">
-                            <button
-                              onClick={() => setResponseDetailTab("cookies")}
-                              className="px-4 py-2 text-xs font-medium bg-accent/10 text-accent rounded-lg hover:bg-accent/20 transition-colors"
-                            >
-                              Open Cookie View
-                            </button>
-                          </div>
-                        )}
+
                       </div>
                     )}
                     {activeTab === "body" && (
@@ -971,168 +1013,217 @@ function App() {
                   </div>
                 </div>
 
-                {/* Resize Handle (Vertical) */}
-                <div
-                  className="w-2 cursor-col-resize flex items-center justify-center shrink-0 group"
-                  onMouseDown={handleMainMouseDown}
-                >
-                  <div className="w-px h-full  group-hover:bg-accent/50 transition-colors" />
-                </div>
+                {activeRequest.response && (
+                  <>
 
-                {/* Response Panel */}
-                <div
-                  ref={responsePanelRef}
-                  className="flex-1 flex flex-col overflow-hidden bg-inset border-l border-white/10"
-                >
-                  {/* Response Header */}
-                  <div className="flex items-center justify-between p-2 px-4 shrink-0">
-                    <span className="text-xs font-medium text-white">
-                      Response
-                    </span>
-                    <div className="flex gap-1">
-                      {(activeRequest?.response?.available_renderers || ["Raw"]).map((renderer) => (
-                        <button
-                          key={renderer}
-                          type="button"
-                          onClick={() => setResponseTab(renderer)}
-                          className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${responseTab === renderer
-                            ? "text-accent bg-accent/10"
-                            : "text-white/60 hover:text-white/50"
-                            }`}
-                        >
-                          {getRendererLabel(renderer)}
-                        </button>
-                      ))}
+                    <div
+                      className="w-2 cursor-col-resize flex items-center justify-center shrink-0 group"
+                      onMouseDown={handleMainMouseDown}
+                    >
+                      <div className="w-px h-full  group-hover:bg-accent/50 transition-colors" />
                     </div>
-                  </div>
 
-                  {/* Response Body */}
-                  <div
-                    className="overflow-auto "
-                    style={{ height: `${responseSplitY}%` }}
-                  >
-                    {activeRequest?.response ? (
-                      <div className="h-full">{renderResponseBody()}</div>
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-white/20 text-sm">
-                        Send a request to see the response
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Status Bar */}
-                  {activeRequest?.response && (
-                    <div className="flex gap-3 items-center bg-inset border-y border-white/10 shrink-0">
-                      <div className="hidden">
-                        <span className="bg-[#22c55e]/20" />
-                        <span className="bg-[#eab308]/20" />
-                        <span className="bg-[#f97316]/20" />
-                        <span className="bg-[#ef4444]/20" />
-                      </div>
-                      <span
-                        className={`text-xs font-bold px-3 py-2 bg-[${getStatusColor(activeRequest.response.status)}]/20`}
-                        style={{
-                          color: getStatusColor(activeRequest.response.status),
-                        }}
-                      >
-                        {activeRequest.response.status}{" "}
-                        {activeRequest.response.status_text}
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[11px] text-white/30">
-                          {formatDuration(activeRequest.response.timing.total_ms)}
+                    <div
+                      ref={responsePanelRef}
+                      className="flex-1 flex flex-col overflow-hidden bg-inset border-l border-white/10"
+                    >
+
+                      <div className="flex items-center justify-between p-2 px-4 shrink-0">
+                        <span className="text-xs font-medium text-white">
+                          Response
                         </span>
-                        <span className="text-[11px] text-white/30">
-                          {formatBytes(activeRequest.response.body_size_bytes)}
-                        </span>
+                        <div className="flex gap-1">
+                          {(activeRequest.response?.available_renderers || ["Raw"]).map((renderer) => (
+                            <button
+                              key={renderer}
+                              type="button"
+                              onClick={() => setResponseTab(renderer)}
+                              className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${responseTab === renderer
+                                ? "text-accent bg-accent/10"
+                                : "text-white/60 hover:text-white/50"
+                                }`}
+                            >
+                              {getRendererLabel(renderer)}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
 
-                  {/* Resize Handle (Horizontal) */}
-                  <div
-                    className="h-[1px] bg-white/10 cursor-row-resize transition-colors shrink-0"
-                    onMouseDown={handleResponseMouseDown}
-                  />
 
-                  {/* Response Details (Headers/Cookies) */}
-                  <div
-                    className="flex flex-col overflow-hidden bg-card"
-                    style={{ height: `${100 - responseSplitY}%` }}
-                  >
-                    {/* Detail Tabs */}
-                    <div className="flex items-center gap-1 p-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setResponseDetailTab("headers")}
-                        className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "headers"
-                          ? "text-accent bg-accent/10"
-                          : "text-white/60 hover:text-white/50"
-                          }`}
+                      <div
+                        className="overflow-auto "
+                        style={{ height: `${responseSplitY}%` }}
                       >
-                        Headers
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setResponseDetailTab("cookies")}
-                        className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "cookies"
-                          ? "text-accent bg-accent/10"
-                          : "text-white/60 hover:text-white/50"
-                          }`}
-                      >
-                        Cookies
-                      </button>
-                    </div>
+                        <div className="h-full">{renderResponseBody()}</div>
+                      </div>
 
-                    {/* Detail Content */}
-                    <div className="flex-1 overflow-auto">
-                      {responseDetailTab === "headers" &&
-                        activeRequest?.response && (
-                          <div className="flex-1 min-h-0">
-                            <table className="w-full text-xs font-mono border-collapse">
-                              <tbody>
-                                {Object.entries(activeRequest.response.headers).map(([k, v]) => (
-                                  <tr
-                                    key={k}
-                                    className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
-                                  >
-                                    <td className="px-3 py-2 text-white/40 border-r border-white/5 w-1/3 min-w-[120px] align-top">
-                                      {k}
-                                    </td>
-                                    <td className="px-3 py-2 text-white/60 break-all align-top whitespace-pre-wrap">
-                                      {v}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+
+                      <div className="flex items-center justify-between bg-inset border-y border-white/10 shrink-0 pr-2">
+
+                        <div className="flex items-center gap-1">
+                          <div className="hidden">
+                            <span className="bg-[#22c55e]/20" />
+                            <span className="bg-[#eab308]/20" />
+                            <span className="bg-[#f97316]/20" />
+                            <span className="bg-[#ef4444]/20" />
                           </div>
+                          <span
+                            className={`text-xs font-bold px-3 py-2 bg-[${getStatusColor(activeRequest.response?.status || 0)}]/20`}
+                            style={{
+                              color: getStatusColor(activeRequest.response?.status || 0),
+                            }}
+                          >
+                            {activeRequest.response?.status}{" "}
+                            {activeRequest.response?.status_text}
+                          </span>
+
+                          <button
+                            ref={timingRef}
+                            type="button"
+                            onMouseEnter={handleTimingEnter}
+                            onMouseLeave={handleTimingLeave}
+                            className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+                          >
+                            {
+                              (() => {
+                                const ms = activeRequest.response?.timing?.total_ms ?? 0
+                                return ms >= 1000
+                                  ? `${(ms / 1000).toFixed(2)} s`
+                                  : `${ms.toFixed(2)} ms`
+                              })()
+                            }
+
+                          </button>
+                          <span className="text-white/20">•</span>
+
+                          <button
+                            ref={sizeRef}
+                            type="button"
+                            onMouseEnter={handleSizeEnter}
+                            onMouseLeave={handleSizeLeave}
+                            className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+                          >
+                            {formatBytes(activeRequest.response?.response_size?.total_bytes || 0)}
+                          </button>
+                        </div>
+
+
+                        <ProtocolToggle
+                          value={requestProtocol}
+                          onChange={setRequestProtocol}
+                        />
+
+
+                        {timingRef.current && activeRequest.response?.timing && (
+                          <TimingPopover
+                            timing={activeRequest.response.timing}
+                            anchorRef={timingRef as React.RefObject<HTMLElement>}
+                            open={showTimingPopover}
+                            onClose={() => setShowTimingPopover(false)}
+                            onMouseEnter={handleTimingEnter}
+                            onMouseLeave={handleTimingLeave}
+                          />
                         )}
-                      {responseDetailTab === "cookies" && (
-                        <div className="flex-1 min-h-0">
-                          {activeRequest?.response?.cookies && activeRequest.response.cookies.length > 0 ? (
-                            <KeyValueTable
-                              items={activeRequest.response.cookies.map((c, i) => ({
-                                id: `${i}`,
-                                key: c.name,
-                                value: c.value,
-                                description: `${c.domain || ""} ${c.path || ""}`.trim(),
-                                enabled: true
-                              }))}
-                              onChange={() => { }}
-                              readOnly={true}
-                              showDescription={true}
-                            />
-                          ) : (
-                            <div className="p-3 text-xs text-white/30">
-                              No cookies
+
+                        {sizeRef.current && activeRequest.response?.response_size && (
+                          <SizePopover
+                            requestSize={activeRequest.response.request_size}
+                            responseSize={activeRequest.response.response_size}
+                            anchorRef={sizeRef as React.RefObject<HTMLElement>}
+                            open={showSizePopover}
+                            onClose={() => setShowSizePopover(false)}
+                            onMouseEnter={handleSizeEnter}
+                            onMouseLeave={handleSizeLeave}
+                          />
+                        )}
+                      </div>
+
+
+                      <div
+                        className="h-[1px] bg-white/10 cursor-row-resize transition-colors shrink-0"
+                        onMouseDown={handleResponseMouseDown}
+                      />
+
+
+                      <div
+                        className="flex flex-col overflow-hidden bg-card"
+                        style={{ height: `${100 - responseSplitY}%` }}
+                      >
+
+                        <div className="flex items-center gap-1 p-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setResponseDetailTab("headers")}
+                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "headers"
+                              ? "text-accent bg-accent/10"
+                              : "text-white/60 hover:text-white/50"
+                              }`}
+                          >
+                            Headers
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setResponseDetailTab("cookies")}
+                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "cookies"
+                              ? "text-accent bg-accent/10"
+                              : "text-white/60 hover:text-white/50"
+                              }`}
+                          >
+                            Cookies
+                          </button>
+                        </div>
+
+
+                        <div className="flex-1 overflow-auto">
+                          {responseDetailTab === "headers" && (
+                            <div className="flex-1 min-h-0">
+                              <table className="w-full text-xs font-mono border-collapse">
+                                <tbody>
+                                  {Object.entries(activeRequest.response?.headers || {}).map(([k, v]) => (
+                                    <tr
+                                      key={k}
+                                      className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                                    >
+                                      <td className="px-3 py-2 text-white/40 border-r border-white/5 w-1/3 min-w-[120px] align-top">
+                                        {k}
+                                      </td>
+                                      <td className="px-3 py-2 text-white/60 break-all align-top whitespace-pre-wrap">
+                                        {v}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                          {responseDetailTab === "cookies" && (
+                            <div className="flex-1 min-h-0">
+                              {activeRequest.response?.cookies && activeRequest.response.cookies.length > 0 ? (
+                                <KeyValueTable
+                                  items={activeRequest.response.cookies.map((c, i) => ({
+                                    id: `${i}`,
+                                    key: c.name,
+                                    value: c.value,
+                                    description: `${c.domain || ""} ${c.path || ""}`.trim(),
+                                    enabled: true
+                                  }))}
+                                  onChange={() => { }}
+                                  readOnly={true}
+                                  showDescription={false}
+                                />
+                              ) : (
+                                <div className="p-3 text-xs text-white/30">
+                                  No cookies
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             </>
           ) : (
@@ -1143,7 +1234,7 @@ function App() {
         </main>
       </div>
 
-      {/* Overview Modal */}
+
       {showOverview && overviewProjectId && (
         <OverviewModal
           projectId={overviewProjectId}
@@ -1159,7 +1250,7 @@ function App() {
         />
       )}
 
-      {/* cURL Import Modal */}
+
       {showCurlImport && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
           <div className="bg-[#1a1a1a] rounded-xl p-5 w-full max-w-xl border border-white/10">
@@ -1188,6 +1279,7 @@ function App() {
           </div>
         </div>
       )}
+      <ToastContainer />
     </div>
   );
 }

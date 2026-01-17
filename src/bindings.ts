@@ -5,14 +5,14 @@
 
 
 export const commands = {
-async restRequest(req: ApiRequest) : Promise<Result<ApiResponse, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("rest_request", { req }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-}
+	async restRequest(req: ApiRequest): Promise<Result<ApiResponse, string>> {
+		try {
+			return { status: "ok", data: await TAURI_INVOKE("rest_request", { req }) };
+		} catch (e) {
+			if (e instanceof Error) throw e;
+			else return { status: "error", error: e as any };
+		}
+	}
 }
 
 /** user-defined events **/
@@ -58,8 +58,8 @@ type __EventObj__<T> = {
 		cb: TAURI_API_EVENT.EventCallback<T>,
 	) => ReturnType<typeof TAURI_API_EVENT.once<T>>;
 	emit: null extends T
-		? (payload?: T) => ReturnType<typeof TAURI_API_EVENT.emit>
-		: (payload: T) => ReturnType<typeof TAURI_API_EVENT.emit>;
+	? (payload?: T) => ReturnType<typeof TAURI_API_EVENT.emit>
+	: (payload: T) => ReturnType<typeof TAURI_API_EVENT.emit>;
 };
 
 export type Result<T, E> =
@@ -79,7 +79,7 @@ function __makeEvents__<T extends Record<string, any>>(
 			get: (_, event) => {
 				const name = mappings[event as keyof T];
 
-				return new Proxy((() => {}) as any, {
+				return new Proxy((() => { }) as any, {
 					apply: (_, __, [window]: [__WebviewWindow__]) => ({
 						listen: (arg: any) => window.listen(name, arg),
 						once: (arg: any) => window.once(name, arg),
