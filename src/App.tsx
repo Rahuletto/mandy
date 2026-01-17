@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Methods, ResponseRenderer, HttpProtocol } from "./bindings";
+import { TbLayoutSidebar } from "react-icons/tb";
 import { isMac } from "./utils/platform";
 import {
   sendRequest,
@@ -81,6 +82,8 @@ function App() {
   const [curlInput, setCurlInput] = useState("");
   const [showCurlImport, setShowCurlImport] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isPeeking, setIsPeeking] = useState(false);
 
   const [mainSplitX, setMainSplitX] = useState(50);
   const [responseSplitY, setResponseSplitY] = useState(60);
@@ -222,8 +225,6 @@ function App() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Check if we are in an input/textarea to allow native behavior (e.g. copy text in body editor)
-      // Exception: Ctrl+S/Cmd+S should always save
       const isInput = document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA";
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
 
@@ -235,7 +236,6 @@ function App() {
         return;
       }
 
-      // Run Request
       if (isCmdOrCtrl && e.key === "Enter") {
         e.preventDefault();
         if (activeRequestId && activeRequest?.request.url) {
@@ -244,10 +244,8 @@ function App() {
         return;
       }
 
-      // If we are in an input, don't intercept other keys like C, X, V, Delete
       if (isInput) return;
 
-      // New Request
       if (isCmdOrCtrl && e.key === "n") {
         e.preventDefault();
         if (activeProject) {
@@ -255,7 +253,6 @@ function App() {
         }
       }
 
-      // Cut
       if (isCmdOrCtrl && e.key === "x") {
         if (selectedItemId) {
           e.preventDefault();
@@ -263,7 +260,6 @@ function App() {
         }
       }
 
-      // Copy
       if (isCmdOrCtrl && e.key === "c") {
         if (selectedItemId) {
           e.preventDefault();
@@ -271,39 +267,22 @@ function App() {
         }
       }
 
-      // Paste
       if (isCmdOrCtrl && e.key === "v") {
-        if (activeProject) { // Paste logic might need specific target folder if any selected
+        if (activeProject) {
           e.preventDefault();
           pasteItem(activeProject.root.id);
         }
       }
 
-      // Rename
-      // Mac: Enter/Return, Win: F2
       const isRename = isMac ? e.key === "Enter" : e.key === "F2";
       if (isRename) {
         if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
         if (selectedItemId) {
           e.preventDefault();
-          // We need a way to trigger rename on the FileTree item.
-          // Since FileTree manages renaming state locally, we might need to expose a method or
-          // trigger it via a prop change or custom event.
-          // OR better: FileTree already listens for shortcuts? No, we moved to global.
-          // IF we want global rename, we need to tell FileTree to start renaming 'selectedItemId'.
-          // We can add a store action 'setRenamingItem(id)' or similar.
-          // BUT FileTree has local state `renamingId`.
-          // Converting `renamingId` to props or store state is the right way.
-          // For now, let's dispatch a custom event or check if we can pass it down.
-          // Let's us use a simple event bus or just rely on FileTree doing it itself if it was focused.
-          // User said "shortcuts dont work".
-          // Let's implement setRenamingItem in a ref or store.
-          // QUICK FIX: Dispatch a custom window event that FileTree listens to.
           window.dispatchEvent(new CustomEvent('trigger-rename', { detail: { itemId: selectedItemId } }));
         }
       }
 
-      // Duplicate
       if (isCmdOrCtrl && e.key === "d") {
         e.preventDefault();
         if (selectedItemId) {
@@ -311,9 +290,6 @@ function App() {
         }
       }
 
-      // Delete
-      // Mac: Cmd+Backspace (often labeled Delete in menus, but strictly it's Cmd+Delete on full keyboard or Cmd+Backspace on laptop)
-      // User explicitly mentioned "cmd delete"
       const isDelete = isMac
         ? (isCmdOrCtrl && (e.key === "Backspace" || e.key === "Delete"))
         : e.key === "Delete";
@@ -415,9 +391,8 @@ function App() {
       const bestRenderer = preferred.find(r => resp.available_renderers.includes(r)) || resp.available_renderers[0] || "Raw";
       setResponseTab(bestRenderer);
 
-      // Auto-switch to a tab that shows the response if we are in "overview"
       if (activeTab === "overview") {
-        setActiveTab("body"); // Or "params", "headers" etc - "body" (Request Body) view allows split pane
+        setActiveTab("body");
       }
     } catch (err: any) {
       console.error(err);
@@ -724,12 +699,21 @@ function App() {
     <div className="h-screen flex flex-col bg-transparent text-text select-none">
 
       <header
-        className="h-10 flex items-center px-4 bg-transparent shrink-0"
+        className="h-10 flex items-center px-4 bg-transparent shrink-0 group"
         data-tauri-drag-region
       >
-        <div className="flex items-center gap-3 ml-[70px] no-drag">
+        <div className="flex items-center gap-0 ml-[70px] no-drag">
 
-          <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="h-6 flex items-center justify-center rounded-md text-white hover:bg-white/20 cursor-pointer transition-all duration-200 ease-out w-0 opacity-0 overflow-hidden group-hover:w-6 group-hover:opacity-50 group-hover:mr-2"
+            title={isSidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}
+          >
+            <TbLayoutSidebar size={14} className="shrink-0" />
+          </button>
+
+          <div className="relative transition-all duration-200 ease-out group-hover:translate-x-0">
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -808,7 +792,7 @@ function App() {
 
 
           {activeProject && (
-            <div className="relative flex items-center gap-1">
+            <div className="relative flex items-center gap-1 ml-3">
               <button
                 type="button"
                 onClick={() => {
@@ -851,36 +835,86 @@ function App() {
 
       </header >
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {isSidebarCollapsed && (
+          <div
+            className="absolute left-0 top-0 bottom-0 w-6 z-50 bg-transparent"
+            onMouseEnter={() => setIsPeeking(true)}
+          />
+        )}
 
-        <Sidebar
-          activeProject={activeProject}
-          unsavedIds={unsavedChanges}
-          onSelect={(id, isFolder) => {
-            setSelectedItem(id);
-            if (!isFolder) {
-              setActiveRequestId(id);
-            }
-          }}
-          selectedItemId={selectedItemId}
-          onToggleFolder={toggleFolder}
-          onAddRequest={addRequest}
-          onAddFolder={addFolder}
-          onRename={renameItem}
-          onDelete={setItemToDelete}
-          onDuplicate={duplicateItem}
-          onSort={sortFolder}
-          onMoveItem={moveItem}
-          onCut={cutToClipboard}
-          onCopy={copyToClipboard}
-          onPaste={pasteItem}
-          clipboard={clipboard}
-          width={sidebarWidth}
-          onWidthChange={setSidebarWidth}
-        />
+        <div
+          className="shrink-0 overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          style={{ width: isSidebarCollapsed ? 0 : sidebarWidth }}
+        >
+          <Sidebar
+            activeProject={activeProject}
+            unsavedIds={unsavedChanges}
+            onSelect={(id, isFolder) => {
+              setSelectedItem(id);
+              if (!isFolder) {
+                setActiveRequestId(id);
+              }
+            }}
+            selectedItemId={selectedItemId}
+            onToggleFolder={toggleFolder}
+            onAddRequest={addRequest}
+            onAddFolder={addFolder}
+            onRename={renameItem}
+            onDelete={setItemToDelete}
+            onDuplicate={duplicateItem}
+            onSort={sortFolder}
+            onMoveItem={moveItem}
+            onCut={cutToClipboard}
+            onCopy={copyToClipboard}
+            onPaste={pasteItem}
+            clipboard={clipboard}
+            width={sidebarWidth}
+            onWidthChange={setSidebarWidth}
+            className="relative"
+          />
+        </div>
+
+        <div
+          className={`absolute left-2 top-2 bottom-2 z-40 rounded-xl bg-[#1a1a1a]/98 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPeeking && isSidebarCollapsed
+            ? "opacity-100 translate-x-0 scale-100"
+            : "opacity-0 -translate-x-4 scale-[0.98] pointer-events-none"
+            }`}
+          style={{ width: sidebarWidth }}
+          onMouseLeave={() => setIsPeeking(false)}
+        >
+          <Sidebar
+            activeProject={activeProject}
+            unsavedIds={unsavedChanges}
+            onSelect={(id, isFolder) => {
+              setSelectedItem(id);
+              if (!isFolder) {
+                setActiveRequestId(id);
+              }
+            }}
+            selectedItemId={selectedItemId}
+            onToggleFolder={toggleFolder}
+            onAddRequest={addRequest}
+            onAddFolder={addFolder}
+            onRename={renameItem}
+            onDelete={setItemToDelete}
+            onDuplicate={duplicateItem}
+            onSort={sortFolder}
+            onMoveItem={moveItem}
+            onCut={cutToClipboard}
+            onCopy={copyToClipboard}
+            onPaste={pasteItem}
+            clipboard={clipboard}
+            width={sidebarWidth}
+            onWidthChange={setSidebarWidth}
+            className="h-full"
+          />
+        </div>
 
 
-        <main className="flex-1 bg-background rounded-tl-2xl flex flex-col overflow-hidden">
+        <main
+          className={`flex-1 bg-background m-1 mt-0 flex flex-col overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isSidebarCollapsed ? "rounded-tl-2xl rounded-xl" : "rounded-xl"}`}
+        >
           {activeRequest ? (
             <>
               <div className="flex gap-4 border-b border-text/15 p-4">

@@ -27,6 +27,7 @@ interface SidebarProps {
   clipboard: { id: string; type: "cut" | "copy" } | null;
   width: number;
   onWidthChange: (width: number) => void;
+  className?: string;
 }
 
 export function Sidebar({
@@ -48,6 +49,7 @@ export function Sidebar({
   clipboard,
   width,
   onWidthChange,
+  className = "",
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isResizing, setIsResizing] = useState(false);
@@ -110,7 +112,7 @@ export function Sidebar({
   return (
     <div
       ref={sidebarRef}
-      className="relative flex flex-col bg-transparent select-none shrink-0"
+      className={`flex flex-col bg-transparent select-none shrink-0 ${className}`}
       style={{ width }}
     >
       <div className="px-3 py-3 flex items-center gap-2">

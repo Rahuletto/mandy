@@ -138,13 +138,6 @@ function SortableItem({
       onClick={() => {
         if (item.type === "folder") {
           onSelect();
-          // Double click or explicit arrow to toggle? 
-          // Logic: click selects, if already selected, toggle?
-          // Or standard tree: click selects, arrow toggles.
-          // For now: let's do click selects AND toggles to not break existing flow too much, 
-          // BUT we need to ensure selection is registered.
-          // Wait, previous logic: if folder, onToggle, else onSelect.
-          // Users usually expect single click to select folder.
           onToggle();
         } else {
           onSelect();
@@ -152,7 +145,6 @@ function SortableItem({
       }}
       onContextMenu={onContextMenu}
     >
-      {/* Indentation Lines */}
       <div className="absolute left-0 top-0 bottom-0 flex pointer-events-none">
         {Array.from({ length: depth }).map((_, i) => (
           <div
