@@ -105,7 +105,6 @@ export function parseCurlCommand(curl: string): Partial<ApiRequest> {
 
     const cleaned = curl.replace(/\\\n/g, " ").replace(/\s+/g, " ").trim();
 
-    // Extract URL - handle both quoted and unquoted
     const urlPatterns = [
         /curl\s+(?:.*?\s)?['"]([^'"]+)['"]/,
         /curl\s+(?:.*?\s)?(\S+)/,
@@ -123,7 +122,6 @@ export function parseCurlCommand(curl: string): Partial<ApiRequest> {
         }
     }
 
-    // Fallback: find any URL in the command
     if (!request.url) {
         const urlMatch = cleaned.match(/(https?:\/\/[^\s'"]+)/);
         if (urlMatch) {
@@ -137,7 +135,6 @@ export function parseCurlCommand(curl: string): Partial<ApiRequest> {
         request.method = methodMatch[1].toUpperCase() as Methods;
     }
 
-    // Headers
     const headerRegex = /-H\s+['"]([^'"]+)['"]/gi;
     let headerMatch;
     while ((headerMatch = headerRegex.exec(cleaned)) !== null) {
@@ -150,7 +147,6 @@ export function parseCurlCommand(curl: string): Partial<ApiRequest> {
         }
     }
 
-    // Data/body
     const dataPatterns = [
         /-d\s+'([^']+)'/i,
         /-d\s+"([^"]+)"/i,
@@ -172,19 +168,16 @@ export function parseCurlCommand(curl: string): Partial<ApiRequest> {
         }
     }
 
-    // Basic auth
     const userMatch = cleaned.match(/-u\s+['"]?([^'"\s]+)['"]?/i);
     if (userMatch) {
         const [username, password] = userMatch[1].split(":");
         request.auth = { Basic: { username, password: password || "" } };
     }
 
-    // Insecure flag
     if (cleaned.includes("-k") || cleaned.includes("--insecure")) {
         request.verify_ssl = false;
     }
 
-    // Follow redirects
     if (cleaned.includes("-L") || cleaned.includes("--location")) {
         request.follow_redirects = true;
     }

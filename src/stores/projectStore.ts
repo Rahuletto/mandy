@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Project, Folder, RequestFile, TreeItem, SortMode, Environment, EnvironmentVariable } from "../types/project";
 import type { ApiResponse } from "../bindings";
-import { createDefaultRequest } from "../helpers/RESTRequest";
+import { createDefaultRequest } from "../reqhelpers/rest";
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -121,14 +121,12 @@ interface ProjectState {
   activeRequestId: string | null;
   unsavedChanges: Set<string>;
 
-  // Project management
   createProject: (name: string) => string;
   selectProject: (id: string) => void;
   renameProject: (id: string, name: string) => void;
   deleteProject: (id: string) => void;
   getActiveProject: () => Project | null;
 
-  // Environment management
   addEnvironment: (projectId: string, name: string) => string;
   updateEnvironment: (projectId: string, envId: string, name: string) => void;
   deleteEnvironment: (projectId: string, envId: string) => void;
@@ -169,7 +167,6 @@ export const useProjectStore = create<ProjectState>()(
       activeRequestId: null,
       unsavedChanges: new Set(),
 
-      // Project management
       createProject: (name) => {
         const newProject = createEmptyProject(name);
         set((state) => ({

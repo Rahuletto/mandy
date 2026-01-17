@@ -26,18 +26,20 @@ async restRequest(req: ApiRequest) : Promise<Result<ApiResponse, string>> {
 /** user-defined types **/
 
 export type ApiKeyLocation = "Header" | "Query"
-export type ApiRequest = { method: Methods; url: string; headers: Partial<{ [key in string]: string }>; body: BodyType; auth: AuthType; query_params: Partial<{ [key in string]: string }>; cookies: Cookie[]; timeout_ms: number | null; follow_redirects: boolean | null; max_redirects: number | null; verify_ssl: boolean | null; proxy: ProxyConfig | null }
-export type ApiResponse = { status: number; status_text: string; headers: Partial<{ [key in string]: string }>; cookies: Cookie[]; body_base64: string; body_size_bytes: number; timing: TimingInfo; redirects: RedirectEntry[]; remote_addr: string | null; http_version: string; available_renderers: ResponseRenderer[]; detected_content_type: string | null; error: string | null }
+export type ApiRequest = { method: Methods; url: string; headers: Partial<{ [key in string]: string }>; body: BodyType; auth: AuthType; query_params: Partial<{ [key in string]: string }>; cookies: Cookie[]; timeout_ms: number | null; follow_redirects: boolean | null; max_redirects: number | null; verify_ssl: boolean | null; proxy: ProxyConfig | null; protocol: HttpProtocol | null }
+export type ApiResponse = { status: number; status_text: string; headers: Partial<{ [key in string]: string }>; cookies: Cookie[]; body_base64: string; timing: TimingInfo; request_size: SizeInfo; response_size: SizeInfo; redirects: RedirectEntry[]; remote_addr: string | null; http_version: string; available_renderers: ResponseRenderer[]; detected_content_type: string | null; protocol_used: string; error: string | null }
 export type AuthType = "None" | { Basic: { username: string; password: string } } | { Bearer: { token: string } } | { ApiKey: { key: string; value: string; add_to: ApiKeyLocation } }
 export type BodyType = "None" | { Raw: { content: string; content_type: string | null } } | { FormUrlEncoded: { fields: Partial<{ [key in string]: string }> } } | { Multipart: { fields: MultipartField[] } } | { Binary: { data: number[]; filename: string | null } }
 export type Cookie = { name: string; value: string; domain: string | null; path: string | null; expires: string | null; http_only: boolean | null; secure: boolean | null }
+export type HttpProtocol = "Tcp" | "Quic"
 export type Methods = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS" | "TRACE" | "CONNECT"
 export type MultipartField = { name: string; value: MultipartValue }
 export type MultipartValue = { Text: string } | { File: { data: number[]; filename: string; content_type: string | null } }
 export type ProxyConfig = { url: string; username: string | null; password: string | null }
 export type RedirectEntry = { url: string; status: number }
 export type ResponseRenderer = "Raw" | "Json" | "Xml" | "Html" | "HtmlPreview" | "Image" | "Audio" | "Video" | "Pdf"
-export type TimingInfo = { total_ms: number }
+export type SizeInfo = { headers_bytes: number; body_bytes: number; total_bytes: number }
+export type TimingInfo = { total_ms: number; dns_lookup_ms: number; tcp_handshake_ms: number; tls_handshake_ms: number; transfer_start_ms: number; ttfb_ms: number; content_download_ms: number }
 
 /** tauri-specta globals **/
 
