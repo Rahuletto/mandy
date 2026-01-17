@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import type { AuthType, ApiKeyLocation } from "../bindings";
-import { Dropdown, EnvInput } from "./ui";
+import type { AuthType, ApiKeyLocation } from "../../bindings";
+import { Dropdown, EnvInput } from "../ui";
 import { BiChevronDown, BiShieldQuarter } from "react-icons/bi";
 
 interface AuthEditorProps {

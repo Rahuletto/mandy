@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import type { BodyType, MultipartField } from "../bindings";
-import { CodeEditor } from "./CodeMirror/CodeEditor";
-import { KeyValueTable } from "./KeyValueTable";
-import { Dropdown } from "./ui/Dropdown";
+import type { BodyType, MultipartField } from "../../bindings";
+import { CodeEditor } from "../CodeMirror/CodeEditor";
+import { KeyValueTable } from "../KeyValueTable";
+import { Dropdown } from "../ui/Dropdown";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { BiFile, BiX, BiChevronDown } from "react-icons/bi";

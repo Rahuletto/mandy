@@ -1,5 +1,5 @@
-import type { SizeInfo } from '../bindings';
-import { HoverPopover } from './ui';
+import type { SizeInfo } from '../../bindings';
+import { HoverPopover } from '../ui';
 
 interface SizePopoverProps {
     requestSize: SizeInfo;

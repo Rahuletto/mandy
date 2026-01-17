@@ -1,5 +1,5 @@
-import type { TimingInfo } from '../bindings';
-import { HoverPopover } from './ui';
+import type { TimingInfo } from '../../bindings';
+import { HoverPopover } from '../ui';
 
 interface TimingPopoverProps {
     timing: TimingInfo;
