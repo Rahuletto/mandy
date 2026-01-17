@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, type ReactNode } from 'react';
 interface HoverPopoverProps {
     children: ReactNode;
     anchorRef: React.RefObject<HTMLElement>;
+    open?: boolean;
     onClose?: () => void;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
@@ -13,6 +14,7 @@ interface HoverPopoverProps {
 export function HoverPopover({
     children,
     anchorRef,
+    open = true,
     onClose,
     onMouseEnter,
     onMouseLeave,
@@ -21,6 +23,19 @@ export function HoverPopover({
 }: HoverPopoverProps) {
     const popoverRef = useRef<HTMLDivElement>(null);
     const [coords, setCoords] = useState({ top: 0, left: 0 });
+    const [isClosing, setIsClosing] = useState(false);
+    const [render, setRender] = useState(open);
+
+    useEffect(() => {
+        if (open) {
+            setRender(true);
+            setIsClosing(false);
+        } else {
+            setIsClosing(true);
+            const timer = setTimeout(() => setRender(false), 500);
+            return () => clearTimeout(timer);
+        }
+    }, [open]);
 
     useEffect(() => {
         const updatePosition = () => {
@@ -52,32 +67,46 @@ export function HoverPopover({
             }
         };
 
-        updatePosition();
-        window.addEventListener('resize', updatePosition);
-        window.addEventListener('scroll', updatePosition, true);
+        if (render) {
+            updatePosition();
+            window.addEventListener('resize', updatePosition);
+            window.addEventListener('scroll', updatePosition, true);
+        }
         return () => {
             window.removeEventListener('resize', updatePosition);
             window.removeEventListener('scroll', updatePosition, true);
         };
-    }, [anchorRef, position]);
+    }, [anchorRef, position, render]);
 
     useEffect(() => {
-        if (!onClose) return;
+        if (!onClose || isClosing || !render) return;
 
         const handleClickOutside = (e: MouseEvent) => {
             if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-                onClose();
+                if (onClose) onClose();
+            }
+        };
+
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                if (onClose) onClose();
             }
         };
 
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [onClose]);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [onClose, isClosing, render]);
+
+    if (!render) return null;
 
     return (
         <div
             ref={popoverRef}
-            className={`fixed z-50 bg-card border border-white/10 rounded-lg shadow-2xl p-3 ${className}`}
+            className={`fixed z-50 bg-card premium-glass border border-white/10 rounded-lg shadow-2xl p-3 ${isClosing ? 'animate-blur-out' : 'animate-blur-in'} ${className}`}
             style={{ top: coords.top, left: coords.left }}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}

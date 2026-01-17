@@ -41,7 +41,6 @@
     background: rgba(248, 113, 113, 0.2);
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -65,9 +64,51 @@ select option {
     color: white;
 }
 
-/* Disable spellcheck and autocapitalize globally */
 input,
 textarea,
 [contenteditable] {
     -webkit-text-size-adjust: none;
+}
+
+[contenteditable]:empty::before {
+    content: attr(data-placeholder);
+    color: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    display: inline-block;
+}
+
+@keyframes blur-in {
+    from {
+        filter: blur(20px);
+        opacity: 0;
+        transform: translateY(12px) scale(0.96);
+    }
+
+    to {
+        filter: blur(0);
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes blur-out {
+    from {
+        filter: blur(0);
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        filter: blur(20px);
+        opacity: 0;
+        transform: translateY(-12px) scale(0.96);
+    }
+}
+
+.animate-blur-in {
+    animation: blur-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-blur-out {
+    animation: blur-out 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
