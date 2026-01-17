@@ -1,4 +1,4 @@
-type Language = "json" | "xml" | "html" | "text";
+import type { Language } from "../components/CodeMirror/languageExtensions";
 
 export function prettifyJson(code: string): string {
     try {

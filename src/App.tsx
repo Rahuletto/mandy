@@ -20,6 +20,7 @@ import { MethodSelector } from "./components/MethodSelector";
 import { TimingPopover } from "./components/TimingPopover";
 import { SizePopover } from "./components/SizePopover";
 import { ProtocolToggle } from "./components/ProtocolToggle";
+import { RequestOverview } from "./components/RequestOverview";
 import { useProjectStore } from "./stores/projectStore";
 import { useToastStore } from "./stores/toastStore";
 import "./App.css";
@@ -65,7 +66,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "overview" | "params" | "authorization" | "body" | "headers" | "cookies"
-  >("body");
+  >("overview");
   const [responseTab, setResponseTab] = useState<ResponseRenderer>("Raw");
   const [responseDetailTab, setResponseDetailTab] = useState<
     "headers" | "cookies"
@@ -772,7 +773,7 @@ function App() {
                     onChange={(v) => updateUrl(v)}
                     onCurlPaste={handleAutoImportCurl}
                     onInvalidInput={(msg) => addToast(msg, "info")}
-                    placeholder="Enter URL or paste cURL..."
+                    placeholder="Enter URL or paste cURL"
                     availableVariables={getActiveEnvironmentVariables().map(v => v.key)}
                   />
                 </div>
@@ -792,7 +793,7 @@ function App() {
 
                 <div
                   className="flex p-2 pl-4 flex-col overflow-hidden"
-                  style={{ width: activeRequest.response ? `${mainSplitX}%` : "100%" }}
+                  style={{ width: activeRequest.response && activeTab !== "overview" ? `${mainSplitX}%` : "100%" }}
                 >
 
                   <div className="flex items-center gap-1 py-2 shrink-0">
@@ -810,7 +811,7 @@ function App() {
                               }`}
                           >
                             {tab === "overview"
-                              ? "AI Overview"
+                              ? "Overview"
                               : tab.charAt(0).toUpperCase() + tab.slice(1)}
                           </button>
                         ),
@@ -1006,14 +1007,32 @@ function App() {
                       />
                     )}
                     {activeTab === "overview" && (
-                      <div className="p-4 text-sm text-white/30">
-                        AI Overview coming soon
-                      </div>
+                      <RequestOverview
+                        activeRequest={activeRequest}
+                        onRun={() => {
+                          handleSend();
+                          setActiveTab("body");
+                        }}
+                        onUpdateName={(name) => renameItem(activeRequest.id, name)}
+                        onUpdateDescription={(description) => {
+                          updateRequest(activeRequest.id, (r) => ({ ...r, description }));
+                        }}
+                        onUpdatePropertyDescription={(key, description) => {
+                          updateRequest(activeRequest.id, (r) => ({
+                            ...r,
+                            propertyDescriptions: {
+                              ...(r.propertyDescriptions || {}),
+                              [key]: description
+                            }
+                          }));
+                        }}
+                        onSwitchToBody={() => setActiveTab("body")}
+                      />
                     )}
                   </div>
                 </div>
 
-                {activeRequest.response && (
+                {activeRequest.response && activeTab !== "overview" && (
                   <>
 
                     <div
