@@ -22,7 +22,7 @@ function ToastItem({ toast, onRemove }: { toast: any; onRemove: () => void }) {
     useEffect(() => {
         const timer = setTimeout(() => {
             setIsClosing(true);
-        }, 2500); // Start closing animation 500ms before store removal (3000ms)
+        }, 2500);
 
         return () => clearTimeout(timer);
     }, []);

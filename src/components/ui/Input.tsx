@@ -195,7 +195,6 @@ export function UrlInput({
     if (editorRef.current) {
       const text = editorRef.current.innerText || '';
 
-      // Prevent multi-line in URL input
       if (text.includes('\n') && !text.trim().toLowerCase().startsWith('curl ')) {
         const cleaned = text.replace(/\n/g, '').trim();
         editorRef.current.innerText = cleaned;
@@ -222,10 +221,8 @@ export function UrlInput({
       return;
     }
 
-    // If it's not a cURL command, it must be a single line
     const singleLineText = rawText.replace(/\n/g, ' ').trim();
 
-    // Basic validation for URL-like strings
     const isPotentiallyUrl = singleLineText.startsWith('http') ||
       singleLineText.includes('.') ||
       singleLineText.startsWith('/') ||
