@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Project, SortMode } from "../types/project";
 import { FileTree } from "./FileTree";
-import { ContextMenu, MenuItem } from "./ContextMenu";
+import { ContextMenu, MenuItem } from "./ui";
 import { FaPlus } from "react-icons/fa6";
 
 interface SidebarProps {
@@ -88,15 +88,15 @@ export function Sidebar({
 
   const addMenuItems: MenuItem[] = activeProject
     ? [
-        {
-          label: "New Request",
-          onClick: () => onAddRequest(activeProject.root.id),
-        },
-        {
-          label: "New Folder",
-          onClick: () => onAddFolder(activeProject.root.id),
-        },
-      ]
+      {
+        label: "New Request",
+        onClick: () => onAddRequest(activeProject.root.id),
+      },
+      {
+        label: "New Folder",
+        onClick: () => onAddFolder(activeProject.root.id),
+      },
+    ]
     : [];
 
   return (
@@ -105,7 +105,6 @@ export function Sidebar({
       className="relative flex flex-col bg-transparent select-none shrink-0"
       style={{ width }}
     >
-      {/* Search + Add Button */}
       <div className="px-3 py-3 flex items-center gap-2">
         <div className="flex-1">
           <input
@@ -127,7 +126,6 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* Request List */}
       <div className="flex-1 overflow-auto">
         {activeProject ? (
           <FileTree
@@ -152,13 +150,11 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Resize Handle */}
       <div
         className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-accent/50 transition-colors"
         onMouseDown={handleMouseDown}
       />
 
-      {/* Add Menu */}
       {showAddMenu && (
         <ContextMenu
           x={showAddMenu.x}

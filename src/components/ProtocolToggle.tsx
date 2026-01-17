@@ -24,13 +24,13 @@ export function ProtocolToggle({ value, onChange }: ProtocolToggleProps) {
     const handleMouseLeave = () => {
         timeoutRef.current = window.setTimeout(() => {
             setShowTooltip(false);
-        }, 100);
+        }, 120);
     };
 
     return (
         <div
             ref={containerRef}
-            className="relative flex items-center gap-1.5"
+            className="relative flex items-center gap-1.5 mr-2 cursor-pointer"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
@@ -40,7 +40,7 @@ export function ProtocolToggle({ value, onChange }: ProtocolToggleProps) {
             <button
                 type="button"
                 onClick={() => onChange(isTcp ? 'Quic' : 'Tcp')}
-                className="relative w-7 h-3.5 rounded-full transition-colors focus:outline-none"
+                className="relative w-7 h-3.5 rounded-full cursor-pointer transition-colors focus:outline-none"
                 style={{
                     backgroundColor: isTcp ? 'rgba(255,255,255,0.2)' : 'var(--color-accent)',
                 }}
@@ -56,33 +56,31 @@ export function ProtocolToggle({ value, onChange }: ProtocolToggleProps) {
                 QUIC
             </span>
 
-            {}
-            {showTooltip && containerRef.current && (
-                <HoverPopover
-                    anchorRef={containerRef as React.RefObject<HTMLElement>}
-                    className="w-[240px]"
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
-                >
-                    {}
-                    <div className="mb-3">
-                        <div className="text-xs font-semibold text-white mb-1">TCP (HTTP/1.1 & HTTP/2)</div>
-                        <p className="text-[10px] text-white/50 leading-relaxed">
-                            Standard protocol using TCP connections. Reliable, widely supported.
-                            Requires separate TCP handshake and TLS negotiation steps.
-                        </p>
-                    </div>
+            <HoverPopover
+                open={showTooltip}
+                anchorRef={containerRef as React.RefObject<HTMLElement>}
+                className="w-[240px]"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+            >
+                <div>
+                    <div className="text-xs font-semibold text-white mb-1">TCP (HTTP/1.1 & HTTP/2)</div>
+                    <p className="text-[10px] text-white/50 leading-relaxed">
+                        Standard protocol using TCP connections. Reliable, widely supported.
+                        Requires separate TCP handshake and TLS negotiation steps.
+                    </p>
+                </div>
 
-                    {}
-                    <div>
-                        <div className="text-xs font-medium text-white mb-1">QUIC (HTTP/3)</div>
-                        <p className="text-[10px] text-white/50 leading-relaxed">
-                            Modern protocol using UDP. Faster connection setup with 0-RTT.
-                            Built-in encryption. May not be supported by all servers.
-                        </p>
-                    </div>
-                </HoverPopover>
-            )}
+                <div className="h-px bg-white/10 my-2" />
+
+                <div className='pt-1'>
+                    <div className="text-xs font-medium text-white mb-1">QUIC (HTTP/3)</div>
+                    <p className="text-[10px] text-white/50 leading-relaxed">
+                        Modern protocol using UDP. Faster connection setup with 0-RTT.
+                        Built-in encryption. May not be supported by all servers.
+                    </p>
+                </div>
+            </HoverPopover>
         </div>
     );
 }

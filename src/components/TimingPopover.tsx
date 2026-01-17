@@ -77,7 +77,7 @@ export function TimingPopover({
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
         >
-            { }
+
             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/10">
                 <svg className="w-4 h-4 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10" />
@@ -87,7 +87,7 @@ export function TimingPopover({
                 <span className="ml-auto text-[11px] font-bold text-white">{formatTotalTime(timing.total_ms)}</span>
             </div>
 
-            { }
+
             <div>
                 {waterfallData.map((row) => (
                     <div key={row.key} className="flex items-center gap-2">

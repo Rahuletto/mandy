@@ -55,10 +55,10 @@ export function CodeEditor({ code, language, onChange, readOnly = false }: CodeE
         const state = EditorState.create({
             doc: code,
             extensions: [
-                // lineNumbers(),
+
                 highlightActiveLine(),
                 drawSelection(),
-                // foldGutter(),
+
                 langExt(),
                 history(),
                 bracketMatching(),
@@ -68,7 +68,7 @@ export function CodeEditor({ code, language, onChange, readOnly = false }: CodeE
                     override: [],
                     defaultKeymap: true,
                 }),
-                // lintGutter(),
+
                 matchstickExtension,
                 keymap.of([
                     ...defaultKeymap,

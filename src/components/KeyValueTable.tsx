@@ -1,6 +1,5 @@
 import { useState, KeyboardEvent } from "react";
-import { Checkbox } from "./Checkbox";
-import { EnvInput } from "./EnvInput";
+import { Checkbox, EnvInput } from "./ui";
 
 export interface KeyValueItem {
   id: string;
@@ -81,7 +80,7 @@ export function KeyValueTable({
   return (
     <div className="flex flex-col h-full">
 
-      {/* Scrollable Table Container */}
+
       <div className="flex-1 overflow-x-auto overflow-y-auto">
         <table className="w-full min-w-full text-xs">
           <thead className="sticky top-0 z-10">
@@ -105,7 +104,7 @@ export function KeyValueTable({
                   ${item.locked ? 'bg-white/10' : 'hover:bg-white/[0.02]'}
                 `}
               >
-                {/* Checkbox */}
+
                 {!readOnly && (
                   <td className="px-3 py-2 border-r border-white/5">
                     {item.key !== undefined && !item.locked && (
@@ -117,7 +116,7 @@ export function KeyValueTable({
                   </td>
                 )}
 
-                {/* Key */}
+
                 <td className="px-3 py-2 border-r border-white/5">
                   {readOnly || item.locked ? (
                     <span className={`text-white/80 ${!item.enabled ? 'line-through opacity-40' : ''}`}>{item.key}</span>
@@ -128,7 +127,7 @@ export function KeyValueTable({
                       onChange={(e) => updateItem(item.id, "key", e.target.value)}
                       placeholder={placeholder?.key || "Key"}
                       className={`
-                        w-full bg-transparent text-white/80 
+                        w-full bg-transparent text-white/80
                         placeholder:text-white/20 focus:outline-none
                         ${!item.enabled ? 'line-through' : ''}
                       `}
@@ -136,14 +135,14 @@ export function KeyValueTable({
                   )}
                 </td>
 
-                {/* Value */}
+
                 <td className={`px-3 py-2 ${showDescription ? 'border-r border-white/5' : ''}`}>
                   {readOnly || item.locked ? (
                     <div className="flex items-center gap-2">
                       <span
                         onClick={item.onValueClick}
                         className={`
-                          text-white/60 
+                          text-white/60
                           ${item.onValueClick ? 'cursor-pointer hover:text-accent hover:underline decoration-accent/30' : ''}
                           ${item.valueClassName || ''}
                         `}
@@ -162,7 +161,7 @@ export function KeyValueTable({
                   )}
                 </td>
 
-                {/* Description */}
+
                 {showDescription && (
                   <td className="px-3 py-2">
                     {readOnly ? (
@@ -179,7 +178,7 @@ export function KeyValueTable({
                   </td>
                 )}
 
-                {/* Delete */}
+
                 {!readOnly && (
                   <td className="px-3 py-2 text-center">
                     {item.key !== undefined && !item.locked && (
@@ -196,7 +195,7 @@ export function KeyValueTable({
                 )}
               </tr>
             ))}
-            {/* Virtual row for adding new items */}
+
             {!readOnly && (
               <tr className="border-b border-white/5 transition-colors hover:bg-white/[0.02]">
                 <td className="px-3 py-2 border-r border-white/5"></td>

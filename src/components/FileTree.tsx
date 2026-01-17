@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
-import { ContextMenu, MenuItem } from "./ContextMenu";
+import { ContextMenu, MenuItem } from "./ui";
 
 interface FileTreeProps {
   root: Folder;

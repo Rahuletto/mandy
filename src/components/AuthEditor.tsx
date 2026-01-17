@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import type { AuthType, ApiKeyLocation } from "../bindings";
-import { Dropdown } from "./Dropdown";
-import { EnvInput } from "./EnvInput";
+import { Dropdown, EnvInput } from "./ui";
 import { BiChevronDown, BiShieldQuarter } from "react-icons/bi";
 
 interface AuthEditorProps {
@@ -58,7 +57,7 @@ export function AuthEditor({ auth, onChange, availableVariables = [] }: AuthEdit
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            {/* Auth Header */}
+
             <div className="flex items-center gap-4 px-4 py-3 border-b border-white/5 shrink-0">
                 <div className="text-xs text-white/30">
                     Authorization
@@ -85,7 +84,7 @@ export function AuthEditor({ auth, onChange, availableVariables = [] }: AuthEdit
                 </div>
             </div>
 
-            {/* Auth Config */}
+
             <div className="flex-1 overflow-auto p-6">
                 {activeMethod === "None" && (
                     <div className="h-full flex flex-col items-center justify-center p-8 text-center">

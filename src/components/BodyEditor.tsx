@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import type { BodyType, MultipartField } from "../bindings";
-import { CodeEditor } from "./CodeEditor";
+import { CodeEditor } from "./CodeMirror/CodeEditor";
 import { KeyValueTable } from "./KeyValueTable";
-import { Dropdown } from "./Dropdown";
+import { Dropdown } from "./ui/Dropdown";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { BiFile, BiX, BiChevronDown } from "react-icons/bi";
@@ -120,7 +120,7 @@ export function BodyEditor({ body, onChange, availableVariables = [] }: BodyEdit
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            {/* Postman-style Body Header */}
+
             <div className="flex items-center gap-4 px-4 py-3 border-b border-white/5 shrink-0">
                 <div className="text-xs text-white/30 ">
                     Content Type
@@ -146,10 +146,9 @@ export function BodyEditor({ body, onChange, availableVariables = [] }: BodyEdit
                     )}
                 </div>
 
-
             </div>
 
-            {/* Editor Content */}
+
             <div className="flex-1 overflow-auto">
                 {activeTab === "none" && (
                     <div className="h-full flex flex-col items-center justify-center p-8 text-center">

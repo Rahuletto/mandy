@@ -1,10 +1,6 @@
 import { useState, useEffect } from "react";
 import { BiTrash } from "react-icons/bi";
-import type {
-  Project,
-  Environment,
-  EnvironmentVariable,
-} from "../types/project";
+import type { Project } from "../types/project";
 import { useProjectStore } from "../stores/projectStore";
 import { KeyValueTable, type KeyValueItem } from "./KeyValueTable";
 
@@ -172,19 +168,16 @@ export function OverviewModal({
                           .map(v => ({ ...v, description: "" }))
                         }
                         onChange={(items: KeyValueItem[]) => {
-                          // Filter out empty rows that aren't saved yet
+
                           const validItems = items.filter(i => i.key.trim() || i.value.trim());
 
-                          // Handle additions/deletions/updates by comparing items with env.variables
                           const existingIds = new Set(env.variables.map(v => v.id));
                           const newIds = new Set(validItems.map(i => i.id));
 
-                          // Delete items
                           env.variables.forEach(v => {
                             if (!newIds.has(v.id)) onDeleteEnvVar(env.id, v.id);
                           });
 
-                          // Update or Add
                           validItems.forEach(i => {
                             if (existingIds.has(i.id)) {
                               const old = env.variables.find(v => v.id === i.id);
