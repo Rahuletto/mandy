@@ -193,7 +193,6 @@ fn build_url_with_params(
 fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
     let mut easy = Easy::new();
 
-    
     let api_key_query = match &req.auth {
         AuthType::ApiKey {
             key,
@@ -206,7 +205,6 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
     let url = build_url_with_params(&req.url, &req.query_params, api_key_query)?;
     easy.url(&url).map_err(|e| format!("URL error: {}", e))?;
 
-    
     match req.method {
         Methods::GET => easy.get(true).map_err(|e| e.to_string())?,
         Methods::POST => easy.post(true).map_err(|e| e.to_string())?,
@@ -221,27 +219,24 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
         }
     }
 
-    
     match req.protocol.unwrap_or_default() {
         HttpProtocol::Tcp => {
-            
+
             easy.http_version(HttpVersion::V2TLS)
                 .map_err(|e| e.to_string())?;
         }
         HttpProtocol::Quic => {
-            
+
             easy.http_version(HttpVersion::V3)
                 .map_err(|e| e.to_string())?;
         }
     }
 
-    
     if let Some(timeout) = req.timeout_ms {
         easy.timeout(Duration::from_millis(timeout as u64))
             .map_err(|e| e.to_string())?;
     }
 
-    
     let follow = req.follow_redirects.unwrap_or(true);
     easy.follow_location(follow).map_err(|e| e.to_string())?;
     if follow {
@@ -249,12 +244,10 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
         easy.max_redirections(max).map_err(|e| e.to_string())?;
     }
 
-    
     let verify = req.verify_ssl.unwrap_or(true);
     easy.ssl_verify_peer(verify).map_err(|e| e.to_string())?;
     easy.ssl_verify_host(verify).map_err(|e| e.to_string())?;
 
-    
     if let Some(ref proxy) = req.proxy {
         easy.proxy(&proxy.url).map_err(|e| e.to_string())?;
         if let (Some(user), Some(pass)) = (&proxy.username, &proxy.password) {
@@ -263,17 +256,14 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
         }
     }
 
-    
     let mut header_list = List::new();
 
-    
     for (key, val) in &req.headers {
         header_list
             .append(&format!("{}: {}", key, val))
             .map_err(|e| e.to_string())?;
     }
 
-    
     match &req.auth {
         AuthType::Basic { username, password } => {
             easy.username(username).map_err(|e| e.to_string())?;
@@ -296,7 +286,6 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
         AuthType::None | AuthType::ApiKey { .. } => {}
     }
 
-    
     if !req.cookies.is_empty() {
         let cookie_str = build_cookie_header(&req.cookies);
         header_list
@@ -304,7 +293,6 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
             .map_err(|e| e.to_string())?;
     }
 
-    
     let mut request_body_size: u32 = 0;
     let post_data: Option<Vec<u8>> = match &req.body {
         BodyType::None => None,
@@ -330,7 +318,7 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
             Some(encoded.into_bytes())
         }
         BodyType::Multipart { fields } => {
-            
+
             let boundary = format!("----WebKitFormBoundary{}", uuid_simple());
             let mut body = Vec::new();
 
@@ -393,20 +381,17 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
     easy.http_headers(header_list)
         .map_err(|e| e.to_string())?;
 
-    
     if let Some(ref data) = post_data {
         easy.post_field_size(data.len() as u64)
             .map_err(|e| e.to_string())?;
     }
 
-    
     let mut response_headers_raw: Vec<u8> = Vec::new();
     let mut response_body: Vec<u8> = Vec::new();
 
     {
         let mut transfer = easy.transfer();
 
-        
         transfer
             .header_function(|header| {
                 response_headers_raw.extend_from_slice(header);
@@ -414,7 +399,6 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
             })
             .map_err(|e| e.to_string())?;
 
-        
         transfer
             .write_function(|data| {
                 response_body.extend_from_slice(data);
@@ -422,7 +406,6 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
             })
             .map_err(|e| e.to_string())?;
 
-        
         if let Some(ref data) = post_data {
             let mut data_reader = std::io::Cursor::new(data.clone());
             transfer
@@ -433,11 +416,9 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
                 .map_err(|e| e.to_string())?;
         }
 
-        
         transfer.perform().map_err(|e| format_curl_error(&e))?;
     }
 
-    
     let total_time = easy.total_time().unwrap_or_default().as_secs_f64() * 1000.0;
     let namelookup_time = easy.namelookup_time().unwrap_or_default().as_secs_f64() * 1000.0;
     let connect_time = easy.connect_time().unwrap_or_default().as_secs_f64() * 1000.0;
@@ -455,7 +436,6 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
         content_download_ms: (total_time - starttransfer_time).max(0.0),
     };
 
-    
     let request_header_size = easy.request_size().unwrap_or(0) as u32;
     let response_header_size = easy.header_size().unwrap_or(0) as u32;
 
@@ -471,7 +451,6 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
         total_bytes: response_header_size + response_body.len() as u32,
     };
 
-    
     let headers_str = String::from_utf8_lossy(&response_headers_raw);
     let mut response_headers: HashMap<String, String> = HashMap::new();
     let mut response_cookies: Vec<Cookie> = Vec::new();
@@ -479,7 +458,7 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
 
     for line in headers_str.lines() {
         if line.starts_with("HTTP/") {
-            
+
             let parts: Vec<&str> = line.splitn(3, ' ').collect();
             if !parts.is_empty() {
                 http_version = parts[0].to_string();
@@ -503,11 +482,9 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
         }
     }
 
-    
     let status = easy.response_code().unwrap_or(0) as u16;
     let status_text_str = status_text(status);
 
-    
     let content_type = response_headers
         .get("content-type")
         .or_else(|| response_headers.get("Content-Type"))
@@ -515,10 +492,8 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
 
     let available_renderers = detect_renderers(content_type.as_deref(), &response_body);
 
-    
     let remote_addr = easy.primary_ip().ok().and_then(|opt| opt.map(|s| s.to_string()));
 
-    
     let protocol_used = if http_version.contains("3") {
         "HTTP/3".to_string()
     } else if http_version.contains("2") {
@@ -527,7 +502,6 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
         http_version.clone()
     };
 
-    
     let body_base64 = BASE64.encode(&response_body);
 
     Ok(ApiResponse {
@@ -587,7 +561,7 @@ fn uuid_simple() -> String {
 #[tauri::command]
 #[specta::specta]
 pub async fn rest_request(req: ApiRequest) -> Result<ApiResponse, String> {
-    
+
     tokio::task::spawn_blocking(move || execute_curl_request(req))
         .await
         .map_err(|e| format!("Task error: {}", e))?
