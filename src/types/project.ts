@@ -17,6 +17,8 @@ export interface RequestFile {
   id: string;
   type: "request";
   name: string;
+  description?: string;
+  propertyDescriptions?: Record<string, string>;
   request: ApiRequest;
   response: ApiResponse | null;
 }
