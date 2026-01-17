@@ -85,7 +85,6 @@ export function Dropdown({ items, onClose, className = "", width = "min-w-[160px
     );
 }
 
-// Three dots menu button
 interface MoreButtonProps {
     onClick: (e: React.MouseEvent) => void;
     className?: string;
