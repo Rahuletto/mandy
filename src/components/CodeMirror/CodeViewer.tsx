@@ -5,20 +5,37 @@ import { defaultKeymap } from "@codemirror/commands";
 import { foldGutter, foldKeymap } from "@codemirror/language";
 import { matchstickExtension } from "./theme";
 import { languageExtensions, type Language } from "./languageExtensions";
+import type { Extension } from "@codemirror/state";
 import { prettifyCode } from "../../utils/codeUtils";
 import { copyToClipboard } from "../../utils/clipboard";
 import { BiCopy, BiCheck } from "react-icons/bi";
+import { curlHighlighter } from "./curlHighlighter";
 
 interface CodeViewerProps {
     code: string;
     language: Language;
     prettify?: boolean;
+    transparentGutter?: boolean;
 }
 
-export function CodeViewer({ code, language, prettify = true }: CodeViewerProps) {
+export function CodeViewer({ code, language, prettify = true, transparentGutter = false }: CodeViewerProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const [copied, setCopied] = useState(false);
+    const [activeExtensions, setActiveExtensions] = useState<Extension[]>([]);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadLang = async () => {
+            const getExts = languageExtensions[language] || languageExtensions.text;
+            const exts = await getExts();
+            if (mounted) {
+                setActiveExtensions(exts);
+            }
+        };
+        loadLang();
+        return () => { mounted = false; };
+    }, [language]);
 
     const displayCode = prettify ? prettifyCode(code, language) : code;
 
@@ -37,8 +54,6 @@ export function CodeViewer({ code, language, prettify = true }: CodeViewerProps)
             viewRef.current.destroy();
         }
 
-        const langExt = languageExtensions[language] || languageExtensions.text;
-
         const state = EditorState.create({
             doc: displayCode,
             extensions: [
@@ -46,7 +61,7 @@ export function CodeViewer({ code, language, prettify = true }: CodeViewerProps)
                 highlightActiveLine(),
                 drawSelection(),
                 foldGutter(),
-                langExt(),
+                ...activeExtensions,
                 EditorView.editable.of(false),
                 EditorView.contentAttributes.of({
                     "aria-readonly": "true",
@@ -56,6 +71,11 @@ export function CodeViewer({ code, language, prettify = true }: CodeViewerProps)
                     ...foldKeymap,
                 ]),
                 matchstickExtension,
+                (language === "shell" || language === "bash") ? curlHighlighter : [],
+                transparentGutter ? EditorView.theme({
+                    ".cm-gutters": { backgroundColor: "transparent !important", border: "none !important" },
+                    ".cm-activeLineGutter": { backgroundColor: "transparent !important" }
+                }) : [],
             ],
         });
 
@@ -68,7 +88,7 @@ export function CodeViewer({ code, language, prettify = true }: CodeViewerProps)
             viewRef.current?.destroy();
             viewRef.current = null;
         };
-    }, [displayCode, language]);
+    }, [displayCode, language, activeExtensions, transparentGutter]);
 
     return (
         <div className="h-full w-full overflow-hidden rounded relative group">

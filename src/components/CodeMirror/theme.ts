@@ -185,6 +185,10 @@ export const matchstickTheme = EditorView.theme({
         backgroundColor: "rgba(79, 195, 247, 0.15)",
         borderLeft: `3px solid ${colors.lintInfo}`,
     },
+    ".cm-curl-key": { color: `${colors.property} !important` },
+    ".cm-curl-value": { color: `${colors.string} !important` },
+    ".cm-curl-json-key": { color: `${colors.property} !important` },
+    ".cm-curl-json-value": { color: `${colors.string} !important` },
 }, { dark: true });
 
 const matchstickHighlightStyle = HighlightStyle.define([

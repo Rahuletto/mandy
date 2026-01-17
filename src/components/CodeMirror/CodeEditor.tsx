@@ -10,6 +10,7 @@ import { languageExtensions, type Language } from "./languageExtensions";
 import { prettifyCode } from "../../utils/codeUtils";
 import { copyToClipboard } from "../../utils/clipboard";
 import { BiCopy, BiCheck } from "react-icons/bi";
+import type { Extension } from "@codemirror/state";
 
 interface CodeEditorProps {
     code: string;
@@ -24,10 +25,24 @@ export function CodeEditor({ code, language, onChange, readOnly = false }: CodeE
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
     const [copied, setCopied] = useState(false);
+    const [activeExtensions, setActiveExtensions] = useState<Extension[]>([]);
 
     useEffect(() => {
         onChangeRef.current = onChange;
     }, [onChange]);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadLang = async () => {
+            const getExts = languageExtensions[language] || languageExtensions.text;
+            const exts = await getExts();
+            if (mounted) {
+                setActiveExtensions(exts);
+            }
+        };
+        loadLang();
+        return () => { mounted = false; };
+    }, [language]);
 
     const handlePrettify = useCallback(() => {
         if (!viewRef.current || readOnly) return;
@@ -50,16 +65,12 @@ export function CodeEditor({ code, language, onChange, readOnly = false }: CodeE
     useEffect(() => {
         if (!containerRef.current) return;
 
-        const langExt = languageExtensions[language] || languageExtensions.text;
-
         const state = EditorState.create({
             doc: code,
             extensions: [
-
                 highlightActiveLine(),
                 drawSelection(),
-
-                langExt(),
+                ...activeExtensions,
                 history(),
                 bracketMatching(),
                 closeBrackets(),
@@ -97,6 +108,10 @@ export function CodeEditor({ code, language, onChange, readOnly = false }: CodeE
             ],
         });
 
+        if (viewRef.current) {
+            viewRef.current.destroy();
+        }
+
         const view = new EditorView({
             state,
             parent: containerRef.current,
@@ -108,7 +123,7 @@ export function CodeEditor({ code, language, onChange, readOnly = false }: CodeE
             view.destroy();
             viewRef.current = null;
         };
-    }, [language, readOnly, handlePrettify]);
+    }, [language, readOnly, handlePrettify, activeExtensions]);
 
     useEffect(() => {
         if (viewRef.current) {
