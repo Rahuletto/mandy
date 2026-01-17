@@ -161,16 +161,17 @@ interface UrlInputProps {
   placeholder?: string;
   className?: string;
   availableVariables?: string[];
+  disabled?: boolean;
 }
 
 export function UrlInput({
   value,
   onChange,
   onCurlPaste,
-  onInvalidInput,
   placeholder = "Enter a URL or paste the cURL",
   className = "",
   availableVariables = [],
+  disabled = false,
 }: UrlInputProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
@@ -192,6 +193,7 @@ export function UrlInput({
   }, [highlightedHtml, isFocused, value]);
 
   const handleInput = useCallback(() => {
+    if (disabled) return;
     if (editorRef.current) {
       const text = editorRef.current.innerText || '';
 
@@ -209,40 +211,50 @@ export function UrlInput({
       }
       onChange(text);
     }
-  }, [onChange, onCurlPaste]);
+  }, [onChange, onCurlPaste, disabled]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    e.preventDefault();
+    if (disabled) {
+      e.preventDefault();
+      return;
+    }
+
     const rawText = e.clipboardData.getData('text/plain');
     const trimmedText = rawText.trim();
 
     if (trimmedText.toLowerCase().startsWith('curl ')) {
+      e.preventDefault();
       onCurlPaste?.(trimmedText);
+      if (editorRef.current) {
+        editorRef.current.blur();
+      }
       return;
     }
 
+    e.preventDefault();
     const singleLineText = rawText.replace(/\n/g, ' ').trim();
 
-    const isPotentiallyUrl = singleLineText.startsWith('http') ||
-      singleLineText.includes('.') ||
-      singleLineText.startsWith('/') ||
-      singleLineText.includes(':');
-
-    if (!isPotentiallyUrl && singleLineText.length > 0) {
-      onInvalidInput?.("Input must be a valid URL or a cURL command");
-      return;
+    if (editorRef.current) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        sel.deleteFromDocument();
+      }
+      document.execCommand('insertText', false, singleLineText);
     }
-
-    document.execCommand('insertText', false, singleLineText);
-  }, [onCurlPaste, onInvalidInput]);
+  }, [onCurlPaste, disabled]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (disabled) {
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
     }
-  }, []);
+  }, [disabled]);
 
   const handleFocus = useCallback(() => {
+    if (disabled) return;
     setIsFocused(true);
     if (editorRef.current) {
       editorRef.current.innerText = value || "";
@@ -257,7 +269,7 @@ export function UrlInput({
         }
       });
     }
-  }, [value]);
+  }, [value, disabled]);
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
@@ -267,7 +279,7 @@ export function UrlInput({
     <div className={`relative flex-1 flex items-center ${className}`}>
       <div
         ref={editorRef}
-        contentEditable
+        contentEditable={!disabled}
         spellCheck={false}
         autoCapitalize="off"
         autoCorrect="off"
@@ -279,7 +291,7 @@ export function UrlInput({
         onFocus={handleFocus}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-full px-3 py-2.5 text-sm text-white/90 focus:outline-none whitespace-pre relative z-10"
+        className={`w-full px-3 py-2.5 text-sm text-white/90 focus:outline-none whitespace-pre relative z-10 ${disabled ? "pointer-events-none" : ""}`}
         suppressContentEditableWarning
       />
       {!value && !isFocused && (

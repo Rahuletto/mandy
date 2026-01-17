@@ -225,7 +225,10 @@ function App() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      const isInput = document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA";
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isInput = activeEl?.tagName === "INPUT" ||
+        activeEl?.tagName === "TEXTAREA" ||
+        activeEl?.isContentEditable;
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
 
       if (isCmdOrCtrl && e.key === "s") {
@@ -253,30 +256,9 @@ function App() {
         }
       }
 
-      if (isCmdOrCtrl && e.key === "x") {
-        if (selectedItemId) {
-          e.preventDefault();
-          cutToClipboard(selectedItemId);
-        }
-      }
-
-      if (isCmdOrCtrl && e.key === "c") {
-        if (selectedItemId) {
-          e.preventDefault();
-          copyToClipboard(selectedItemId);
-        }
-      }
-
-      if (isCmdOrCtrl && e.key === "v") {
-        if (activeProject) {
-          e.preventDefault();
-          pasteItem(activeProject.root.id);
-        }
-      }
-
       const isRename = isMac ? e.key === "Enter" : e.key === "F2";
       if (isRename) {
-        if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+        if (isInput) return;
         if (selectedItemId) {
           e.preventDefault();
           window.dispatchEvent(new CustomEvent('trigger-rename', { detail: { itemId: selectedItemId } }));
@@ -295,7 +277,7 @@ function App() {
         : e.key === "Delete";
 
       if (isDelete) {
-        if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+        if (isInput) return;
         if (selectedItemId) {
           e.preventDefault();
           setItemToDelete(selectedItemId);
@@ -918,7 +900,10 @@ function App() {
           {activeRequest ? (
             <>
               <div className="flex gap-4 border-b border-text/15 p-4">
-                <div className="flex-1 flex items-center bg-inputbox rounded-lg overflow-hidden">
+                <div className={`flex-1 flex items-center bg-inputbox rounded-lg overflow-hidden relative transition-opacity ${loading ? "shimmer-loading opacity-80" : ""}`}>
+                  {loading && (
+                    <div className="absolute inset-0 z-10 bg-background/30 cursor-not-allowed" />
+                  )}
                   <MethodSelector
                     value={activeRequest.request.method}
                     onChange={updateMethod}
@@ -931,6 +916,7 @@ function App() {
                     onInvalidInput={(msg) => addToast(msg, "info")}
                     placeholder="Enter URL or paste cURL"
                     availableVariables={getActiveEnvironmentVariables().map(v => v.key)}
+                    disabled={loading}
                   />
                 </div>
                 <button
@@ -975,7 +961,10 @@ function App() {
                   </div>
 
 
-                  <div className="flex-1 overflow-auto ">
+                  <div className="flex-1 overflow-auto relative">
+                    {loading && (
+                      <div className="absolute inset-0 z-10 bg-background/30 cursor-not-allowed" />
+                    )}
                     {activeTab === "authorization" && (
                       <AuthEditor
                         auth={activeRequest.request.auth}

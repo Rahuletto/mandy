@@ -112,3 +112,35 @@ textarea,
 .animate-blur-out {
     animation: blur-out 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes shimmer {
+    0% {
+        background-position: 0% 0;
+    }
+
+    100% {
+        background-position: 100% 0;
+    }
+}
+
+.shimmer-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.shimmer-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            transparent 35%,
+            var(--accent) 50%,
+            transparent 65%,
+            transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1s ease-in-out infinite alternate;
+    opacity: 0.2;
+    pointer-events: none;
+    border-radius: inherit;
+}

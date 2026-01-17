@@ -375,18 +375,15 @@ export function FileTree({
       {
         label: "Cut",
         onClick: () => onCut(item.id),
-        shortcut: getSimpleShortcut("Cut")
       },
       {
         label: "Copy",
         onClick: () => onCopy(item.id),
-        shortcut: getSimpleShortcut("Copy")
       },
       {
         label: "Paste",
         disabled: !clipboard || item.type !== "folder",
         onClick: () => item.type === "folder" && onPaste(item.id),
-        shortcut: getSimpleShortcut("Paste")
       },
       { label: "", onClick: () => { }, divider: true },
       {
