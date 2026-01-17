@@ -10,11 +10,20 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "matchstick",
-        "width": 800,
-        "height": 600
+        "transparent": true,
+        "titleBarStyle": "Overlay",
+        "width": 1200,
+        "height": 800,
+        "hiddenTitle": true,
+        "dragDropEnabled": true,
+        "trafficLightPosition": {
+          "x": 18,
+          "y": 18
+        }
       }
     ],
     "security": {
