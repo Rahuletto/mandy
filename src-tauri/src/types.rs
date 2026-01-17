@@ -61,6 +61,13 @@ pub struct Cookie {
     pub secure: Option<bool>,
 }
 
+#[derive(Serialize, Deserialize, Type, Clone, Default)]
+pub enum HttpProtocol {
+    #[default]
+    Tcp,   // HTTP/1.1 or HTTP/2 over TCP
+    Quic,  // HTTP/3 over QUIC
+}
+
 #[derive(Serialize, Deserialize, Type, Clone)]
 pub struct ApiRequest {
     pub method: Methods,
@@ -75,6 +82,7 @@ pub struct ApiRequest {
     pub max_redirects: Option<u32>,
     pub verify_ssl: Option<bool>,
     pub proxy: Option<ProxyConfig>,
+    pub protocol: Option<HttpProtocol>,
 }
 
 #[derive(Serialize, Deserialize, Type, Clone)]
@@ -105,10 +113,22 @@ pub struct RedirectEntry {
 
 #[derive(Serialize, Deserialize, Type, Clone)]
 pub struct TimingInfo {
-    pub total_ms: u32,
+    pub total_ms: f64,
+    
+    pub dns_lookup_ms: f64,
+    pub tcp_handshake_ms: f64,
+    pub tls_handshake_ms: f64,
+    pub transfer_start_ms: f64,  
+    pub ttfb_ms: f64,           
+    pub content_download_ms: f64,
 }
 
-
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct SizeInfo {
+    pub headers_bytes: u32,
+    pub body_bytes: u32,
+    pub total_bytes: u32,
+}
 
 #[derive(Serialize, Deserialize, Type)]
 pub struct ApiResponse {
@@ -117,14 +137,15 @@ pub struct ApiResponse {
     pub headers: HashMap<String, String>,
     pub cookies: Vec<Cookie>,
     pub body_base64: String,
-    pub body_size_bytes: u32,
     pub timing: TimingInfo,
+    pub request_size: SizeInfo,
+    pub response_size: SizeInfo,
     pub redirects: Vec<RedirectEntry>,
     pub remote_addr: Option<String>,
     pub http_version: String,
     pub available_renderers: Vec<ResponseRenderer>,
     pub detected_content_type: Option<String>,
-
+    pub protocol_used: String, 
     pub error: Option<String>,
 }
 
@@ -143,6 +164,7 @@ impl Default for ApiRequest {
             max_redirects: Some(10),
             verify_ssl: Some(true),
             proxy: None,
+            protocol: None,
         }
     }
 }

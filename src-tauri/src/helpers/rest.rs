@@ -1,40 +1,26 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, CONTENT_TYPE, COOKIE};
-use reqwest::redirect::Policy;
-use reqwest::{Client, ClientBuilder, Method, Proxy, Version};
+use curl::easy::{Easy, HttpVersion, List};
 use std::collections::HashMap;
-use std::str::FromStr;
-
-use std::time::{Duration, Instant};
+use std::io::Read;
+use std::time::Duration;
+use url::Url;
 
 use crate::types::{
-    ApiKeyLocation, ApiRequest, ApiResponse, AuthType, BodyType, Cookie, Methods,
-    MultipartValue, RedirectEntry, ResponseRenderer, TimingInfo,
+    ApiKeyLocation, ApiRequest, ApiResponse, AuthType, BodyType, Cookie, HttpProtocol,
+    Methods, ResponseRenderer, SizeInfo, TimingInfo,
 };
 
-fn convert_headers(map: &HashMap<String, String>) -> HeaderMap {
-    let mut headers = HeaderMap::new();
-    for (key, val) in map {
-        if let Ok(name) = HeaderName::from_str(key) {
-            if let Ok(value) = HeaderValue::from_str(val) {
-                headers.insert(name, value);
-            }
-        }
-    }
-    headers
-}
-
-fn method_to_reqwest(method: &Methods) -> Method {
+fn method_to_curl_string(method: &Methods) -> &'static str {
     match method {
-        Methods::GET => Method::GET,
-        Methods::POST => Method::POST,
-        Methods::PUT => Method::PUT,
-        Methods::DELETE => Method::DELETE,
-        Methods::PATCH => Method::PATCH,
-        Methods::HEAD => Method::HEAD,
-        Methods::OPTIONS => Method::OPTIONS,
-        Methods::TRACE => Method::TRACE,
-        Methods::CONNECT => Method::CONNECT,
+        Methods::GET => "GET",
+        Methods::POST => "POST",
+        Methods::PUT => "PUT",
+        Methods::DELETE => "DELETE",
+        Methods::PATCH => "PATCH",
+        Methods::HEAD => "HEAD",
+        Methods::OPTIONS => "OPTIONS",
+        Methods::TRACE => "TRACE",
+        Methods::CONNECT => "CONNECT",
     }
 }
 
@@ -54,7 +40,8 @@ fn detect_renderers(content_type: Option<&str>, body: &[u8]) -> Vec<ResponseRend
     }
 
     let is_html_content_type = ct.contains("text/html") || ct.contains("application/xhtml");
-    let is_xml_content_type = ct.contains("application/xml") || ct.contains("text/xml") || ct.contains("+xml");
+    let is_xml_content_type =
+        ct.contains("application/xml") || ct.contains("text/xml") || ct.contains("+xml");
 
     if is_html_content_type {
         renderers.push(ResponseRenderer::Html);
@@ -65,8 +52,8 @@ fn detect_renderers(content_type: Option<&str>, body: &[u8]) -> Vec<ResponseRend
         let body_str = String::from_utf8_lossy(body);
         if body_str.trim_start().starts_with("<?xml") {
             renderers.push(ResponseRenderer::Xml);
-        } else if body_str.trim_start().starts_with("<!DOCTYPE html") 
-            || body_str.trim_start().starts_with("<html") 
+        } else if body_str.trim_start().starts_with("<!DOCTYPE html")
+            || body_str.trim_start().starts_with("<html")
         {
             renderers.push(ResponseRenderer::Html);
             renderers.push(ResponseRenderer::HtmlPreview);
@@ -183,58 +170,12 @@ fn status_text(status: u16) -> String {
     }
 }
 
-fn http_version_string(version: Version) -> String {
-    match version {
-        Version::HTTP_09 => "HTTP/0.9".to_string(),
-        Version::HTTP_10 => "HTTP/1.0".to_string(),
-        Version::HTTP_11 => "HTTP/1.1".to_string(),
-        Version::HTTP_2 => "HTTP/2".to_string(),
-        Version::HTTP_3 => "HTTP/3".to_string(),
-        _ => "Unknown".to_string(),
-    }
-}
-
-fn build_client(req: &ApiRequest, no_redirect: bool) -> Result<Client, String> {
-    let mut builder = ClientBuilder::new();
-
-    if let Some(timeout) = req.timeout_ms {
-        builder = builder.timeout(Duration::from_millis(timeout as u64));
-    }
-
-    builder = builder.connect_timeout(Duration::from_secs(30));
-
-    if no_redirect {
-        builder = builder.redirect(Policy::none());
-    } else {
-        let follow = req.follow_redirects.unwrap_or(true);
-        if follow {
-            let max = req.max_redirects.unwrap_or(10) as usize;
-            builder = builder.redirect(Policy::limited(max));
-        } else {
-            builder = builder.redirect(Policy::none());
-        }
-    }
-
-    let verify_ssl = req.verify_ssl.unwrap_or(true);
-    if !verify_ssl {
-        builder = builder.danger_accept_invalid_certs(true);
-    }
-
-    if let Some(ref proxy_config) = req.proxy {
-        let mut proxy = Proxy::all(&proxy_config.url).map_err(|e| format!("Proxy error: {}", e))?;
-        if let (Some(user), Some(pass)) = (&proxy_config.username, &proxy_config.password) {
-            proxy = proxy.basic_auth(user, pass);
-        }
-        builder = builder.proxy(proxy);
-    }
-
-    builder.build().map_err(|e| format!("Client build error: {}", e))
-}
-
-
-
-fn build_url_with_params(base_url: &str, params: &HashMap<String, String>, api_key_param: Option<(&str, &str)>) -> Result<String, String> {
-    let mut url = reqwest::Url::parse(base_url).map_err(|e| format!("Invalid URL: {}", e))?;
+fn build_url_with_params(
+    base_url: &str,
+    params: &HashMap<String, String>,
+    api_key_param: Option<(&str, &str)>,
+) -> Result<String, String> {
+    let mut url = Url::parse(base_url).map_err(|e| format!("Invalid URL: {}", e))?;
 
     {
         let mut query_pairs = url.query_pairs_mut();
@@ -249,161 +190,345 @@ fn build_url_with_params(base_url: &str, params: &HashMap<String, String>, api_k
     Ok(url.to_string())
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn rest_request(req: ApiRequest) -> Result<ApiResponse, String> {
-    let start = Instant::now();
+fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
+    let mut easy = Easy::new();
 
-    let client = build_client(&req, false)?;
-
+    
     let api_key_query = match &req.auth {
-        AuthType::ApiKey { key, value, add_to: ApiKeyLocation::Query } => Some((key.as_str(), value.as_str())),
+        AuthType::ApiKey {
+            key,
+            value,
+            add_to: ApiKeyLocation::Query,
+        } => Some((key.as_str(), value.as_str())),
         _ => None,
     };
 
     let url = build_url_with_params(&req.url, &req.query_params, api_key_query)?;
+    easy.url(&url).map_err(|e| format!("URL error: {}", e))?;
 
-    let method = method_to_reqwest(&req.method);
-    let mut request_builder = client.request(method, &url);
+    
+    match req.method {
+        Methods::GET => easy.get(true).map_err(|e| e.to_string())?,
+        Methods::POST => easy.post(true).map_err(|e| e.to_string())?,
+        Methods::PUT => easy.put(true).map_err(|e| e.to_string())?,
+        Methods::HEAD => {
+            easy.nobody(true).map_err(|e| e.to_string())?;
+            easy.custom_request("HEAD").map_err(|e| e.to_string())?;
+        }
+        _ => {
+            easy.custom_request(method_to_curl_string(&req.method))
+                .map_err(|e| e.to_string())?;
+        }
+    }
 
-    let mut headers = convert_headers(&req.headers);
+    
+    match req.protocol.unwrap_or_default() {
+        HttpProtocol::Tcp => {
+            
+            easy.http_version(HttpVersion::V2TLS)
+                .map_err(|e| e.to_string())?;
+        }
+        HttpProtocol::Quic => {
+            
+            easy.http_version(HttpVersion::V3)
+                .map_err(|e| e.to_string())?;
+        }
+    }
 
+    
+    if let Some(timeout) = req.timeout_ms {
+        easy.timeout(Duration::from_millis(timeout as u64))
+            .map_err(|e| e.to_string())?;
+    }
+
+    
+    let follow = req.follow_redirects.unwrap_or(true);
+    easy.follow_location(follow).map_err(|e| e.to_string())?;
+    if follow {
+        let max = req.max_redirects.unwrap_or(10);
+        easy.max_redirections(max).map_err(|e| e.to_string())?;
+    }
+
+    
+    let verify = req.verify_ssl.unwrap_or(true);
+    easy.ssl_verify_peer(verify).map_err(|e| e.to_string())?;
+    easy.ssl_verify_host(verify).map_err(|e| e.to_string())?;
+
+    
+    if let Some(ref proxy) = req.proxy {
+        easy.proxy(&proxy.url).map_err(|e| e.to_string())?;
+        if let (Some(user), Some(pass)) = (&proxy.username, &proxy.password) {
+            easy.proxy_username(user).map_err(|e| e.to_string())?;
+            easy.proxy_password(pass).map_err(|e| e.to_string())?;
+        }
+    }
+
+    
+    let mut header_list = List::new();
+
+    
+    for (key, val) in &req.headers {
+        header_list
+            .append(&format!("{}: {}", key, val))
+            .map_err(|e| e.to_string())?;
+    }
+
+    
     match &req.auth {
         AuthType::Basic { username, password } => {
-            let credentials = format!("{}:{}", username, password);
-            let encoded = BASE64.encode(credentials.as_bytes());
-            if let Ok(value) = HeaderValue::from_str(&format!("Basic {}", encoded)) {
-                headers.insert(AUTHORIZATION, value);
-            }
+            easy.username(username).map_err(|e| e.to_string())?;
+            easy.password(password).map_err(|e| e.to_string())?;
         }
         AuthType::Bearer { token } => {
-            if let Ok(value) = HeaderValue::from_str(&format!("Bearer {}", token)) {
-                headers.insert(AUTHORIZATION, value);
-            }
+            header_list
+                .append(&format!("Authorization: Bearer {}", token))
+                .map_err(|e| e.to_string())?;
         }
-        AuthType::ApiKey { key, value, add_to: ApiKeyLocation::Header } => {
-            if let (Ok(name), Ok(val)) = (HeaderName::from_str(key), HeaderValue::from_str(value)) {
-                headers.insert(name, val);
-            }
+        AuthType::ApiKey {
+            key,
+            value,
+            add_to: ApiKeyLocation::Header,
+        } => {
+            header_list
+                .append(&format!("{}: {}", key, value))
+                .map_err(|e| e.to_string())?;
         }
         AuthType::None | AuthType::ApiKey { .. } => {}
     }
 
+    
     if !req.cookies.is_empty() {
         let cookie_str = build_cookie_header(&req.cookies);
-        if let Ok(value) = HeaderValue::from_str(&cookie_str) {
-            headers.insert(COOKIE, value);
-        }
+        header_list
+            .append(&format!("Cookie: {}", cookie_str))
+            .map_err(|e| e.to_string())?;
     }
 
-    request_builder = request_builder.headers(headers.clone());
-
-    request_builder = match &req.body {
-        BodyType::None => request_builder,
+    
+    let mut request_body_size: u32 = 0;
+    let post_data: Option<Vec<u8>> = match &req.body {
+        BodyType::None => None,
         BodyType::Raw { content, content_type } => {
-            let mut rb = request_builder.body(content.clone());
             if let Some(ct) = content_type {
-                if let Ok(value) = HeaderValue::from_str(ct) {
-                    rb = rb.header(CONTENT_TYPE, value);
-                }
+                header_list
+                    .append(&format!("Content-Type: {}", ct))
+                    .map_err(|e| e.to_string())?;
             }
-            rb
+            request_body_size = content.len() as u32;
+            Some(content.as_bytes().to_vec())
         }
         BodyType::FormUrlEncoded { fields } => {
-            request_builder.form(fields)
+            let encoded: String = fields
+                .iter()
+                .map(|(k, v)| format!("{}={}", urlencoding(k), urlencoding(v)))
+                .collect::<Vec<_>>()
+                .join("&");
+            header_list
+                .append("Content-Type: application/x-www-form-urlencoded")
+                .map_err(|e| e.to_string())?;
+            request_body_size = encoded.len() as u32;
+            Some(encoded.into_bytes())
         }
         BodyType::Multipart { fields } => {
-            let mut form = reqwest::multipart::Form::new();
+            
+            let boundary = format!("----WebKitFormBoundary{}", uuid_simple());
+            let mut body = Vec::new();
+
             for field in fields {
+                body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
                 match &field.value {
-                    MultipartValue::Text(text) => {
-                        form = form.text(field.name.clone(), text.clone());
+                    crate::types::MultipartValue::Text(text) => {
+                        body.extend_from_slice(
+                            format!(
+                                "Content-Disposition: form-data; name=\"{}\"\r\n\r\n",
+                                field.name
+                            )
+                            .as_bytes(),
+                        );
+                        body.extend_from_slice(text.as_bytes());
+                        body.extend_from_slice(b"\r\n");
                     }
-                    MultipartValue::File { data, filename, content_type } => {
-                        let part = reqwest::multipart::Part::bytes(data.clone())
-                            .file_name(filename.clone());
-                        let part = if let Some(ct) = content_type {
-                            part.mime_str(ct).ok()
-                        } else {
-                            Some(part)
-                        };
-                        if let Some(p) = part {
-                            form = form.part(field.name.clone(), p);
-                        }
+                    crate::types::MultipartValue::File {
+                        data,
+                        filename,
+                        content_type,
+                    } => {
+                        let ct = content_type
+                            .as_ref()
+                            .map(|s| s.as_str())
+                            .unwrap_or("application/octet-stream");
+                        body.extend_from_slice(
+                            format!(
+                                "Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\n",
+                                field.name, filename
+                            )
+                            .as_bytes(),
+                        );
+                        body.extend_from_slice(format!("Content-Type: {}\r\n\r\n", ct).as_bytes());
+                        body.extend_from_slice(data);
+                        body.extend_from_slice(b"\r\n");
                     }
                 }
             }
-            request_builder.multipart(form)
+            body.extend_from_slice(format!("--{}--\r\n", boundary).as_bytes());
+
+            header_list
+                .append(&format!(
+                    "Content-Type: multipart/form-data; boundary={}",
+                    boundary
+                ))
+                .map_err(|e| e.to_string())?;
+            request_body_size = body.len() as u32;
+            Some(body)
         }
         BodyType::Binary { data, .. } => {
-            request_builder.body(data.clone())
+            header_list
+                .append("Content-Type: application/octet-stream")
+                .map_err(|e| e.to_string())?;
+            request_body_size = data.len() as u32;
+            Some(data.clone())
         }
     };
 
-    let redirects: Vec<RedirectEntry> = Vec::new();
+    easy.http_headers(header_list)
+        .map_err(|e| e.to_string())?;
 
-    let response = request_builder.send().await;
+    
+    if let Some(ref data) = post_data {
+        easy.post_field_size(data.len() as u64)
+            .map_err(|e| e.to_string())?;
+    }
 
-    let response = match response {
-        Ok(resp) => resp,
-        Err(e) => {
-            let elapsed = start.elapsed().as_millis() as u32;
-            return Ok(ApiResponse {
-                status: 0,
-                status_text: "Request Failed".to_string(),
-                headers: HashMap::new(),
-                cookies: Vec::new(),
-                body_base64: String::new(),
-                body_size_bytes: 0,
-                timing: TimingInfo { total_ms: elapsed },
-                redirects: Vec::new(),
-                remote_addr: None,
-                http_version: "Unknown".to_string(),
-                available_renderers: vec![ResponseRenderer::Raw],
-                detected_content_type: None,
-                error: Some(format_error(&e)),
-            });
+    
+    let mut response_headers_raw: Vec<u8> = Vec::new();
+    let mut response_body: Vec<u8> = Vec::new();
+
+    {
+        let mut transfer = easy.transfer();
+
+        
+        transfer
+            .header_function(|header| {
+                response_headers_raw.extend_from_slice(header);
+                true
+            })
+            .map_err(|e| e.to_string())?;
+
+        
+        transfer
+            .write_function(|data| {
+                response_body.extend_from_slice(data);
+                Ok(data.len())
+            })
+            .map_err(|e| e.to_string())?;
+
+        
+        if let Some(ref data) = post_data {
+            let mut data_reader = std::io::Cursor::new(data.clone());
+            transfer
+                .read_function(move |into| {
+                    let read = data_reader.read(into).unwrap_or(0);
+                    Ok(read)
+                })
+                .map_err(|e| e.to_string())?;
         }
+
+        
+        transfer.perform().map_err(|e| format_curl_error(&e))?;
+    }
+
+    
+    let total_time = easy.total_time().unwrap_or_default().as_secs_f64() * 1000.0;
+    let namelookup_time = easy.namelookup_time().unwrap_or_default().as_secs_f64() * 1000.0;
+    let connect_time = easy.connect_time().unwrap_or_default().as_secs_f64() * 1000.0;
+    let appconnect_time = easy.appconnect_time().unwrap_or_default().as_secs_f64() * 1000.0;
+    let pretransfer_time = easy.pretransfer_time().unwrap_or_default().as_secs_f64() * 1000.0;
+    let starttransfer_time = easy.starttransfer_time().unwrap_or_default().as_secs_f64() * 1000.0;
+
+    let timing = TimingInfo {
+        total_ms: total_time,
+        dns_lookup_ms: namelookup_time,
+        tcp_handshake_ms: (connect_time - namelookup_time).max(0.0),
+        tls_handshake_ms: (appconnect_time - connect_time).max(0.0),
+        transfer_start_ms: (pretransfer_time - appconnect_time).max(0.0),
+        ttfb_ms: (starttransfer_time - pretransfer_time).max(0.0),
+        content_download_ms: (total_time - starttransfer_time).max(0.0),
     };
 
-    let status = response.status().as_u16();
-    let status_text_str = status_text(status);
-    let http_version = http_version_string(response.version());
-    let remote_addr = response.remote_addr().map(|a| a.to_string());
+    
+    let request_header_size = easy.request_size().unwrap_or(0) as u32;
+    let response_header_size = easy.header_size().unwrap_or(0) as u32;
 
+    let request_size = SizeInfo {
+        headers_bytes: request_header_size,
+        body_bytes: request_body_size,
+        total_bytes: request_header_size + request_body_size,
+    };
+
+    let response_size = SizeInfo {
+        headers_bytes: response_header_size,
+        body_bytes: response_body.len() as u32,
+        total_bytes: response_header_size + response_body.len() as u32,
+    };
+
+    
+    let headers_str = String::from_utf8_lossy(&response_headers_raw);
     let mut response_headers: HashMap<String, String> = HashMap::new();
     let mut response_cookies: Vec<Cookie> = Vec::new();
+    let mut http_version = String::from("HTTP/1.1");
 
-    for (name, value) in response.headers().iter() {
-        let name_str = name.to_string();
-        let value_str = value.to_str().unwrap_or("").to_string();
-
-        if name_str.to_lowercase() == "set-cookie" {
-            if let Some(cookie) = parse_set_cookie(&value_str) {
-                response_cookies.push(cookie);
+    for line in headers_str.lines() {
+        if line.starts_with("HTTP/") {
+            
+            let parts: Vec<&str> = line.splitn(3, ' ').collect();
+            if !parts.is_empty() {
+                http_version = parts[0].to_string();
             }
-        }
+        } else if let Some((name, value)) = line.split_once(':') {
+            let name = name.trim().to_string();
+            let value = value.trim().to_string();
 
-        if let Some(existing) = response_headers.get_mut(&name_str) {
-            existing.push_str(", ");
-            existing.push_str(&value_str);
-        } else {
-            response_headers.insert(name_str, value_str);
+            if name.to_lowercase() == "set-cookie" {
+                if let Some(cookie) = parse_set_cookie(&value) {
+                    response_cookies.push(cookie);
+                }
+            }
+
+            if let Some(existing) = response_headers.get_mut(&name) {
+                existing.push_str(", ");
+                existing.push_str(&value);
+            } else {
+                response_headers.insert(name, value);
+            }
         }
     }
 
+    
+    let status = easy.response_code().unwrap_or(0) as u16;
+    let status_text_str = status_text(status);
+
+    
     let content_type = response_headers
         .get("content-type")
         .or_else(|| response_headers.get("Content-Type"))
         .cloned();
 
-    let body_bytes = response.bytes().await.map_err(|e| format!("Body read error: {}", e))?;
-    let body_size = body_bytes.len() as u32;
-    let body_base64 = BASE64.encode(&body_bytes);
+    let available_renderers = detect_renderers(content_type.as_deref(), &response_body);
 
-    let available_renderers = detect_renderers(content_type.as_deref(), &body_bytes);
+    
+    let remote_addr = easy.primary_ip().ok().and_then(|opt| opt.map(|s| s.to_string()));
 
-    let elapsed = start.elapsed().as_millis() as u32;
+    
+    let protocol_used = if http_version.contains("3") {
+        "HTTP/3".to_string()
+    } else if http_version.contains("2") {
+        "HTTP/2".to_string()
+    } else {
+        http_version.clone()
+    };
+
+    
+    let body_base64 = BASE64.encode(&response_body);
 
     Ok(ApiResponse {
         status,
@@ -411,40 +536,59 @@ pub async fn rest_request(req: ApiRequest) -> Result<ApiResponse, String> {
         headers: response_headers,
         cookies: response_cookies,
         body_base64,
-        body_size_bytes: body_size,
-        timing: TimingInfo { total_ms: elapsed },
-        redirects,
+        timing,
+        request_size,
+        response_size,
+        redirects: Vec::new(), // TODO: Track redirects if needed
         remote_addr,
         http_version,
         available_renderers,
         detected_content_type: content_type,
+        protocol_used,
         error: None,
     })
 }
 
-fn format_error(e: &reqwest::Error) -> String {
+fn format_curl_error(e: &curl::Error) -> String {
     let mut msg = String::new();
 
-    if e.is_timeout() {
-        msg.push_str("Request timed out. ");
+    if e.is_couldnt_resolve_host() {
+        msg.push_str("Could not resolve host. ");
     }
-    if e.is_connect() {
-        msg.push_str("Connection failed. ");
+    if e.is_couldnt_connect() {
+        msg.push_str("Could not connect. ");
     }
-    if e.is_redirect() {
-        msg.push_str("Too many redirects. ");
+    if e.is_operation_timedout() {
+        msg.push_str("Operation timed out. ");
     }
-    if e.is_body() {
-        msg.push_str("Body error. ");
+    if e.is_ssl_connect_error() {
+        msg.push_str("SSL connect error. ");
     }
-    if e.is_decode() {
-        msg.push_str("Decode error. ");
-    }
-
-    if let Some(url) = e.url() {
-        msg.push_str(&format!("URL: {}. ", url));
+    if e.is_peer_failed_verification() {
+        msg.push_str("SSL certificate verification failed. ");
     }
 
     msg.push_str(&e.to_string());
     msg
+}
+
+fn urlencoding(s: &str) -> String {
+    url::form_urlencoded::byte_serialize(s.as_bytes()).collect()
+}
+
+fn uuid_simple() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default();
+    format!("{:x}{:x}", now.as_secs(), now.subsec_nanos())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn rest_request(req: ApiRequest) -> Result<ApiResponse, String> {
+    
+    tokio::task::spawn_blocking(move || execute_curl_request(req))
+        .await
+        .map_err(|e| format!("Task error: {}", e))?
 }
