@@ -42,7 +42,7 @@ export function Dropdown({ items, onClose, className = "", width = "min-w-[160px
     return (
         <div
             ref={ref}
-            className={`absolute z-50 bg-inset border border-white/10 rounded-lg shadow-xl py-1 ${width} ${className}`}
+            className={`absolute z-50 bg-[#1e1e1e] border border-white/10 rounded-xl shadow-2xl py-2 ${width} ${className} animate-blur-in`}
         >
             {items.map((item, i) =>
                 item.divider ? (
@@ -62,16 +62,15 @@ export function Dropdown({ items, onClose, className = "", width = "min-w-[160px
                                 item.onClick();
                                 onClose();
                             }}
-                            className={`flex-1 text-left px-3 py-2 text-xs flex items-center gap-2 ${item.danger
+                            className={`flex-1 text-left px-4 py-2 text-xs flex items-center gap-2.5 ${item.danger
                                 ? "text-red-400"
                                 : item.active
-                                    ? "text-accent font-medium"
+                                    ? "text-accent font-semibold"
                                     : "text-white/80"
                                 }`}
                         >
                             {item.icon && <span className="text-white/40">{item.icon}</span>}
                             <span className="truncate">{item.label}</span>
-
                         </button>
                         {item.rightAction && (
                             <div className="px-2">

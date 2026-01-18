@@ -41,7 +41,7 @@ function ToastItem({ toast, onRemove }: { toast: any; onRemove: () => void }) {
     };
 
     return (
-        <div className={`flex items-center gap-3 px-4 py-3 premium-glass border border-white/10 rounded-xl shadow-2xl pointer-events-auto min-w-[200px] ${isClosing ? 'animate-blur-out' : 'animate-blur-in'}`}>
+        <div className={`flex items-center gap-3 bg-background px-4 py-3 premium-glass border border-white/10 rounded-xl shadow-2xl pointer-events-auto min-w-[200px] ${isClosing ? 'animate-blur-out' : 'animate-blur-in'}`}>
             {getIcon(toast.type)}
             <span className="text-sm text-white/90 font-medium">{toast.message}</span>
             <button

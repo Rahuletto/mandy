@@ -50,7 +50,7 @@ export function Dialog({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
             <div
                 ref={dialogRef}
-                className="w-full max-w-sm bg-[#1e1e1e] border border-white/10 rounded-2xl shadow-2xl scale-100 animate-in zoom-in-95 duration-200 p-6 flex flex-col gap-4"
+                className="w-full max-w-sm bg-[#1e1e1e] border border-white/10 rounded-2xl shadow-2xl animate-blur-in p-6 flex flex-col gap-4"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex flex-col gap-2">

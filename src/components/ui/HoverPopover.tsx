@@ -106,7 +106,7 @@ export function HoverPopover({
     return (
         <div
             ref={popoverRef}
-            className={`fixed z-50 bg-card premium-glass border border-white/10 rounded-lg shadow-2xl p-3 ${isClosing ? 'animate-blur-out' : 'animate-blur-in'} ${className}`}
+            className={`${className} fixed z-50 bg-[#1e1e1e] border border-white/10 rounded-xl shadow-2xl p-3 ${isClosing ? 'animate-blur-out' : 'animate-blur-in'}`}
             style={{ top: coords.top, left: coords.left }}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
