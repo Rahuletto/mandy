@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import type { Project, Folder, RequestFile } from "../types/project";
 import { HiChevronRight, HiChevronDown, HiTrash } from "react-icons/hi";
-import { TabView, getIconComponent, IconPicker, Dialog, Dropdown } from "./ui";
+import { TabView, getIconComponent, IconPicker, Dialog, Dropdown, TypeLabel } from "./ui";
 import { CodeViewer } from "./CodeMirror";
 import { generateSnippet } from "../utils/snippets";
 import { KeyValueTable } from "./KeyValueTable";
@@ -157,20 +157,22 @@ function RequestDetails({
                 <div className="border-t border-white/5 bg-white/[0.01]">
                     <div className="flex flex-col md:flex-row">
                         <div className="flex flex-col flex-1 p-4 border-b md:border-b-0 md:border-r border-white/5 space-y-4">
-                            <div className="flex-1 space-y-4">
-                                <h3 className="text-xl font-bold text-white">{request.name}</h3>
-                                <p className="text-sm text-white/50 italic">
-                                    {request.description || "No description"}
-                                </p>
+                            <div className="flex-1 space-y-8">
+                                <div className="flex-1 space-y-2">
+                                    <h3 className="text-xl font-bold text-white">{request.name}</h3>
+                                    <p className="text-sm text-white/50 italic">
+                                        {request.description || "No description"}
+                                    </p>
+                                </div>
                                 {queryParams.length > 0 && (
                                     <div>
                                         <h4 className="text-xs font-semibold text-white/70 mb-2">Query Parameters</h4>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-1.5 font-mono">
                                             {queryParams.map(([key, value]) => (
                                                 <div key={key} className="flex items-baseline gap-2">
                                                     <span className="text-sm text-white/90 font-medium">{key}</span>
-                                                    <span className="text-xs text-blue-400">string</span>
-                                                    <span className="text-white/40 text-xs truncate">{value || "—"}</span>
+                                                    <span className="text-[10px] text-blue-400">string</span>
+                                                    <span className="text-white/40 text-[10px] truncate">{value || "—"}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -179,17 +181,11 @@ function RequestDetails({
                                 {bodyProperties.length > 0 && (
                                     <div>
                                         <h4 className="text-xs font-semibold text-white/70 mb-2">Request Body</h4>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-1.5 font-mono">
                                             {bodyProperties.map(([key, value]) => (
                                                 <div key={key} className="flex items-baseline gap-2">
                                                     <span className="text-sm text-white/90 font-medium">{key}</span>
-                                                    <span className={`text-xs ${getValueType(value) === "object" ? "text-purple-400" :
-                                                        getValueType(value) === "array" ? "text-cyan-400" :
-                                                            getValueType(value) === "string" ? "text-blue-400" :
-                                                                getValueType(value) === "number" ? "text-green-400" :
-                                                                    getValueType(value) === "boolean" ? "text-yellow-400" :
-                                                                        "text-gray-400"
-                                                        }`}>{getValueType(value)}</span>
+                                                    <TypeLabel type={getValueType(value)} />
                                                 </div>
                                             ))}
                                         </div>
