@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Methods, ResponseRenderer, HttpProtocol } from "./bindings";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { TbLayoutSidebar } from "react-icons/tb";
 import { isMac } from "./utils/platform";
 import {
@@ -339,7 +341,37 @@ function App() {
     };
   }, [isResizingMain, isResizingResponse]);
 
-  async function handleSend() {
+  const [showInvalidVarDialog, setShowInvalidVarDialog] = useState(false);
+
+  const checkForInvalidVars = useCallback(() => {
+    if (!activeRequest) return false;
+    const available = getActiveEnvironmentVariables().map(v => v.key);
+    // If no active environment/vars, but {{}} used, consider invalid?
+    // Consistent with Input.tsx
+
+    const hasInvalid = (text: string) => {
+      if (!text) return false;
+      const regex = /\{\{([^}]+)\}\}/g;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const varName = match[1];
+        if (available.length > 0 && !available.includes(varName)) return true;
+      }
+      return false;
+    };
+
+    if (hasInvalid(activeRequest.request.url)) return true;
+
+    for (const [key, value] of Object.entries(activeRequest.request.headers)) {
+      if (isItemEnabled("header", key)) {
+        if (hasInvalid(value || "")) return true;
+      }
+    }
+
+    return false;
+  }, [activeRequest, getActiveEnvironmentVariables, isItemEnabled]);
+
+  async function performSend() {
     if (!activeRequest) return;
     setLoading(true);
     try {
@@ -391,6 +423,35 @@ function App() {
     }
   }
 
+  function handleSend() {
+    if (checkForInvalidVars()) {
+      setShowInvalidVarDialog(true);
+    } else {
+      performSend();
+    }
+  }
+
+  const [showCurlOverwriteDialog, setShowCurlOverwriteDialog] = useState(false);
+  const [pendingCurlCommand, setPendingCurlCommand] = useState<string | null>(null);
+
+  function processCurlImport(command: string) {
+    if (!activeRequest) return;
+    try {
+      const parsed = parseCurlCommand(command);
+      updateRequest(activeRequest.id, (r) => ({
+        ...r,
+        request: {
+          ...r.request,
+          ...parsed,
+          headers: { ...r.request.headers, ...parsed.headers },
+        },
+      }));
+      addToast("Imported from cURL", "success");
+    } catch (err) {
+      addToast("Failed to parse cURL command", "error");
+    }
+  }
+
   function handleImportCurl() {
     if (!activeRequest) return;
     const parsed = parseCurlCommand(curlInput);
@@ -408,20 +469,22 @@ function App() {
 
   function handleAutoImportCurl(command: string) {
     if (!activeRequest) return;
-    try {
-      const parsed = parseCurlCommand(command);
-      updateRequest(activeRequest.id, (r) => ({
-        ...r,
-        request: {
-          ...r.request,
-          ...parsed,
-          headers: { ...r.request.headers, ...parsed.headers },
-        },
-      }));
-      addToast("Imported from cURL", "success");
-    } catch (err) {
-      addToast("Failed to parse cURL command", "error");
+
+    const isEmpty =
+      !activeRequest.request.url &&
+      activeRequest.request.method === "GET" &&
+      Object.keys(activeRequest.request.headers).length === 0 &&
+      Object.keys(activeRequest.request.query_params || {}).length === 0 &&
+      activeRequest.request.body === "None" &&
+      activeRequest.request.auth === "None";
+
+    if (!isEmpty) {
+      setPendingCurlCommand(command);
+      setShowCurlOverwriteDialog(true);
+      return;
     }
+
+    processCurlImport(command);
   }
 
   function updateUrl(url: string) {
@@ -1474,30 +1537,51 @@ function App() {
       <ExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        onExportOpenAPI={() => {
+        onExportOpenAPI={async () => {
           if (activeProject) {
-            const spec = generateOpenAPISpec(activeProject);
-            const blob = new Blob([JSON.stringify(spec, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${activeProject.name}-openapi.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            addToast('Exported as OpenAPI JSON', 'success');
+            try {
+              const spec = generateOpenAPISpec(activeProject, resolveVariables);
+              const content = JSON.stringify(spec, null, 2);
+
+              const filePath = await save({
+                filters: [{
+                  name: 'OpenAPI JSON',
+                  extensions: ['json']
+                }],
+                defaultPath: `${activeProject.name}-openapi.json`
+              });
+
+              if (filePath) {
+                await writeTextFile(filePath, content);
+                addToast('Exported as OpenAPI JSON', 'success');
+              }
+            } catch (err) {
+              console.error(err);
+              addToast('Failed to export OpenAPI spec', 'error');
+            }
           }
         }}
-        onExportMatchstick={() => {
+        onExportMatchstick={async () => {
           if (activeProject) {
-            const json = exportToMatchstickJSON(activeProject);
-            const blob = new Blob([json], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${activeProject.name}.matchstick.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            addToast('Exported as Matchstick JSON', 'success');
+            try {
+              const json = exportToMatchstickJSON(activeProject);
+
+              const filePath = await save({
+                filters: [{
+                  name: 'Matchstick JSON',
+                  extensions: ['json']
+                }],
+                defaultPath: `${activeProject.name}.matchstick.json`
+              });
+
+              if (filePath) {
+                await writeTextFile(filePath, json);
+                addToast('Exported as Matchstick JSON', 'success');
+              }
+            } catch (err) {
+              console.error(err);
+              addToast('Failed to export Matchstick JSON', 'error');
+            }
           }
         }}
       />
@@ -1524,6 +1608,37 @@ function App() {
             addToast('Failed to parse OpenAPI spec', 'error');
           }
         }}
+      />
+
+      <Dialog
+        isOpen={showInvalidVarDialog}
+        title="Invalid Environment Variables"
+        description="Some environment variables in your request could not be resolved. Do you want to send the request anyway?"
+        confirmLabel="Send Anyway"
+        onConfirm={() => {
+          setShowInvalidVarDialog(false);
+          performSend();
+        }}
+        onCancel={() => setShowInvalidVarDialog(false)}
+        isDestructive={false}
+      />
+      <Dialog
+        isOpen={showCurlOverwriteDialog}
+        title="Overwrite Request?"
+        description="This request already contains data. importing a cURL command will overwrite existing values. Do you want to continue?"
+        confirmLabel="Overwrite"
+        onConfirm={() => {
+          if (pendingCurlCommand) {
+            processCurlImport(pendingCurlCommand);
+          }
+          setShowCurlOverwriteDialog(false);
+          setPendingCurlCommand(null);
+        }}
+        onCancel={() => {
+          setShowCurlOverwriteDialog(false);
+          setPendingCurlCommand(null);
+        }}
+        isDestructive={true}
       />
     </div>
   );

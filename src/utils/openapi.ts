@@ -19,11 +19,13 @@ interface OpenAPIOperation {
     summary?: string;
     description?: string;
     operationId?: string;
+    tags?: string[];
+    servers?: { url: string }[];
     parameters?: Array<{
         name: string;
         in: "query" | "header" | "path" | "cookie";
         required?: boolean;
-        schema?: { type: string };
+        schema?: { type: string; example?: any };
     }>;
     requestBody?: {
         content: Record<string, { schema?: any; example?: any }>;
@@ -36,7 +38,31 @@ function generateId(): string {
 }
 
 export function parseOpenAPISpec(spec: any): Partial<Project> {
-    const requests: RequestFile[] = [];
+    const root: Folder = {
+        id: generateId(),
+        type: "folder",
+        name: "Root",
+        children: [],
+        expanded: true,
+    };
+
+    function getOrCreateFolder(parent: Folder, name: string): Folder {
+        const existing = parent.children.find(
+            (c) => c.type === "folder" && c.name === name
+        ) as Folder | undefined;
+
+        if (existing) return existing;
+
+        const newFolder: Folder = {
+            id: generateId(),
+            type: "folder",
+            name,
+            children: [],
+            expanded: true,
+        };
+        parent.children.push(newFolder);
+        return newFolder;
+    }
 
     const paths = spec.paths || {};
     for (const [path, methods] of Object.entries(paths)) {
@@ -70,13 +96,24 @@ export function parseOpenAPISpec(spec: any): Partial<Project> {
                     }
                 }
 
+                // Determine full URL, checking for operation-level server overrides
+                let fullUrl = path;
+                const opServer = op.servers && op.servers.length > 0 ? op.servers[0].url : null;
+
+                if (opServer) {
+                    // Combine server and path, handling potential double slashes
+                    const safeServer = opServer.endsWith("/") ? opServer.slice(0, -1) : opServer;
+                    const safePath = path.startsWith("/") ? path : "/" + path;
+                    fullUrl = safeServer + safePath;
+                }
+
                 const request: RequestFile = {
                     id: generateId(),
                     type: "request",
                     name: op.summary || op.operationId || `${method.toUpperCase()} ${path}`,
                     description: op.description,
                     request: {
-                        ...createDefaultRequest(path, method.toUpperCase() as any),
+                        ...createDefaultRequest(fullUrl, method.toUpperCase() as any),
                         headers,
                         query_params: queryParams,
                         body,
@@ -84,18 +121,24 @@ export function parseOpenAPISpec(spec: any): Partial<Project> {
                     response: null,
                 };
 
-                requests.push(request);
+                // Determine folder location
+                let targetFolder = root;
+                if (op.tags && op.tags.length > 0 && typeof op.tags[0] === 'string') {
+                    // We take the first tag as the "path"
+                    // and support "/" as separator for hierarchy
+                    const pathParts = op.tags[0].split("/");
+                    for (const part of pathParts) {
+                        const trimmedPart = part.trim();
+                        if (trimmedPart) {
+                            targetFolder = getOrCreateFolder(targetFolder, trimmedPart);
+                        }
+                    }
+                }
+
+                targetFolder.children.push(request);
             }
         }
     }
-
-    const root: Folder = {
-        id: generateId(),
-        type: "folder",
-        name: "Root",
-        children: requests,
-        expanded: true,
-    };
 
     const baseUrl = spec.servers?.[0]?.url;
 
@@ -106,46 +149,131 @@ export function parseOpenAPISpec(spec: any): Partial<Project> {
     };
 }
 
-export function generateOpenAPISpec(project: Project): OpenAPISpec {
+export function generateOpenAPISpec(project: Project, resolver?: (s: string) => string): OpenAPISpec {
     const paths: Record<string, Record<string, OpenAPIOperation>> = {};
 
-    function collectRequests(folder: Folder): RequestFile[] {
-        const results: RequestFile[] = [];
+    // We want to determine the "Global Base URL" for the spec.
+    const rawProjectBaseUrl = project.baseUrl || "";
+    const resolvedBaseUrl = resolver && rawProjectBaseUrl ? resolver(rawProjectBaseUrl) : rawProjectBaseUrl;
+
+    function collectRequests(folder: Folder, path: string[] = []): { request: RequestFile; folders: string[] }[] {
+        const results: { request: RequestFile; folders: string[] }[] = [];
         for (const child of folder.children) {
             if (child.type === "request") {
-                results.push(child);
+                results.push({ request: child, folders: path });
             } else {
-                results.push(...collectRequests(child));
+                results.push(...collectRequests(child, [...path, child.name]));
             }
         }
         return results;
     }
 
-    const requests = collectRequests(project.root);
+    const requestsWithContext = collectRequests(project.root);
 
-    for (const req of requests) {
-        const url = req.request.url || "/";
+    for (const { request: req, folders } of requestsWithContext) {
+        let url = req.request.url || "/";
+        // Do NOT resolve the request URL immediately for parsing URL structure if it contains base URL logic
+
         const method = req.request.method.toLowerCase();
+        let pathKey = url;
+        let operationServers: { url: string }[] | undefined;
 
-        if (!paths[url]) {
-            paths[url] = {};
+        try {
+            // Logic: 
+            // 1. If URL starts with explicit "/" -> It is Relative. Use Global Server (implicit).
+            // 2. If URL starts with the Project Base URL (Raw OR Resolved) -> It matches the Global Server. STRIP it to make it Relative.
+            // 3. Otherwise -> It is a different Absolute URL. Extract Origin as Operation Server override.
+
+            let isRelative = url.startsWith("/");
+            let strippedUrl = url;
+
+            if (!isRelative) {
+                // Check if it starts with Raw Base URL (e.g. {{baseUrl}})
+                if (rawProjectBaseUrl && url.startsWith(rawProjectBaseUrl)) {
+                    isRelative = true;
+                    strippedUrl = url.substring(rawProjectBaseUrl.length);
+                }
+                // Check if it starts with Resolved Base URL (e.g. https://api.com)
+                else if (resolvedBaseUrl && url.startsWith(resolvedBaseUrl)) {
+                    isRelative = true;
+                    strippedUrl = url.substring(resolvedBaseUrl.length);
+                }
+            }
+
+            if (isRelative) {
+                // It is relative (or became relative after stripping).
+                // Ensure it starts with /
+                pathKey = strippedUrl;
+                if (!pathKey.startsWith("/")) {
+                    pathKey = "/" + pathKey;
+                }
+                // No operationServers needed because it matches Global
+            } else {
+                // It is an Absolute URL that DOES NOT match the Base URL.
+                // We must preserve it as an Override.
+
+                let origin = "";
+                // Attempt to parse standard URL
+                try {
+                    const hasProtocol = url.match(/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//);
+                    const urlToParse = hasProtocol ? url : `http://${url}`;
+                    const urlObj = new URL(urlToParse);
+
+                    // Reconstruct Origin
+                    origin = hasProtocol ? urlObj.origin : urlObj.host; // host includes port if present
+
+                    // Path is pathname + search
+                    pathKey = urlObj.pathname;
+                    if (urlObj.search && urlObj.search.length > 1) {
+                        pathKey += urlObj.search;
+                    }
+
+                    // Special check for variables at start which URL parser might swallow into host
+                    if (!hasProtocol && (url.includes("{{") || url.includes("<<"))) {
+                        throw new Error("Variable in URL");
+                    }
+
+                } catch (e) {
+                    // Fallback: Split by first slash
+                    const firstSlash = url.indexOf('/');
+                    if (firstSlash !== -1) {
+                        origin = url.substring(0, firstSlash);
+                        pathKey = url.substring(firstSlash);
+                    } else {
+                        origin = url;
+                        pathKey = "/";
+                    }
+                }
+
+                operationServers = [{ url: origin }];
+            }
+
+            // Final check on pathKey
+            if (pathKey.length === 0) pathKey = "/";
+
+        } catch (e) {
+            console.warn("Failed to parse URL for OpenAPI export:", url);
+        }
+
+        if (!paths[pathKey]) {
+            paths[pathKey] = {};
         }
 
         const parameters: OpenAPIOperation["parameters"] = [];
 
-        for (const [key] of Object.entries(req.request.query_params)) {
+        for (const [key, value] of Object.entries(req.request.query_params)) {
             parameters.push({
                 name: key,
                 in: "query",
-                schema: { type: "string" },
+                schema: { type: "string", example: resolver ? resolver(String(value || "")) : value },
             });
         }
 
-        for (const [key] of Object.entries(req.request.headers)) {
+        for (const [key, value] of Object.entries(req.request.headers)) {
             parameters.push({
                 name: key,
                 in: "header",
-                schema: { type: "string" },
+                schema: { type: "string", example: resolver ? resolver(String(value || "")) : value },
             });
         }
 
@@ -153,22 +281,29 @@ export function generateOpenAPISpec(project: Project): OpenAPISpec {
         const body = req.request.body;
         if (body !== "None" && "Raw" in body && body.Raw.content_type?.includes("json")) {
             try {
+                let contentStr = body.Raw.content;
+                if (resolver) {
+                    contentStr = resolver(contentStr);
+                }
+
                 requestBody = {
                     content: {
                         "application/json": {
-                            example: JSON.parse(body.Raw.content),
+                            example: JSON.parse(contentStr),
                         },
                     },
                 };
             } catch { }
         }
 
-        paths[url][method] = {
+        paths[pathKey][method] = {
             summary: req.name,
             description: req.description,
             operationId: req.name.replace(/\s+/g, "_").toLowerCase(),
+            tags: folders.length > 0 ? [folders.join("/")] : undefined,
             parameters: parameters.length > 0 ? parameters : undefined,
             requestBody,
+            servers: operationServers,
             responses: {
                 "200": { description: "Successful response" },
             },
@@ -184,8 +319,8 @@ export function generateOpenAPISpec(project: Project): OpenAPISpec {
         paths,
     };
 
-    if (project.baseUrl) {
-        spec.servers = [{ url: project.baseUrl }];
+    if (resolvedBaseUrl) {
+        spec.servers = [{ url: resolvedBaseUrl }];
     }
 
     return spec;
