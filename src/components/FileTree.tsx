@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -24,6 +24,7 @@ import { FaFolder, FaFolderOpen } from "react-icons/fa6";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
 import { ContextMenu, MenuItem } from "./ui";
 import { getSimpleShortcut, getShortcutDisplay } from "../utils/platform";
+import { haptic } from "../utils/haptics";
 
 interface FileTreeProps {
   root: Folder;
@@ -286,54 +287,92 @@ export function FileTree({
   }
 
   function handleDragStart(event: DragStartEvent) {
+    haptic("generic");
     setActiveId(event.active.id as string);
   }
+
+  const lastOverIdRef = useRef<string | null>(null);
 
   function handleDragOver(event: DragOverEvent) {
     const overId = event.over?.id as string | undefined;
     if (!overId) {
+      lastOverIdRef.current = null;
       setOverFolderId(null);
       return;
     }
 
     const overData = flatItems.find(({ item }) => item.id === overId);
-    if (overData?.item.type === "folder") {
-      setOverFolderId(overId);
-    } else {
-      setOverFolderId(overData?.parentId || null);
+    if (!overData) {
+      lastOverIdRef.current = null;
+      setOverFolderId(null);
+      return;
     }
+
+    // Haptic feedback when crossing over a new item
+    if (lastOverIdRef.current !== overId) {
+      haptic("alignment");
+      lastOverIdRef.current = overId;
+    }
+
+    const activeData = flatItems.find(({ item }) => item.id === event.active.id);
+
+    if (overData.item.type === "folder") {
+      // Use the same logic as handleDragEnd to decide if we're moving INTO or NEXT TO
+      if (!overData.item.expanded || (activeData && activeData.parentId !== overData.item.id)) {
+        setOverFolderId(overId);
+        return;
+      }
+    }
+
+    setOverFolderId(overData.parentId || null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    haptic("alignment");
     const { active, over } = event;
     setActiveId(null);
     setOverFolderId(null);
 
     if (!over || active.id === over.id) return;
 
+    const overId = over.id as string;
     const activeData = flatItems.find(({ item }) => item.id === active.id);
-    const overData = flatItems.find(({ item }) => item.id === over.id);
+    const overData = flatItems.find(({ item }) => item.id === overId);
 
     if (!activeData || !overData) return;
 
-    let targetFolderId: string;
-    let targetIndex: number;
-
+    // Determine move strategy
+    // If we're dropping on a folder, and that folder is NOT the current parent, or it's a subfolder, move it IN
     if (overData.item.type === "folder") {
-      targetFolderId = overData.item.id;
-      targetIndex = 0;
-    } else {
-      targetFolderId = overData.parentId;
-      const folder = findFolderById(root, targetFolderId);
-      if (folder) {
-        const idx = folder.children.findIndex((c) => c.id === over.id);
-        targetIndex = idx + 1;
-      } else {
-        targetIndex = 0;
+      // If the folder is collapsed, or we are dragging from outside this folder, move INTO it
+      if (!overData.item.expanded || activeData.parentId !== overData.item.id) {
+        // Move into the folder at the beginning
+        onMoveItem(active.id as string, overData.item.id, 0);
+        return;
       }
     }
 
-    onMoveItem(active.id as string, targetFolderId, targetIndex);
+    // Default: Move next to (after) the item we are over
+    // If we were moving UP in the same parent, maybe move BEFORE?
+    // For now, moveItemAfter is consistent with current behavior but let's make it smarter
+
+    // Find index of active and over in the flat list to see direction
+    const activeFlatIdx = flatItems.findIndex(f => f.item.id === active.id);
+    const overFlatIdx = flatItems.findIndex(f => f.item.id === overId);
+
+    if (activeFlatIdx > overFlatIdx) {
+      // Moving UP
+      onMoveItem(active.id as string, overData.parentId, findItemIndexInParent(overId, overData.parentId));
+    } else {
+      // Moving DOWN
+      onMoveItem(active.id as string, overData.parentId, findItemIndexInParent(overId, overData.parentId) + 1);
+    }
+  }
+
+  function findItemIndexInParent(itemId: string, parentId: string): number {
+    const parent = findFolderById(root, parentId);
+    if (!parent) return 0;
+    return parent.children.findIndex(c => c.id === itemId);
   }
 
   function findFolderById(folder: Folder, id: string): Folder | null {

@@ -12,4 +12,5 @@ export { ExportModal } from './ExportModal';
 export { ImportModal } from './ImportModal';
 export { TabView } from './TabView';
 export { TypeLabel } from './TypeLabel';
+export { ErrorBoundary } from './ErrorBoundary';
 

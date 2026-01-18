@@ -297,6 +297,16 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeRequestId, markSaved, activeRequest, activeProject, addRequest, cutToClipboard, copyToClipboard, pasteItem, duplicateItem, deleteItem, selectedItemId]);
 
+  // Switch away from body tab if the current request doesn't support body (GET, HEAD)
+  useEffect(() => {
+    if (activeRequest && activeTab === "body") {
+      const method = activeRequest.request.method;
+      if (method === "GET" || method === "HEAD") {
+        setActiveTab("overview");
+      }
+    }
+  }, [activeRequest?.id, activeTab]);
+
   const handleMainMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizingMain(true);
@@ -503,8 +513,9 @@ function App() {
       request: { ...r.request, method },
     }));
 
-    if (method === "GET" && activeTab === "body") {
-      setActiveTab("params");
+    // GET and HEAD don't have a body, switch to overview if currently on body tab
+    if ((method === "GET" || method === "HEAD") && activeTab === "body") {
+      setActiveTab("overview");
     }
   }
 
