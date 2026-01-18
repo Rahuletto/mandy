@@ -1,0 +1,83 @@
+import { useEffect, useRef } from "react";
+import { HiX } from "react-icons/hi";
+import { TbArchive } from "react-icons/tb";
+import { SiSwagger } from "react-icons/si";
+
+interface ExportModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onExportOpenAPI: () => void;
+    onExportMatchstick: () => void;
+}
+
+export function ExportModal({
+    isOpen,
+    onClose,
+    onExportOpenAPI,
+    onExportMatchstick,
+}: ExportModalProps) {
+    const modalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onClose();
+        };
+
+        document.addEventListener("keydown", handleEscape);
+        document.body.style.overflow = "hidden";
+
+        return () => {
+            document.removeEventListener("keydown", handleEscape);
+            document.body.style.overflow = "";
+        };
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div
+                className="absolute inset-0 bg-black/60 animate-in fade-in duration-300"
+                onClick={onClose}
+            />
+
+            <div
+                ref={modalRef}
+                className="relative w-full max-w-[320px] bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                    <div className="flex-1 text-center">
+                        <h2 className="text-sm font-semibold text-white">Export</h2>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="absolute right-3 top-3 text-white/30 hover:text-white transition-colors cursor-pointer"
+                    >
+                        <HiX size={16} />
+                    </button>
+                </div>
+
+                <div className="p-2 space-y-1">
+                    <button
+                        onClick={() => { onExportOpenAPI(); onClose(); }}
+                        className="w-full flex items-center gap-3 p-2.5 px-3 hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left group"
+                    >
+                        <SiSwagger size={16} className="text-white/40 group-hover:text-white/80 transition-colors" />
+                        <span className="flex-1 text-sm text-white/70 group-hover:text-white transition-colors">OpenAPI Spec</span>
+                    </button>
+
+                    <button
+                        onClick={() => { onExportMatchstick(); onClose(); }}
+                        className="w-full flex items-center gap-3 p-2.5 px-3 hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left group"
+                    >
+                        <TbArchive size={16} className="text-white/40 group-hover:text-white/80 transition-colors" />
+                        <span className="flex-1 text-sm text-white/70 group-hover:text-white transition-colors">Matchstick Native</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
