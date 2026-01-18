@@ -125,6 +125,9 @@ interface ProjectState {
   createProject: (name: string) => string;
   selectProject: (id: string) => void;
   renameProject: (id: string, name: string) => void;
+  updateProjectIcon: (id: string, icon: string) => void;
+  updateProjectIconColor: (id: string, color: string) => void;
+  updateProjectConfig: (id: string, config: { description?: string; baseUrl?: string; authorization?: Project["authorization"] }) => void;
   deleteProject: (id: string) => void;
   getActiveProject: () => Project | null;
 
@@ -161,6 +164,8 @@ interface ProjectState {
   copyToClipboard: (id: string) => void;
   cutToClipboard: (id: string) => void;
   pasteItem: (targetFolderId: string) => void;
+  selectedLanguage: string;
+  setSelectedLanguage: (lang: string) => void;
 }
 
 const initialProject = createEmptyProject("My Project");
@@ -174,6 +179,9 @@ export const useProjectStore = create<ProjectState>()(
       selectedItemId: null,
       unsavedChanges: new Set(),
       clipboard: null,
+      selectedLanguage: "shell",
+
+      setSelectedLanguage: (lang) => set({ selectedLanguage: lang }),
 
       createProject: (name) => {
         const newProject = createEmptyProject(name);
@@ -192,6 +200,26 @@ export const useProjectStore = create<ProjectState>()(
       renameProject: (id, name) => {
         set((state) => ({
           projects: state.projects.map((p) => (p.id === id ? { ...p, name } : p)),
+        }));
+      },
+
+      updateProjectIcon: (id, icon) => {
+        set((state) => ({
+          projects: state.projects.map((p) => (p.id === id ? { ...p, icon } : p)),
+        }));
+      },
+
+      updateProjectIconColor: (id, color) => {
+        set((state) => ({
+          projects: state.projects.map((p) => (p.id === id ? { ...p, iconColor: color } : p)),
+        }));
+      },
+
+      updateProjectConfig: (id, config) => {
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === id ? { ...p, ...config } : p
+          ),
         }));
       },
 
@@ -468,55 +496,73 @@ export const useProjectStore = create<ProjectState>()(
           const project = state.projects.find((p) => p.id === state.activeProjectId);
           if (!project) return state;
 
-          const sourceParent = findParentFolder(project.root, itemId);
-          const targetFolder = findFolder(project.root, targetFolderId);
+          // Don't move if target is the item itself or its descendant
           const item = findItem(project.root, itemId);
-
-          if (!sourceParent || !targetFolder || !item) return state;
+          if (!item) return state;
+          if (item.id === targetFolderId) return state;
           if (item.type === "folder" && getAllItemIds(item).includes(targetFolderId)) return state;
 
-          sourceParent.children = sourceParent.children.filter((c) => c.id !== itemId);
-          targetFolder.children.splice(targetIndex, 0, item);
-          return { projects: [...state.projects] };
+          const sourceParent = findParentFolder(project.root, itemId);
+          const targetFolder = findFolder(project.root, targetFolderId);
+
+          if (!sourceParent || !targetFolder) return state;
+
+          const newProjects = state.projects.map((p) => {
+            if (p.id !== state.activeProjectId) return p;
+
+            // Deep clone the root to avoid in-place mutations
+            const newRoot = JSON.parse(JSON.stringify(p.root)) as Folder;
+
+            // Find references in the new tree
+            const newSourceParent = findFolder(newRoot, sourceParent.id);
+            const newTargetFolder = findFolder(newRoot, targetFolderId);
+            const itemToMove = findItem(newRoot, itemId);
+
+            if (!newSourceParent || !newTargetFolder || !itemToMove) return p;
+
+            // Remove from source
+            newSourceParent.children = newSourceParent.children.filter((c) => c.id !== itemId);
+
+            // Add to target
+            // If we're moving into the same folder, we might need to adjust the index
+            let finalIndex = targetIndex;
+            if (newSourceParent.id === newTargetFolder.id) {
+              const oldIndex = sourceParent.children.findIndex(c => c.id === itemId);
+              if (oldIndex < targetIndex) {
+                // The removal of the item shifted the remaining items left
+                // However, usually targetIndex comes and represents the intended position
+                // in the list *including* the item. If it's already removed, we stay same.
+                // Actually, let's just use splice and assume targetIndex is correct relative to the new array
+              }
+            }
+
+            newTargetFolder.children.splice(finalIndex, 0, itemToMove);
+
+            return { ...p, root: newRoot };
+          });
+
+          return { projects: newProjects };
         });
       },
 
       moveItemBefore: (itemId, beforeItemId) => {
-        set((state) => {
-          const project = state.projects.find((p) => p.id === state.activeProjectId);
-          if (!project) return state;
-
-          const sourceParent = findParentFolder(project.root, itemId);
-          const targetParent = findParentFolder(project.root, beforeItemId);
-          const item = findItem(project.root, itemId);
-
-          if (!sourceParent || !targetParent || !item || itemId === beforeItemId) return state;
-          if (item.type === "folder" && getAllItemIds(item).includes(beforeItemId)) return state;
-
-          sourceParent.children = sourceParent.children.filter((c) => c.id !== itemId);
-          const idx = targetParent.children.findIndex((c) => c.id === beforeItemId);
-          targetParent.children.splice(idx, 0, item);
-          return { projects: [...state.projects] };
-        });
+        const state = get();
+        const project = state.projects.find((p) => p.id === state.activeProjectId);
+        if (!project) return;
+        const targetParent = findParentFolder(project.root, beforeItemId);
+        if (!targetParent) return;
+        const idx = targetParent.children.findIndex((c) => c.id === beforeItemId);
+        get().moveItem(itemId, targetParent.id, idx);
       },
 
       moveItemAfter: (itemId, afterItemId) => {
-        set((state) => {
-          const project = state.projects.find((p) => p.id === state.activeProjectId);
-          if (!project) return state;
-
-          const sourceParent = findParentFolder(project.root, itemId);
-          const targetParent = findParentFolder(project.root, afterItemId);
-          const item = findItem(project.root, itemId);
-
-          if (!sourceParent || !targetParent || !item || itemId === afterItemId) return state;
-          if (item.type === "folder" && getAllItemIds(item).includes(afterItemId)) return state;
-
-          sourceParent.children = sourceParent.children.filter((c) => c.id !== itemId);
-          const idx = targetParent.children.findIndex((c) => c.id === afterItemId);
-          targetParent.children.splice(idx + 1, 0, item);
-          return { projects: [...state.projects] };
-        });
+        const state = get();
+        const project = state.projects.find((p) => p.id === state.activeProjectId);
+        if (!project) return;
+        const targetParent = findParentFolder(project.root, afterItemId);
+        if (!targetParent) return;
+        const idx = targetParent.children.findIndex((c) => c.id === afterItemId);
+        get().moveItem(itemId, targetParent.id, idx + 1);
       },
 
       updateRequest: (requestId, updater) => {
@@ -609,6 +655,7 @@ export const useProjectStore = create<ProjectState>()(
         activeProjectId: state.activeProjectId,
         activeRequestId: state.activeRequestId,
         selectedItemId: state.selectedItemId,
+        selectedLanguage: state.selectedLanguage,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

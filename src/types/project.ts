@@ -31,9 +31,23 @@ export interface Folder {
   expanded?: boolean;
 }
 
+export interface ProjectAuthorization {
+  type: "none" | "bearer" | "basic" | "api-key";
+  token?: string;
+  username?: string;
+  password?: string;
+  headerName?: string;
+  headerValue?: string;
+}
+
 export interface Project {
   id: string;
   name: string;
+  description?: string;
+  icon?: string;
+  iconColor?: string;
+  baseUrl?: string;
+  authorization?: ProjectAuthorization;
   root: Folder;
   environments: Environment[];
   activeEnvironmentId: string | null;

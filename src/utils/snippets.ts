@@ -182,3 +182,25 @@ export function generatePHP(request: ApiRequest): string {
     code += `]);\n\necho $response->getBody();`;
     return code;
 }
+export function generateSnippet(langId: string, request: ApiRequest): string {
+    switch (langId) {
+        case "shell":
+        case "curl":
+            return generateCurl(request);
+        case "javascript":
+        case "fetch":
+            return generateFetch(request);
+        case "python":
+            return generatePythonRequests(request);
+        case "go":
+            return generateGo(request);
+        case "rust":
+            return generateRust(request);
+        case "java":
+            return generateJava(request);
+        case "php":
+            return generatePHP(request);
+        default:
+            return generateCurl(request);
+    }
+}
