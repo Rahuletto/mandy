@@ -12,6 +12,7 @@
     "fs:default",
     "core:window:default",
     "core:window:allow-start-dragging",
-    "fs:allow-write-text-file"
+    "fs:allow-write-text-file",
+    "macos-haptics:default"
   ]
 }
