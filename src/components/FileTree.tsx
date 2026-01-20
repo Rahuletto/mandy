@@ -19,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   VscChevronRight,
   VscChevronDown,
+  VscAdd,
 } from "react-icons/vsc";
 import { FaFolder, FaFolderOpen } from "react-icons/fa6";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
@@ -84,7 +85,7 @@ interface SortableItemProps {
   isUnsaved: boolean;
   onSelect: () => void;
   onToggle: () => void;
-  onContextMenu: (e: React.MouseEvent) => void;
+  onContextMenu: (e: React.MouseEvent, filterAddOnly?: boolean) => void;
   isRenaming: boolean;
   renameValue: string;
   setRenameValue: (v: string) => void;
@@ -195,15 +196,29 @@ function SortableItem({
 
       {isUnsaved && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onContextMenu(e);
-        }}
-        className="opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded p-0.5 px-1 text-white/50"
-      >
-        ⋯
-      </button>
+      <div className="flex items-center opacity-0 group-hover:opacity-100 gap-1 transition-opacity">
+        {isFolder && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onContextMenu(e, true);
+            }}
+            className="hover:bg-white/10 rounded p-1 text-white/50"
+            title="Add..."
+          >
+            <VscAdd size={10} />
+          </button>
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onContextMenu(e);
+          }}
+          className="hover:bg-white/10 rounded p-0.5 px-1 text-white/50"
+        >
+          ⋯
+        </button>
+      </div>
     </div>
   );
 }
@@ -253,7 +268,7 @@ export function FileTree({
   searchQuery,
   unsavedIds,
 }: FileTreeProps) {
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: TreeItem } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: TreeItem; filterAddOnly?: boolean } | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -386,9 +401,9 @@ export function FileTree({
     return null;
   }
 
-  function handleContextMenu(e: React.MouseEvent, item: TreeItem) {
+  function handleContextMenu(e: React.MouseEvent, item: TreeItem, filterAddOnly = false) {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, item });
+    setContextMenu({ x: e.clientX, y: e.clientY, item, filterAddOnly });
   }
 
   function startRename(item: TreeItem) {
@@ -489,7 +504,7 @@ export function FileTree({
                 isUnsaved={unsavedIds.has(item.id)}
                 onSelect={() => onSelect(item.id, item.type === "folder")}
                 onToggle={() => onToggleFolder(item.id)}
-                onContextMenu={(e) => handleContextMenu(e, item)}
+                onContextMenu={(e, filterAddOnly) => handleContextMenu(e, item, filterAddOnly)}
                 isRenaming={renamingId === item.id}
                 renameValue={renameValue}
                 setRenameValue={setRenameValue}
@@ -512,7 +527,10 @@ export function FileTree({
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={getContextMenuItems(contextMenu.item)}
+          items={contextMenu.filterAddOnly
+            ? getContextMenuItems(contextMenu.item).filter(i => i.label?.startsWith("Add"))
+            : getContextMenuItems(contextMenu.item)
+          }
           onClose={() => setContextMenu(null)}
         />
       )}
