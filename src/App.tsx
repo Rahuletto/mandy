@@ -17,7 +17,7 @@ import { CodeViewer } from "./components/CodeMirror";
 import { BodyEditor } from "./components/editors/BodyEditor";
 import { AuthEditor } from "./components/editors/AuthEditor";
 import { Sidebar } from "./components/Sidebar";
-import { Dropdown, UrlInput, ToastContainer, Dialog, ExportModal, ImportModal } from "./components/ui";
+import { Dropdown, UrlInput, ToastContainer, Dialog, ExportModal, ImportModal, NewProjectModal } from "./components/ui";
 import { KeyValueTable } from "./components/KeyValueTable";
 
 import { MethodSelector } from "./components/MethodSelector";
@@ -41,6 +41,7 @@ function App() {
     selectProject,
     createProject,
     createProjectFromImport,
+    importToFolder,
     renameProject,
     updateProjectIcon,
     updateProjectIconColor,
@@ -108,6 +109,7 @@ function App() {
   const [projectOverviewTab, setProjectOverviewTab] = useState<"overview" | "configuration" | "variables">("overview");
   const [showImportModal, setShowImportModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const [disabledItems, setDisabledItems] = useState<Set<string>>(new Set());
@@ -827,10 +829,8 @@ function App() {
                   {
                     label: "+ Create Project",
                     onClick: () => {
-                      const name = prompt("Project name:");
-                      if (name?.trim()) {
-                        createProject(name.trim());
-                      }
+                      setShowNewProjectModal(true);
+                      setShowProjectDropdown(false);
                     },
                   },
                 ]}
@@ -1677,8 +1677,14 @@ function App() {
         onImportMatchstick={(json) => {
           const project = parseMatchstickJSON(json);
           if (project) {
-            createProjectFromImport(project);
-            addToast('Project imported successfully', 'success');
+            if (activeProject && project.root) {
+              const importedFolder = { ...project.root, name: project.name || 'Imported' };
+              importToFolder(activeProject.root.id, importedFolder);
+              addToast('Imported into current project', 'success');
+            } else {
+              createProjectFromImport(project);
+              addToast('Project imported successfully', 'success');
+            }
           } else {
             addToast('Failed to parse Matchstick JSON', 'error');
           }
@@ -1686,8 +1692,14 @@ function App() {
         onImportOpenAPI={(spec) => {
           const partialProject = parseOpenAPISpec(spec);
           if (partialProject.name && partialProject.root) {
-            createProjectFromImport(partialProject);
-            addToast(`Imported ${partialProject.name}`, 'success');
+            if (activeProject) {
+              const importedFolder = { ...partialProject.root, name: partialProject.name };
+              importToFolder(activeProject.root.id, importedFolder);
+              addToast(`Imported ${partialProject.name} as folder`, 'success');
+            } else {
+              createProjectFromImport(partialProject);
+              addToast(`Imported ${partialProject.name}`, 'success');
+            }
           } else {
             addToast('Failed to parse OpenAPI spec', 'error');
           }
@@ -1696,8 +1708,14 @@ function App() {
           try {
             const partialProject = parsePostmanCollection(collection);
             if (partialProject.name && partialProject.root) {
-              createProjectFromImport(partialProject);
-              addToast(`Imported ${partialProject.name}`, 'success');
+              if (activeProject) {
+                const importedFolder = { ...partialProject.root, name: partialProject.name };
+                importToFolder(activeProject.root.id, importedFolder);
+                addToast(`Imported ${partialProject.name} as folder`, 'success');
+              } else {
+                createProjectFromImport(partialProject);
+                addToast(`Imported ${partialProject.name}`, 'success');
+              }
             } else {
               addToast('Failed to parse Postman collection', 'error');
             }
@@ -1709,13 +1727,57 @@ function App() {
           try {
             const partialProject = parseInsomniaExport(data);
             if (partialProject.name && partialProject.root) {
-              createProjectFromImport(partialProject);
-              addToast(`Imported ${partialProject.name}`, 'success');
+              if (activeProject) {
+                const importedFolder = { ...partialProject.root, name: partialProject.name };
+                importToFolder(activeProject.root.id, importedFolder);
+                addToast(`Imported ${partialProject.name} as folder`, 'success');
+              } else {
+                createProjectFromImport(partialProject);
+                addToast(`Imported ${partialProject.name}`, 'success');
+              }
             } else {
               addToast('Failed to parse Insomnia export', 'error');
             }
           } catch (err: any) {
             addToast(err.message || 'Failed to parse Insomnia export', 'error');
+          }
+        }}
+      />
+
+      <NewProjectModal
+        isOpen={showNewProjectModal}
+        onClose={() => setShowNewProjectModal(false)}
+        onCreateBlank={(name: string) => {
+          const id = createProject(name);
+          selectProject(id);
+          addToast(`Project "${name}" created`, 'success');
+        }}
+        onCreateFromPostman={(collection: object) => {
+          try {
+            const partialProject = parsePostmanCollection(collection);
+            if (partialProject.name && partialProject.root) {
+              const id = createProjectFromImport(partialProject);
+              selectProject(id);
+              addToast(`Imported ${partialProject.name} from Postman`, 'success');
+            } else {
+              addToast('Failed to parse Postman collection', 'error');
+            }
+          } catch (e: any) {
+            addToast(e.message || 'Import failed', 'error');
+          }
+        }}
+        onCreateFromInsomnia={(data: object) => {
+          try {
+            const partialProject = parseInsomniaExport(data);
+            if (partialProject.name && partialProject.root) {
+              const id = createProjectFromImport(partialProject);
+              selectProject(id);
+              addToast(`Imported ${partialProject.name} from Insomnia`, 'success');
+            } else {
+              addToast('Failed to parse Insomnia export', 'error');
+            }
+          } catch (e: any) {
+            addToast(e.message || 'Import failed', 'error');
           }
         }}
       />

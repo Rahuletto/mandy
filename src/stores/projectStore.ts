@@ -164,6 +164,7 @@ interface ProjectState {
   copyToClipboard: (id: string) => void;
   cutToClipboard: (id: string) => void;
   pasteItem: (targetFolderId: string) => void;
+  importToFolder: (parentFolderId: string, item: Folder | RequestFile) => void;
   createProjectFromImport: (project: Partial<Project>) => string;
   selectedLanguage: string;
   setSelectedLanguage: (lang: string) => void;
@@ -648,6 +649,18 @@ export const useProjectStore = create<ProjectState>()(
             set({ projects: [...projects] });
           }
         }
+      },
+
+      importToFolder: (parentFolderId, item) => {
+        set((state) => {
+          const project = state.projects.find((p) => p.id === state.activeProjectId);
+          if (!project) return state;
+          const folder = findFolder(project.root, parentFolderId);
+          if (folder) {
+            folder.children.push(item);
+          }
+          return { projects: [...state.projects] };
+        });
       },
 
       createProjectFromImport: (partialProject) => {
