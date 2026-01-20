@@ -16,6 +16,8 @@ interface ImportModalProps {
     onClose: () => void;
     onImportMatchstick: (json: string) => void;
     onImportOpenAPI: (spec: object) => void;
+    onImportPostman: (json: object) => void;
+    onImportInsomnia: (json: object) => void;
 }
 
 export function ImportModal({
@@ -23,6 +25,8 @@ export function ImportModal({
     onClose,
     onImportMatchstick,
     onImportOpenAPI,
+    onImportPostman,
+    onImportInsomnia,
 }: ImportModalProps) {
     const modalRef = useRef<HTMLDivElement>(null);
     const [selectedSource, setSelectedSource] = useState<ImportSource | null>(null);
@@ -88,6 +92,14 @@ export function ImportModal({
                 const spec = await response.json();
                 onImportOpenAPI(spec);
                 handleClose();
+            } else if (selectedSource === "postman") {
+                const collection = JSON.parse(fileContent);
+                onImportPostman(collection);
+                handleClose();
+            } else if (selectedSource === "insomnia") {
+                const data = JSON.parse(fileContent);
+                onImportInsomnia(data);
+                handleClose();
             }
         } catch (err: any) {
             setError(err.message || "Failed to import");
@@ -109,8 +121,8 @@ export function ImportModal({
     const importSources = [
         { id: "matchstick" as ImportSource, label: "Import from Matchstick", icon: TbFileDescription, color: "text-accent", available: true },
         { id: "openapi" as ImportSource, label: "Import from OpenAPI", icon: SiSwagger, color: "text-green-400", available: true },
-        { id: "postman" as ImportSource, label: "Import from Postman", icon: SiPostman, color: "text-orange-400", available: false },
-        { id: "insomnia" as ImportSource, label: "Import from Insomnia", icon: SiInsomnia, color: "text-purple-400", available: false },
+        { id: "postman" as ImportSource, label: "Import from Postman", icon: SiPostman, color: "text-orange-400", available: true },
+        { id: "insomnia" as ImportSource, label: "Import from Insomnia", icon: SiInsomnia, color: "text-purple-400", available: true },
     ];
 
     return (

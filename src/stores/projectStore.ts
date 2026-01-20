@@ -164,6 +164,7 @@ interface ProjectState {
   copyToClipboard: (id: string) => void;
   cutToClipboard: (id: string) => void;
   pasteItem: (targetFolderId: string) => void;
+  createProjectFromImport: (project: Partial<Project>) => string;
   selectedLanguage: string;
   setSelectedLanguage: (lang: string) => void;
 }
@@ -646,6 +647,41 @@ export const useProjectStore = create<ProjectState>()(
             set({ projects: [...projects] });
           }
         }
+      },
+
+      createProjectFromImport: (partialProject) => {
+        const id = partialProject.id || generateId();
+        const newProject: Project = {
+          id,
+          name: partialProject.name || "Imported Project",
+          description: partialProject.description,
+          root: partialProject.root || {
+            id: generateId(),
+            type: "folder" as const,
+            name: "Root",
+            children: [],
+            expanded: true,
+          },
+          environments: partialProject.environments || [
+            {
+              id: generateId(),
+              name: "Development",
+              variables: [],
+            },
+          ],
+          activeEnvironmentId: partialProject.activeEnvironmentId || null,
+          icon: partialProject.icon,
+          iconColor: partialProject.iconColor,
+          authorization: partialProject.authorization,
+        };
+
+        set((state) => ({
+          projects: [...state.projects, newProject],
+          activeProjectId: newProject.id,
+          activeRequestId: null,
+        }));
+
+        return newProject.id;
       },
     }),
     {

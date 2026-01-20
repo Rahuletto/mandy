@@ -1,13 +1,15 @@
 import { useEffect, useRef } from "react";
 import { HiX } from "react-icons/hi";
 import { TbArchive } from "react-icons/tb";
-import { SiSwagger } from "react-icons/si";
+import { SiSwagger, SiPostman, SiInsomnia } from "react-icons/si";
 
 interface ExportModalProps {
     isOpen: boolean;
     onClose: () => void;
     onExportOpenAPI: () => void;
     onExportMatchstick: () => void;
+    onExportPostman: () => void;
+    onExportInsomnia: () => void;
 }
 
 export function ExportModal({
@@ -15,6 +17,8 @@ export function ExportModal({
     onClose,
     onExportOpenAPI,
     onExportMatchstick,
+    onExportPostman,
+    onExportInsomnia,
 }: ExportModalProps) {
     const modalRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +39,13 @@ export function ExportModal({
     }, [isOpen, onClose]);
 
     if (!isOpen) return null;
+
+    const exportOptions = [
+        { id: "matchstick", label: "Matchstick Native", icon: TbArchive, onClick: onExportMatchstick },
+        { id: "openapi", label: "OpenAPI Spec", icon: SiSwagger, onClick: onExportOpenAPI },
+        { id: "postman", label: "Postman Collection", icon: SiPostman, onClick: onExportPostman },
+        { id: "insomnia", label: "Insomnia Export", icon: SiInsomnia, onClick: onExportInsomnia },
+    ];
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -61,21 +72,19 @@ export function ExportModal({
                 </div>
 
                 <div className="p-2 space-y-1">
-                    <button
-                        onClick={() => { onExportOpenAPI(); onClose(); }}
-                        className="w-full flex items-center gap-3 p-2.5 px-3 hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left group"
-                    >
-                        <SiSwagger size={16} className="text-white/40 group-hover:text-white/80 transition-colors" />
-                        <span className="flex-1 text-sm text-white/70 group-hover:text-white transition-colors">OpenAPI Spec</span>
-                    </button>
-
-                    <button
-                        onClick={() => { onExportMatchstick(); onClose(); }}
-                        className="w-full flex items-center gap-3 p-2.5 px-3 hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left group"
-                    >
-                        <TbArchive size={16} className="text-white/40 group-hover:text-white/80 transition-colors" />
-                        <span className="flex-1 text-sm text-white/70 group-hover:text-white transition-colors">Matchstick Native</span>
-                    </button>
+                    {exportOptions.map((option) => {
+                        const Icon = option.icon;
+                        return (
+                            <button
+                                key={option.id}
+                                onClick={() => { option.onClick(); onClose(); }}
+                                className="w-full flex items-center gap-3 p-2.5 px-3 hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left group"
+                            >
+                                <Icon size={16} className="text-white/40 group-hover:text-white/80 transition-colors" />
+                                <span className="flex-1 text-sm text-white/70 group-hover:text-white transition-colors">{option.label}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
         </div>

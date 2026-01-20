@@ -1,10 +1,9 @@
-import type { ApiRequest } from "../bindings";
+import type { ApiRequest } from "../../../bindings";
 
 export function generateCurl(request: ApiRequest): string {
     const parts = ["curl"];
 
     parts.push("--request", request.method);
-
     parts.push("--url", `'${request.url}'`);
 
     Object.entries(request.headers).forEach(([key, value]) => {
@@ -27,8 +26,15 @@ export function generateCurl(request: ApiRequest): string {
                 if (value) params.append(key, value);
             });
             parts.push("--data", `'${params.toString()}'`);
+        } else if ("Multipart" in request.body) {
+            for (const field of request.body.Multipart.fields) {
+                if ("Text" in field.value) {
+                    parts.push("--form", `'${field.name}=${field.value.Text}'`);
+                } else {
+                    parts.push("--form", `'${field.name}=@${field.value.File.filename || "file"}'`);
+                }
+            }
         }
-        // Add other body types if needed
     }
 
     return parts.join(" \\\n  ");

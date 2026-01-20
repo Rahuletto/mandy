@@ -26,7 +26,8 @@ import { SizePopover } from "./components/popovers/SizePopover";
 import { ProtocolToggle } from "./components/ProtocolToggle";
 import { RequestOverview } from "./components/RequestOverview";
 import { ProjectOverview } from "./components/ProjectOverview";
-import { parseOpenAPISpec, generateOpenAPISpec, exportToMatchstickJSON, parseMatchstickJSON } from "./utils/openapi";
+
+import { parseOpenAPISpec, generateOpenAPISpec, exportToMatchstickJSON, parseMatchstickJSON, generatePostmanCollection, parsePostmanCollection, generateInsomniaExport, parseInsomniaExport } from "./utils/migration";
 import { useProjectStore } from "./stores/projectStore";
 import { useToastStore } from "./stores/toastStore";
 import "./App.css";
@@ -39,6 +40,7 @@ function App() {
     setActiveRequestId,
     selectProject,
     createProject,
+    createProjectFromImport,
     renameProject,
     updateProjectIcon,
     updateProjectIconColor,
@@ -1595,6 +1597,54 @@ function App() {
             }
           }
         }}
+        onExportPostman={async () => {
+          if (activeProject) {
+            try {
+              const collection = generatePostmanCollection(activeProject);
+              const content = JSON.stringify(collection, null, 2);
+
+              const filePath = await save({
+                filters: [{
+                  name: 'Postman Collection',
+                  extensions: ['json']
+                }],
+                defaultPath: `${activeProject.name}.postman_collection.json`
+              });
+
+              if (filePath) {
+                await writeTextFile(filePath, content);
+                addToast('Exported as Postman Collection', 'success');
+              }
+            } catch (err) {
+              console.error(err);
+              addToast('Failed to export Postman Collection', 'error');
+            }
+          }
+        }}
+        onExportInsomnia={async () => {
+          if (activeProject) {
+            try {
+              const data = generateInsomniaExport(activeProject);
+              const content = JSON.stringify(data, null, 2);
+
+              const filePath = await save({
+                filters: [{
+                  name: 'Insomnia Export',
+                  extensions: ['json']
+                }],
+                defaultPath: `${activeProject.name}.insomnia.json`
+              });
+
+              if (filePath) {
+                await writeTextFile(filePath, content);
+                addToast('Exported as Insomnia Export', 'success');
+              }
+            } catch (err) {
+              console.error(err);
+              addToast('Failed to export Insomnia Export', 'error');
+            }
+          }
+        }}
       />
 
       {/* Import Modal */}
@@ -1604,8 +1654,8 @@ function App() {
         onImportMatchstick={(json) => {
           const project = parseMatchstickJSON(json);
           if (project) {
+            createProjectFromImport(project);
             addToast('Project imported successfully', 'success');
-            // TODO: Add createProjectFromImport action to store
           } else {
             addToast('Failed to parse Matchstick JSON', 'error');
           }
@@ -1613,10 +1663,36 @@ function App() {
         onImportOpenAPI={(spec) => {
           const partialProject = parseOpenAPISpec(spec);
           if (partialProject.name && partialProject.root) {
+            createProjectFromImport(partialProject);
             addToast(`Imported ${partialProject.name}`, 'success');
-            // TODO: Add createProjectFromImport action to store
           } else {
             addToast('Failed to parse OpenAPI spec', 'error');
+          }
+        }}
+        onImportPostman={(collection) => {
+          try {
+            const partialProject = parsePostmanCollection(collection);
+            if (partialProject.name && partialProject.root) {
+              createProjectFromImport(partialProject);
+              addToast(`Imported ${partialProject.name}`, 'success');
+            } else {
+              addToast('Failed to parse Postman collection', 'error');
+            }
+          } catch (err: any) {
+            addToast(err.message || 'Failed to parse Postman collection', 'error');
+          }
+        }}
+        onImportInsomnia={(data) => {
+          try {
+            const partialProject = parseInsomniaExport(data);
+            if (partialProject.name && partialProject.root) {
+              createProjectFromImport(partialProject);
+              addToast(`Imported ${partialProject.name}`, 'success');
+            } else {
+              addToast('Failed to parse Insomnia export', 'error');
+            }
+          } catch (err: any) {
+            addToast(err.message || 'Failed to parse Insomnia export', 'error');
           }
         }}
       />
