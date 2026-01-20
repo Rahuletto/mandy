@@ -113,7 +113,7 @@ export function AuthEditor({
                                     placeholder="Username"
                                     availableVariables={availableVariables}
                                     disabled={disabled}
-                                    className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 transition-all focus-within:border-accent/30"
+                                    className="w-full bg-white/5 border border-white/5 rounded-lg py-2.5 transition-all focus-within:border-accent/30"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -125,7 +125,7 @@ export function AuthEditor({
                                     placeholder="Password"
                                     availableVariables={availableVariables}
                                     disabled={disabled}
-                                    className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 transition-all focus-within:border-accent/30"
+                                    className="w-full bg-white/5 border border-white/5 rounded-lg py-2.5 transition-all focus-within:border-accent/30"
                                 />
                             </div>
                         </>
@@ -140,7 +140,7 @@ export function AuthEditor({
                                 placeholder="Token"
                                 availableVariables={availableVariables}
                                 disabled={disabled}
-                                className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 font-mono transition-all focus-within:border-accent/30"
+                                className="w-full bg-white/5 border border-white/5 rounded-lg py-2.5 transition-all focus-within:border-accent/30"
                             />
                         </div>
                     )}
@@ -155,7 +155,7 @@ export function AuthEditor({
                                     placeholder="e.g. X-API-Key"
                                     availableVariables={availableVariables}
                                     disabled={disabled}
-                                    className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 transition-all focus-within:border-accent/30"
+                                    className="w-full bg-white/5 border border-white/5 rounded-lg py-2.5 transition-all focus-within:border-accent/30"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -166,7 +166,7 @@ export function AuthEditor({
                                     placeholder="Value"
                                     availableVariables={availableVariables}
                                     disabled={disabled}
-                                    className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 transition-all focus-within:border-accent/30"
+                                    className="w-full bg-white/5 border border-white/5 rounded-lg py-2.5 transition-all focus-within:border-accent/30"
                                 />
                             </div>
                             <div className="space-y-1.5">

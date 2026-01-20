@@ -156,11 +156,11 @@ export function EnvInput({
         onFocus={handleFocus}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className={`flex-1 text-xs text-white/80 focus:outline-none whitespace-pre leading-normal relative z-10 ${disabled ? "pointer-events-none" : ""}`}
+        className={`flex-1 px-3 text-xs text-white/80 focus:outline-none whitespace-pre leading-normal relative z-10 ${disabled ? "pointer-events-none" : ""}`}
         suppressContentEditableWarning
       />
       {!value && !isFocused && (
-        <div className="absolute left-0 text-xs text-white/20 pointer-events-none select-none">
+        <div className="absolute left-3 text-xs text-white/20 pointer-events-none select-none">
           {placeholder}
         </div>
       )}
