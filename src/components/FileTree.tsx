@@ -455,8 +455,9 @@ export function FileTree({
 
     if (item.type === "folder") {
       return [
-        { label: "Add Request", onClick: () => onAddRequest(item.id) },
-        { label: "Add Folder", onClick: () => onAddFolder(item.id) },
+        { label: "New Request", onClick: () => onAddRequest(item.id) },
+        { label: "", onClick: () => { }, divider: true },
+        { label: "New Folder", onClick: () => onAddFolder(item.id) },
         { label: "", onClick: () => { }, divider: true },
         ...commonActions,
         { label: "Sort by Method", onClick: () => onSort(item.id, "method") },
@@ -528,7 +529,7 @@ export function FileTree({
           x={contextMenu.x}
           y={contextMenu.y}
           items={contextMenu.filterAddOnly
-            ? getContextMenuItems(contextMenu.item).filter(i => i.label?.startsWith("Add"))
+            ? getContextMenuItems(contextMenu.item).slice(0, 3)
             : getContextMenuItems(contextMenu.item)
           }
           onClose={() => setContextMenu(null)}

@@ -115,6 +115,7 @@ export function Sidebar({
         label: "New Request",
         onClick: () => onAddRequest(activeProject.root.id),
       },
+      { label: "", onClick: () => { }, divider: true },
       {
         label: "New Folder",
         onClick: () => onAddFolder(activeProject.root.id),
