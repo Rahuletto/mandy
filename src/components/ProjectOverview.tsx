@@ -121,7 +121,7 @@ function RequestDetails({
         return "shell";
     }, [selectedLanguage]);
 
-    const borderRadiusClasses = isFirstInGroup && isLastInGroup ? "rounded-xl" : isFirstInGroup ? "rounded-t-xl" : isLastInGroup ? "rounded-b-xl" : "";
+    const borderRadiusClasses = isFirstInGroup && isLastInGroup ? "rounded-xl" : isFirstInGroup ? "rounded-t-xl rounded-md" : isLastInGroup ? "rounded-b-xl rounded-md" : "rounded-md";
 
     return (
         <div className={`group/card flex flex-col bg-white/[0.02] border-x border-b first:border-t border-white/5 ${borderRadiusClasses} overflow-hidden hover:bg-white/[0.04] transition-all relative`}>
