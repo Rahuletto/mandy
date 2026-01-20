@@ -405,6 +405,12 @@ function App() {
 
       const isGet = activeRequest.request.method === "GET";
 
+      // Determine effective auth (inherited from project or request's own)
+      const hasProjectAuth = activeProject?.authorization && activeProject.authorization !== "None";
+      const effectiveAuth = activeRequest.useInheritedAuth && hasProjectAuth
+        ? activeProject!.authorization!
+        : activeRequest.request.auth;
+
       const resolvedRequest = {
         ...activeRequest.request,
         url: resolvedUrl,
@@ -412,6 +418,7 @@ function App() {
         cookies: resolvedCookies,
         query_params: {},
         body: isGet ? "None" : activeRequest.request.body,
+        auth: effectiveAuth,
       };
       const resp = await sendRequest(resolvedRequest);
       setRequestResponse(activeRequest.id, resp);
@@ -534,6 +541,14 @@ function App() {
     updateRequest(activeRequest.id, (r) => ({
       ...r,
       request: { ...r.request, auth },
+    }));
+  }
+
+  function updateAuthInheritance(inherit: boolean) {
+    if (!activeRequest) return;
+    updateRequest(activeRequest.id, (r) => ({
+      ...r,
+      useInheritedAuth: inherit,
     }));
   }
 
@@ -969,10 +984,11 @@ function App() {
                 if (updates.name) renameProject(activeProject.id, updates.name);
                 if (updates.icon) updateProjectIcon(activeProject.id, updates.icon);
                 if (updates.iconColor) updateProjectIconColor(activeProject.id, updates.iconColor);
-                if (updates.description !== undefined || updates.baseUrl !== undefined) {
+                if (updates.description !== undefined || updates.baseUrl !== undefined || updates.authorization !== undefined) {
                   updateProjectConfig(activeProject.id, {
                     description: updates.description,
-                    baseUrl: updates.baseUrl
+                    baseUrl: updates.baseUrl,
+                    authorization: updates.authorization
                   });
                 }
               }}
@@ -1071,6 +1087,13 @@ function App() {
                           auth={activeRequest.request.auth}
                           onChange={updateAuth}
                           availableVariables={getActiveEnvironmentVariables().map(v => v.key)}
+                          projectAuth={activeProject?.authorization}
+                          isInherited={activeRequest.useInheritedAuth ?? true}
+                          onInheritChange={updateAuthInheritance}
+                          onOpenProjectSettings={() => {
+                            setProjectOverviewTab("configuration");
+                            setShowProjectOverview(true);
+                          }}
                         />
                       )}
                       {activeTab === "params" && (

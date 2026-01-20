@@ -1,4 +1,4 @@
-import type { ApiRequest, ApiResponse } from "../bindings";
+import type { ApiRequest, ApiResponse, AuthType } from "../bindings";
 
 export interface EnvironmentVariable {
   id: string;
@@ -21,6 +21,7 @@ export interface RequestFile {
   propertyDescriptions?: Record<string, string>;
   request: ApiRequest;
   response: ApiResponse | null;
+  useInheritedAuth?: boolean; // true = inherit from project, false/undefined = use request's own auth
 }
 
 export interface Folder {
@@ -31,15 +32,6 @@ export interface Folder {
   expanded?: boolean;
 }
 
-export interface ProjectAuthorization {
-  type: "none" | "bearer" | "basic" | "api-key";
-  token?: string;
-  username?: string;
-  password?: string;
-  headerName?: string;
-  headerValue?: string;
-}
-
 export interface Project {
   id: string;
   name: string;
@@ -47,7 +39,7 @@ export interface Project {
   icon?: string;
   iconColor?: string;
   baseUrl?: string;
-  authorization?: ProjectAuthorization;
+  authorization?: AuthType; // Project-level authorization
   root: Folder;
   environments: Environment[];
   activeEnvironmentId: string | null;

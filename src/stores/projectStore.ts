@@ -402,6 +402,7 @@ export const useProjectStore = create<ProjectState>()(
               name,
               request: createDefaultRequest(),
               response: null,
+              useInheritedAuth: true,
             });
           }
           return { projects: [...state.projects], activeRequestId: newId };

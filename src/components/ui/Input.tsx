@@ -12,6 +12,7 @@ interface EnvInputProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
   availableVariables?: string[];
   type?: string;
+  disabled?: boolean;
 }
 
 function buildHighlightedHtml(value: string, availableVariables: string[], masked: boolean): string {
@@ -45,6 +46,7 @@ export function EnvInput({
   onKeyDown,
   availableVariables = [],
   type = "text",
+  disabled = false,
 }: EnvInputProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -68,6 +70,7 @@ export function EnvInput({
   }, [highlightedHtml, isFocused, value]);
 
   const handleInput = useCallback(() => {
+    if (disabled) return;
     if (editorRef.current) {
       const text = editorRef.current.innerText || '';
       if (text.includes('\n')) {
@@ -78,22 +81,31 @@ export function EnvInput({
       }
       onChange(text);
     }
-  }, [onChange]);
+  }, [onChange, disabled]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    if (disabled) {
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
     const text = e.clipboardData.getData('text/plain').replace(/\n/g, ' ');
     document.execCommand('insertText', false, text);
-  }, []);
+  }, [disabled]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (disabled) {
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
       onKeyDown?.(e);
     }
-  }, [onKeyDown]);
+  }, [onKeyDown, disabled]);
 
   const handleFocus = useCallback(() => {
+    if (disabled) return;
     setIsFocused(true);
 
     if (editorRef.current) {
@@ -111,17 +123,17 @@ export function EnvInput({
         }
       });
     }
-  }, [value]);
+  }, [value, disabled]);
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
   }, []);
 
   return (
-    <div className={`relative flex-1 flex items-center ${className}`}>
+    <div className={`relative flex-1 flex items-center ${className} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}>
       <div
         ref={editorRef}
-        contentEditable
+        contentEditable={!disabled}
         spellCheck={false}
         autoCapitalize="off"
         autoCorrect="off"
@@ -133,7 +145,7 @@ export function EnvInput({
         onFocus={handleFocus}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="flex-1 text-xs text-white/80 focus:outline-none whitespace-pre leading-normal relative z-10"
+        className={`flex-1 text-xs text-white/80 focus:outline-none whitespace-pre leading-normal relative z-10 ${disabled ? "pointer-events-none" : ""}`}
         suppressContentEditableWarning
       />
       {!value && !isFocused && (
@@ -146,7 +158,8 @@ export function EnvInput({
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className="ml-2 p-0.5 text-white/30 hover:text-white/60 transition-colors flex-shrink-0 z-20"
+          disabled={disabled}
+          className={`ml-2 p-0.5 text-white/30 transition-colors flex-shrink-0 z-20 ${disabled ? "" : "hover:text-white/60"}`}
         >
           {showPassword ? <BiHide size={14} /> : <BiShow size={14} />}
         </button>

@@ -1,10 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import type { Project, Folder, RequestFile } from "../types/project";
+import type { AuthType } from "../bindings";
 import { HiChevronRight, HiChevronDown, HiTrash } from "react-icons/hi";
 import { TabView, getIconComponent, IconPicker, Dialog, Dropdown, TypeLabel } from "./ui";
 import { CodeViewer } from "./CodeMirror";
 import { generateSnippet } from "../utils/snippets";
 import { KeyValueTable } from "./KeyValueTable";
+import { AuthEditor } from "./editors/AuthEditor";
 import { useProjectStore } from "../stores/projectStore";
 
 const LANGUAGES = [
@@ -559,6 +561,23 @@ export function ProjectOverview({
                                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-accent/50"
                             />
                             <p className="text-[10px] text-white/30 mt-1">Prepended to relative URLs</p>
+                        </div>
+
+                        <div className="pt-6 border-t border-white/5">
+                            <label className="block text-xs font-medium text-white/50 mb-2">Project Authorization</label>
+                            <p className="text-[10px] text-white/30 mb-4">
+                                Set default authorization for all requests in this project. Requests can inherit this auth or override it with their own.
+                            </p>
+                            <div className="bg-white/[0.02] border border-white/10 rounded-xl overflow-hidden">
+                                <AuthEditor
+                                    auth={project.authorization || "None"}
+                                    onChange={(auth: AuthType) => onUpdateProject({ authorization: auth })}
+                                    isProject={true}
+                                    availableVariables={project.environments
+                                        .find(e => e.id === project.activeEnvironmentId)
+                                        ?.variables.map(v => v.key) || []}
+                                />
+                            </div>
                         </div>
 
                         <div className="pt-6 border-t border-white/5">

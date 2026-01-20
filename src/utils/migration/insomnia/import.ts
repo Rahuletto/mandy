@@ -171,7 +171,8 @@ function parseInsomniaRequest(resource: InsomniaRequest): RequestFile {
         name: resource.name,
         description: resource.description,
         request: apiRequest,
-        response: null
+        response: null,
+        useInheritedAuth: !resource.authentication || resource.authentication.type === "none"
     };
 }
 

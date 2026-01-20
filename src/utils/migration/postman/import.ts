@@ -200,7 +200,8 @@ function parsePostmanItem(item: PostmanItem): RequestFile {
         name: item.name,
         description: typeof item.description === "string" ? item.description : undefined,
         request: apiRequest,
-        response: null
+        response: null,
+        useInheritedAuth: !req.auth || req.auth.type === undefined
     };
 }
 
@@ -256,10 +257,12 @@ export function parsePostmanCollection(collection: any): Partial<Project> {
 
         environments.push({
             id: generateId(),
-            name: "Imported Variables",
+            name: "main",
             variables
         });
     }
+
+    const auth = collection.auth ? parsePostmanAuth(collection.auth) : undefined;
 
     return {
         name: collection.info.name || "Imported Collection",
@@ -268,6 +271,7 @@ export function parsePostmanCollection(collection: any): Partial<Project> {
             : undefined,
         root,
         environments,
-        activeEnvironmentId: environments.length > 0 ? environments[0].id : null
+        activeEnvironmentId: environments.length > 0 ? environments[0].id : null,
+        authorization: auth
     };
 }
