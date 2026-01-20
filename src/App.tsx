@@ -42,6 +42,7 @@ function App() {
     createProject,
     createProjectFromImport,
     importToFolder,
+    processItemForSecrets,
     renameProject,
     updateProjectIcon,
     updateProjectIconColor,
@@ -1676,14 +1677,15 @@ function App() {
         onClose={() => setShowImportModal(false)}
         onImportMatchstick={(json) => {
           const project = parseMatchstickJSON(json);
-          if (project) {
-            if (activeProject && project.root) {
+          if (project && project.root) {
+            const results = processItemForSecrets(project.root);
+            if (activeProject) {
               const importedFolder = { ...project.root, name: project.name || 'Imported' };
               importToFolder(activeProject.root.id, importedFolder);
-              addToast('Imported into current project', 'success');
+              addToast(`Imported into current project${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
             } else {
               createProjectFromImport(project);
-              addToast('Project imported successfully', 'success');
+              addToast(`Project imported successfully${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
             }
           } else {
             addToast('Failed to parse Matchstick JSON', 'error');
@@ -1692,13 +1694,14 @@ function App() {
         onImportOpenAPI={(spec) => {
           const partialProject = parseOpenAPISpec(spec);
           if (partialProject.name && partialProject.root) {
+            const results = processItemForSecrets(partialProject.root);
             if (activeProject) {
               const importedFolder = { ...partialProject.root, name: partialProject.name };
               importToFolder(activeProject.root.id, importedFolder);
-              addToast(`Imported ${partialProject.name} as folder`, 'success');
+              addToast(`Imported ${partialProject.name} as folder${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
             } else {
               createProjectFromImport(partialProject);
-              addToast(`Imported ${partialProject.name}`, 'success');
+              addToast(`Imported ${partialProject.name}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
             }
           } else {
             addToast('Failed to parse OpenAPI spec', 'error');
@@ -1708,13 +1711,14 @@ function App() {
           try {
             const partialProject = parsePostmanCollection(collection);
             if (partialProject.name && partialProject.root) {
+              const results = processItemForSecrets(partialProject.root);
               if (activeProject) {
                 const importedFolder = { ...partialProject.root, name: partialProject.name };
                 importToFolder(activeProject.root.id, importedFolder);
-                addToast(`Imported ${partialProject.name} as folder`, 'success');
+                addToast(`Imported ${partialProject.name} as folder${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
               } else {
                 createProjectFromImport(partialProject);
-                addToast(`Imported ${partialProject.name}`, 'success');
+                addToast(`Imported ${partialProject.name}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
               }
             } else {
               addToast('Failed to parse Postman collection', 'error');
@@ -1727,13 +1731,14 @@ function App() {
           try {
             const partialProject = parseInsomniaExport(data);
             if (partialProject.name && partialProject.root) {
+              const results = processItemForSecrets(partialProject.root);
               if (activeProject) {
                 const importedFolder = { ...partialProject.root, name: partialProject.name };
                 importToFolder(activeProject.root.id, importedFolder);
-                addToast(`Imported ${partialProject.name} as folder`, 'success');
+                addToast(`Imported ${partialProject.name} as folder${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
               } else {
                 createProjectFromImport(partialProject);
-                addToast(`Imported ${partialProject.name}`, 'success');
+                addToast(`Imported ${partialProject.name}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
               }
             } else {
               addToast('Failed to parse Insomnia export', 'error');
@@ -1756,9 +1761,10 @@ function App() {
           try {
             const partialProject = parsePostmanCollection(collection);
             if (partialProject.name && partialProject.root) {
+              const results = processItemForSecrets(partialProject.root);
               const id = createProjectFromImport(partialProject);
               selectProject(id);
-              addToast(`Imported ${partialProject.name} from Postman`, 'success');
+              addToast(`Imported ${partialProject.name} from Postman${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
             } else {
               addToast('Failed to parse Postman collection', 'error');
             }
@@ -1770,9 +1776,10 @@ function App() {
           try {
             const partialProject = parseInsomniaExport(data);
             if (partialProject.name && partialProject.root) {
+              const results = processItemForSecrets(partialProject.root);
               const id = createProjectFromImport(partialProject);
               selectProject(id);
-              addToast(`Imported ${partialProject.name} from Insomnia`, 'success');
+              addToast(`Imported ${partialProject.name} from Insomnia${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
             } else {
               addToast('Failed to parse Insomnia export', 'error');
             }

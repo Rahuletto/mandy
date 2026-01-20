@@ -3,6 +3,8 @@ import { BiShow, BiHide } from "react-icons/bi";
 import { TbAlertTriangle } from "react-icons/tb";
 import { escapeHtml } from "../../utils/html";
 import { HoverPopover } from "./HoverPopover";
+import { useProjectStore } from "../../stores/projectStore";
+import { useToastStore } from "../../stores/toastStore";
 
 interface EnvInputProps {
   value: string;
@@ -89,8 +91,17 @@ export function EnvInput({
       return;
     }
     e.preventDefault();
-    const text = e.clipboardData.getData('text/plain').replace(/\n/g, ' ');
-    document.execCommand('insertText', false, text);
+    const rawText = e.clipboardData.getData('text/plain').replace(/\n/g, ' ');
+
+    const { processStringForSecrets } = useProjectStore.getState();
+    const { addToast } = useToastStore.getState();
+    const { processedText, detectedCount } = processStringForSecrets(rawText);
+
+    if (detectedCount > 0) {
+      addToast(`${detectedCount} secret${detectedCount > 1 ? 's' : ''} secured and converted to variable${detectedCount > 1 ? 's' : ''}`, 'success');
+    }
+
+    document.execCommand('insertText', false, processedText);
   }, [disabled]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -365,12 +376,20 @@ export function UrlInput({
     e.preventDefault();
     const singleLineText = rawText.replace(/\n/g, ' ').trim();
 
+    const { processStringForSecrets } = useProjectStore.getState();
+    const { addToast } = useToastStore.getState();
+    const { processedText, detectedCount } = processStringForSecrets(singleLineText);
+
+    if (detectedCount > 0) {
+      addToast(`${detectedCount} secret${detectedCount > 1 ? 's' : ''} secured and converted to variable${detectedCount > 1 ? 's' : ''}`, 'success');
+    }
+
     if (editorRef.current) {
       const sel = window.getSelection();
       if (sel && sel.rangeCount > 0) {
         sel.deleteFromDocument();
       }
-      document.execCommand('insertText', false, singleLineText);
+      document.execCommand('insertText', false, processedText);
     }
   }, [onCurlPaste, disabled]);
 

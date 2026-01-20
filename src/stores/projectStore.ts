@@ -3,6 +3,8 @@ import { persist } from "zustand/middleware";
 import type { Project, Folder, RequestFile, TreeItem, SortMode, Environment, EnvironmentVariable } from "../types/project";
 import type { ApiResponse } from "../bindings";
 import { createDefaultRequest } from "../reqhelpers/rest";
+import { findSecrets } from "../utils/secretDetection";
+import type { AuthType } from "../bindings";
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -127,7 +129,7 @@ interface ProjectState {
   renameProject: (id: string, name: string) => void;
   updateProjectIcon: (id: string, icon: string) => void;
   updateProjectIconColor: (id: string, color: string) => void;
-  updateProjectConfig: (id: string, config: { description?: string; baseUrl?: string; authorization?: Project["authorization"] }) => void;
+  updateProjectConfig: (id: string, config: { description?: string; baseUrl?: string; authorization?: AuthType }) => void;
   deleteProject: (id: string) => void;
   getActiveProject: () => Project | null;
 
@@ -165,6 +167,9 @@ interface ProjectState {
   cutToClipboard: (id: string) => void;
   pasteItem: (targetFolderId: string) => void;
   importToFolder: (parentFolderId: string, item: Folder | RequestFile) => void;
+  processItemForSecrets: (item: TreeItem) => { detected: number; variablesCreated: number };
+  ensureVariableForSecret: (value: string, typeHint: string) => string;
+  processStringForSecrets: (text: string) => { processedText: string; detectedCount: number };
   createProjectFromImport: (project: Partial<Project>) => string;
   selectedLanguage: string;
   setSelectedLanguage: (lang: string) => void;
@@ -431,6 +436,143 @@ export const useProjectStore = create<ProjectState>()(
         return newId;
       },
 
+      ensureVariableForSecret: (value, typeHint) => {
+        const { projects, activeProjectId } = get();
+        const project = projects.find(p => p.id === activeProjectId);
+        if (!project) return value;
+
+        const mainEnv = project.environments.find(e => e.name === "main") || project.environments[0];
+        if (!mainEnv) return value;
+
+        // Check if value already exists as a variable
+        const existing = mainEnv.variables.find(v => v.value === value);
+        if (existing) return `{{${existing.key}}}`;
+
+        // Create new variable
+        const baseKey = typeHint.toUpperCase().replace(/\s+/g, "_");
+        let key = baseKey;
+        let counter = 1;
+        while (mainEnv.variables.some(v => v.key === key)) {
+          key = `${baseKey}_${counter++}`;
+        }
+
+        const newVarId = generateId();
+        set((state) => ({
+          projects: state.projects.map((p) => {
+            if (p.id !== activeProjectId) return p;
+            return {
+              ...p,
+              environments: p.environments.map((e) => {
+                if (e.id !== mainEnv.id) return e;
+                return {
+                  ...e,
+                  variables: [...e.variables, { id: newVarId, key, value, enabled: true }]
+                };
+              })
+            };
+          })
+        }));
+
+        return `{{${key}}}`;
+      },
+
+      processStringForSecrets: (text: string) => {
+        if (!text) return { processedText: text, detectedCount: 0 };
+        const secrets = findSecrets(text);
+        if (secrets.length === 0) return { processedText: text, detectedCount: 0 };
+
+        let processedText = text;
+        let detectedCount = 0;
+        const { ensureVariableForSecret } = get();
+        const sortedSecrets = [...secrets].sort((a, b) => b.value.length - a.value.length);
+
+        for (const secret of sortedSecrets) {
+          const varPlaceholder = ensureVariableForSecret(secret.value, secret.patternName);
+          if (varPlaceholder !== secret.value) {
+            processedText = processedText.replace(new RegExp(escapeRegExp(secret.value), 'g'), varPlaceholder);
+            detectedCount++;
+          }
+        }
+        return { processedText, detectedCount };
+      },
+
+      processItemForSecrets: (item) => {
+        let detectedCount = 0;
+        const { ensureVariableForSecret } = get();
+
+        const processString = (text: string | undefined): string => {
+          if (!text) return text || "";
+          const secrets = findSecrets(text);
+          if (secrets.length === 0) return text;
+
+          let processedText = text;
+          const sortedSecrets = [...secrets].sort((a, b) => b.value.length - a.value.length);
+
+          for (const secret of sortedSecrets) {
+            const varPlaceholder = ensureVariableForSecret(secret.value, secret.patternName);
+            if (varPlaceholder !== secret.value) {
+              processedText = processedText.replace(new RegExp(escapeRegExp(secret.value), 'g'), varPlaceholder);
+              detectedCount++;
+            }
+          }
+          return processedText;
+        };
+
+        const processRequest = (req: RequestFile) => {
+          req.name = processString(req.name);
+          req.request.url = processString(req.request.url);
+
+          const newHeaders: Record<string, string> = {};
+          for (const [k, v] of Object.entries(req.request.headers)) {
+            newHeaders[k] = processString(v);
+          }
+          req.request.headers = newHeaders;
+
+          const newParams: Record<string, string> = {};
+          for (const [k, v] of Object.entries(req.request.query_params)) {
+            newParams[k] = processString(v);
+          }
+          req.request.query_params = newParams;
+
+          if (req.request.auth && req.request.auth !== "None") {
+            const auth = req.request.auth;
+            if ("Basic" in auth) {
+              auth.Basic.username = processString(auth.Basic.username);
+              auth.Basic.password = processString(auth.Basic.password);
+            } else if ("Bearer" in auth) {
+              auth.Bearer.token = processString(auth.Bearer.token);
+            } else if ("ApiKey" in auth) {
+              auth.ApiKey.key = processString(auth.ApiKey.key);
+              auth.ApiKey.value = processString(auth.ApiKey.value);
+            }
+          }
+
+          if (req.request.body && typeof req.request.body !== "string") {
+            if ("Raw" in req.request.body) {
+              req.request.body.Raw.content = processString(req.request.body.Raw.content);
+            } else if ("FormUrlEncoded" in req.request.body) {
+              const newFields: Record<string, string> = {};
+              for (const [k, v] of Object.entries(req.request.body.FormUrlEncoded.fields)) {
+                newFields[k] = processString(v);
+              }
+              req.request.body.FormUrlEncoded.fields = newFields;
+            }
+          }
+        };
+
+        const processNode = (node: TreeItem) => {
+          if (node.type === "request") {
+            processRequest(node);
+          } else {
+            node.name = processString(node.name);
+            node.children.forEach(processNode);
+          }
+        };
+
+        processNode(item);
+        return { detected: detectedCount, variablesCreated: detectedCount };
+      },
+
       renameItem: (itemId, newName) => {
         set((state) => {
           const project = state.projects.find((p) => p.id === state.activeProjectId);
@@ -499,7 +641,6 @@ export const useProjectStore = create<ProjectState>()(
           const project = state.projects.find((p) => p.id === state.activeProjectId);
           if (!project) return state;
 
-          // Don't move if target is the item itself or its descendant
           const item = findItem(project.root, itemId);
           if (!item) return state;
           if (item.id === targetFolderId) return state;
@@ -513,33 +654,15 @@ export const useProjectStore = create<ProjectState>()(
           const newProjects = state.projects.map((p) => {
             if (p.id !== state.activeProjectId) return p;
 
-            // Deep clone the root to avoid in-place mutations
             const newRoot = JSON.parse(JSON.stringify(p.root)) as Folder;
-
-            // Find references in the new tree
             const newSourceParent = findFolder(newRoot, sourceParent.id);
             const newTargetFolder = findFolder(newRoot, targetFolderId);
             const itemToMove = findItem(newRoot, itemId);
 
             if (!newSourceParent || !newTargetFolder || !itemToMove) return p;
 
-            // Remove from source
             newSourceParent.children = newSourceParent.children.filter((c) => c.id !== itemId);
-
-            // Add to target
-            // If we're moving into the same folder, we might need to adjust the index
-            let finalIndex = targetIndex;
-            if (newSourceParent.id === newTargetFolder.id) {
-              const oldIndex = sourceParent.children.findIndex(c => c.id === itemId);
-              if (oldIndex < targetIndex) {
-                // The removal of the item shifted the remaining items left
-                // However, usually targetIndex comes and represents the intended position
-                // in the list *including* the item. If it's already removed, we stay same.
-                // Actually, let's just use splice and assume targetIndex is correct relative to the new array
-              }
-            }
-
-            newTargetFolder.children.splice(finalIndex, 0, itemToMove);
+            newTargetFolder.children.splice(targetIndex, 0, itemToMove);
 
             return { ...p, root: newRoot };
           });
@@ -641,10 +764,10 @@ export const useProjectStore = create<ProjectState>()(
           moveItem(clipboard.id, targetFolderId, 0);
           set({ clipboard: null });
         } else {
-          // Copy logic
           const targetFolder = findFolder(project.root, targetFolderId);
           if (targetFolder) {
             const cloned = cloneTreeItem(item);
+            get().processItemForSecrets(cloned);
             targetFolder.children.push(cloned);
             set({ projects: [...projects] });
           }
@@ -668,10 +791,9 @@ export const useProjectStore = create<ProjectState>()(
         const newProject: Project = {
           id,
           name: partialProject.name || "Imported Project",
-          description: partialProject.description,
           root: partialProject.root || {
             id: generateId(),
-            type: "folder" as const,
+            type: "folder",
             name: "Root",
             children: [],
             expanded: true,
@@ -679,13 +801,15 @@ export const useProjectStore = create<ProjectState>()(
           environments: partialProject.environments || [
             {
               id: generateId(),
-              name: "Development",
+              name: "main",
               variables: [],
             },
           ],
           activeEnvironmentId: partialProject.activeEnvironmentId || null,
           icon: partialProject.icon,
           iconColor: partialProject.iconColor,
+          description: partialProject.description,
+          baseUrl: partialProject.baseUrl,
           authorization: partialProject.authorization,
         };
 
