@@ -16,11 +16,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  VscChevronRight,
-  VscChevronDown,
-  VscAdd,
-} from "react-icons/vsc";
+import { VscChevronRight, VscChevronDown, VscAdd } from "react-icons/vsc";
 import { FaFolder, FaFolderOpen } from "react-icons/fa6";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
 import { ContextMenu, MenuItem } from "./ui";
@@ -38,7 +34,11 @@ interface FileTreeProps {
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onSort: (folderId: string, mode: SortMode) => void;
-  onMoveItem: (itemId: string, targetFolderId: string, targetIndex: number) => void;
+  onMoveItem: (
+    itemId: string,
+    targetFolderId: string,
+    targetIndex: number,
+  ) => void;
   onCut: (id: string) => void;
   onCopy: (id: string) => void;
   onPaste: (parentId: string) => void;
@@ -67,7 +67,10 @@ function matchesSearch(item: TreeItem, query: string): boolean {
   return false;
 }
 
-function flattenTree(folder: Folder, depth: number = 0): { item: TreeItem; depth: number; parentId: string }[] {
+function flattenTree(
+  folder: Folder,
+  depth: number = 0,
+): { item: TreeItem; depth: number; parentId: string }[] {
   const result: { item: TreeItem; depth: number; parentId: string }[] = [];
   for (const child of folder.children) {
     result.push({ item: child, depth, parentId: folder.id });
@@ -113,13 +116,8 @@ function SortableItem({
   isOver,
   isCut,
 }: SortableItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: item.id });
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: item.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -135,8 +133,11 @@ function SortableItem({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group relative flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-colors ${isActive ? "bg-accent/20 text-accent font-medium" : "hover:bg-white/5 text-white/80"
-        } ${isOver && isFolder ? "bg-accent/10 outline outline-1 outline-accent/30" : ""}`}
+      className={`group relative flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-colors ${
+        isActive
+          ? "bg-accent/20 text-accent font-medium"
+          : "hover:bg-white/5 text-white/80"
+      } ${isOver && isFolder ? "bg-accent/10 outline outline-1 outline-accent/30" : ""}`}
       onClick={() => {
         if (item.type === "folder") {
           onSelect();
@@ -162,16 +163,27 @@ function SortableItem({
       {item.type === "folder" ? (
         <div className="flex items-center gap-1.5 shrink-0 mr-1">
           <span className="text-white/40">
-            {item.expanded ? <VscChevronDown size={14} /> : <VscChevronRight size={14} />}
+            {item.expanded ? (
+              <VscChevronDown size={14} />
+            ) : (
+              <VscChevronRight size={14} />
+            )}
           </span>
           <span className="text-white/60">
-            {item.expanded ? <FaFolderOpen size={16} /> : <FaFolder size={16} />}
+            {item.expanded ? (
+              <FaFolderOpen size={16} />
+            ) : (
+              <FaFolder size={16} />
+            )}
           </span>
         </div>
       ) : (
         <span
           className="font-mono text-[11px] font-bold shrink-0 mr-2 w-10 text-right"
-          style={{ color: METHOD_COLORS[(item as RequestFile).request.method] || "#888" }}
+          style={{
+            color:
+              METHOD_COLORS[(item as RequestFile).request.method] || "#888",
+          }}
         >
           {(item as RequestFile).request.method}
         </span>
@@ -232,13 +244,18 @@ function DragOverlayItem({ item }: { item: TreeItem; depth: number }) {
       {item.type === "folder" ? (
         <>
           <FaFolder size={16} className="text-white/60" />
-          <span className="truncate text-white/90 font-medium">{item.name}</span>
+          <span className="truncate text-white/90 font-medium">
+            {item.name}
+          </span>
         </>
       ) : (
         <>
           <span
             className="font-mono text-[10px] font-bold shrink-0 mr-1"
-            style={{ color: METHOD_COLORS[(item as RequestFile).request.method] || "#888" }}
+            style={{
+              color:
+                METHOD_COLORS[(item as RequestFile).request.method] || "#888",
+            }}
           >
             {(item as RequestFile).request.method}
           </span>
@@ -268,7 +285,12 @@ export function FileTree({
   searchQuery,
   unsavedIds,
 }: FileTreeProps) {
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: TreeItem; filterAddOnly?: boolean } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    item: TreeItem;
+    filterAddOnly?: boolean;
+  } | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -277,10 +299,12 @@ export function FileTree({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
-    })
+    }),
   );
 
-  const flatItems = flattenTree(root).filter(({ item }) => matchesSearch(item, searchQuery));
+  const flatItems = flattenTree(root).filter(({ item }) =>
+    matchesSearch(item, searchQuery),
+  );
   const itemIds = flatItems.map(({ item }) => item.id);
 
   useEffect(() => {
@@ -288,15 +312,18 @@ export function FileTree({
       const customEvent = e as CustomEvent;
       const itemId = customEvent.detail?.itemId;
       if (itemId) {
-        const item = flatItems.find(f => f.item.id === itemId)?.item;
+        const item = flatItems.find((f) => f.item.id === itemId)?.item;
         if (item) startRename(item);
       }
     };
-    window.addEventListener('trigger-rename', handleTriggerRename);
-    return () => window.removeEventListener('trigger-rename', handleTriggerRename);
+    window.addEventListener("trigger-rename", handleTriggerRename);
+    return () =>
+      window.removeEventListener("trigger-rename", handleTriggerRename);
   }, [flatItems]);
 
-  function findItemInTree(id: string): { item: TreeItem; depth: number } | null {
+  function findItemInTree(
+    id: string,
+  ): { item: TreeItem; depth: number } | null {
     const found = flatItems.find(({ item }) => item.id === id);
     return found ? { item: found.item, depth: found.depth } : null;
   }
@@ -329,11 +356,16 @@ export function FileTree({
       lastOverIdRef.current = overId;
     }
 
-    const activeData = flatItems.find(({ item }) => item.id === event.active.id);
+    const activeData = flatItems.find(
+      ({ item }) => item.id === event.active.id,
+    );
 
     if (overData.item.type === "folder") {
       // Use the same logic as handleDragEnd to decide if we're moving INTO or NEXT TO
-      if (!overData.item.expanded || (activeData && activeData.parentId !== overData.item.id)) {
+      if (
+        !overData.item.expanded ||
+        (activeData && activeData.parentId !== overData.item.id)
+      ) {
         setOverFolderId(overId);
         return;
       }
@@ -372,22 +404,30 @@ export function FileTree({
     // For now, moveItemAfter is consistent with current behavior but let's make it smarter
 
     // Find index of active and over in the flat list to see direction
-    const activeFlatIdx = flatItems.findIndex(f => f.item.id === active.id);
-    const overFlatIdx = flatItems.findIndex(f => f.item.id === overId);
+    const activeFlatIdx = flatItems.findIndex((f) => f.item.id === active.id);
+    const overFlatIdx = flatItems.findIndex((f) => f.item.id === overId);
 
     if (activeFlatIdx > overFlatIdx) {
       // Moving UP
-      onMoveItem(active.id as string, overData.parentId, findItemIndexInParent(overId, overData.parentId));
+      onMoveItem(
+        active.id as string,
+        overData.parentId,
+        findItemIndexInParent(overId, overData.parentId),
+      );
     } else {
       // Moving DOWN
-      onMoveItem(active.id as string, overData.parentId, findItemIndexInParent(overId, overData.parentId) + 1);
+      onMoveItem(
+        active.id as string,
+        overData.parentId,
+        findItemIndexInParent(overId, overData.parentId) + 1,
+      );
     }
   }
 
   function findItemIndexInParent(itemId: string, parentId: string): number {
     const parent = findFolderById(root, parentId);
     if (!parent) return 0;
-    return parent.children.findIndex(c => c.id === itemId);
+    return parent.children.findIndex((c) => c.id === itemId);
   }
 
   function findFolderById(folder: Folder, id: string): Folder | null {
@@ -401,7 +441,11 @@ export function FileTree({
     return null;
   }
 
-  function handleContextMenu(e: React.MouseEvent, item: TreeItem, filterAddOnly = false) {
+  function handleContextMenu(
+    e: React.MouseEvent,
+    item: TreeItem,
+    filterAddOnly = false,
+  ) {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, item, filterAddOnly });
   }
@@ -439,30 +483,30 @@ export function FileTree({
         disabled: !clipboard || item.type !== "folder",
         onClick: () => item.type === "folder" && onPaste(item.id),
       },
-      { label: "", onClick: () => { }, divider: true },
+      { label: "", onClick: () => {}, divider: true },
       {
         label: "Rename",
         onClick: () => startRename(item),
-        shortcut: getShortcutDisplay("RENAME")
+        shortcut: getShortcutDisplay("RENAME"),
       },
       {
         label: "Duplicate",
         onClick: () => onDuplicate(item.id),
-        shortcut: getSimpleShortcut("Duplicate")
+        shortcut: getSimpleShortcut("Duplicate"),
       },
-      { label: "", onClick: () => { }, divider: true },
+      { label: "", onClick: () => {}, divider: true },
     ];
 
     if (item.type === "folder") {
       return [
         { label: "New Request", onClick: () => onAddRequest(item.id) },
-        { label: "", onClick: () => { }, divider: true },
+        { label: "", onClick: () => {}, divider: true },
         { label: "New Folder", onClick: () => onAddFolder(item.id) },
-        { label: "", onClick: () => { }, divider: true },
+        { label: "", onClick: () => {}, divider: true },
         ...commonActions,
         { label: "Sort by Method", onClick: () => onSort(item.id, "method") },
         { label: "Sort A-Z", onClick: () => onSort(item.id, "alphabetical") },
-        { label: "", onClick: () => { }, divider: true },
+        { label: "", onClick: () => {}, divider: true },
         { label: "Delete", onClick: () => onDelete(item.id), danger: true },
       ];
     }
@@ -472,7 +516,7 @@ export function FileTree({
         label: "Delete",
         onClick: () => onDelete(item.id),
         danger: true,
-        shortcut: getSimpleShortcut("Delete")
+        shortcut: getSimpleShortcut("Delete"),
       },
     ];
   }
@@ -495,7 +539,10 @@ export function FileTree({
             Click + to add one.
           </div>
         ) : (
-          <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+          <SortableContext
+            items={itemIds}
+            strategy={verticalListSortingStrategy}
+          >
             {flatItems.map(({ item, depth }) => (
               <SortableItem
                 key={item.id}
@@ -505,7 +552,9 @@ export function FileTree({
                 isUnsaved={unsavedIds.has(item.id)}
                 onSelect={() => onSelect(item.id, item.type === "folder")}
                 onToggle={() => onToggleFolder(item.id)}
-                onContextMenu={(e, filterAddOnly) => handleContextMenu(e, item, filterAddOnly)}
+                onContextMenu={(e, filterAddOnly) =>
+                  handleContextMenu(e, item, filterAddOnly)
+                }
                 isRenaming={renamingId === item.id}
                 renameValue={renameValue}
                 setRenameValue={setRenameValue}
@@ -521,16 +570,19 @@ export function FileTree({
       </div>
 
       <DragOverlay>
-        {activeItem && <DragOverlayItem item={activeItem.item} depth={activeItem.depth} />}
+        {activeItem && (
+          <DragOverlayItem item={activeItem.item} depth={activeItem.depth} />
+        )}
       </DragOverlay>
 
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={contextMenu.filterAddOnly
-            ? getContextMenuItems(contextMenu.item).slice(0, 3)
-            : getContextMenuItems(contextMenu.item)
+          items={
+            contextMenu.filterAddOnly
+              ? getContextMenuItems(contextMenu.item).slice(0, 3)
+              : getContextMenuItems(contextMenu.item)
           }
           onClose={() => setContextMenu(null)}
         />

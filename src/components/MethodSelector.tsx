@@ -12,7 +12,15 @@ const METHOD_COLORS: Record<string, string> = {
   OPTIONS: "#06b6d4",
 };
 
-const METHODS: Methods[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+const METHODS: Methods[] = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+];
 
 interface MethodSelectorProps {
   value: Methods;
@@ -29,8 +37,10 @@ export function MethodSelector({ value, onChange }: MethodSelectorProps) {
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node;
       if (
-        buttonRef.current && !buttonRef.current.contains(target) &&
-        dropdownRef.current && !dropdownRef.current.contains(target)
+        buttonRef.current &&
+        !buttonRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
       ) {
         setIsOpen(false);
       }
@@ -68,33 +78,34 @@ export function MethodSelector({ value, onChange }: MethodSelectorProps) {
         {value}
       </button>
 
-      {isOpen && createPortal(
-        <div
-          ref={dropdownRef}
-          className="fixed bg-inset flex flex-col w-[100px] border border-white/10 rounded-lg shadow-xl py-1 z-[9999]"
-          style={{ top: dropdownPos.top, left: dropdownPos.left }}
-        >
-          {METHODS.map((method) => (
-            <button
-              type="button"
-              key={method}
-              onClick={() => {
-                onChange(method);
-                setIsOpen(false);
-              }}
-              className={` text-left px-3 py-1.5 text-xs font-bold font-mono transition-colors hover:bg-white/10 no-drag ${method === value ? "bg-white/5" : ""
+      {isOpen &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed bg-inset flex flex-col w-[100px] border border-white/10 rounded-lg shadow-xl py-1 z-[9999]"
+            style={{ top: dropdownPos.top, left: dropdownPos.left }}
+          >
+            {METHODS.map((method) => (
+              <button
+                type="button"
+                key={method}
+                onClick={() => {
+                  onChange(method);
+                  setIsOpen(false);
+                }}
+                className={` text-left px-3 py-1.5 text-xs font-bold font-mono transition-colors hover:bg-white/10 no-drag ${
+                  method === value ? "bg-white/5" : ""
                 }`}
-              style={{ color: METHOD_COLORS[method] }}
-            >
-              {method}
-            </button>
-          ))}
-        </div>,
-        document.body
-      )}
+                style={{ color: METHOD_COLORS[method] }}
+              >
+                {method}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
 
 export { METHOD_COLORS };
-

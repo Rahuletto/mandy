@@ -17,7 +17,15 @@ import { CodeViewer } from "./components/CodeMirror";
 import { BodyEditor } from "./components/editors/BodyEditor";
 import { AuthEditor } from "./components/editors/AuthEditor";
 import { Sidebar } from "./components/Sidebar";
-import { Dropdown, UrlInput, ToastContainer, Dialog, ExportModal, ImportModal, NewProjectModal } from "./components/ui";
+import {
+  Dropdown,
+  UrlInput,
+  ToastContainer,
+  Dialog,
+  ExportModal,
+  ImportModal,
+  NewProjectModal,
+} from "./components/ui";
 import { KeyValueTable } from "./components/KeyValueTable";
 
 import { MethodSelector } from "./components/MethodSelector";
@@ -27,7 +35,16 @@ import { ProtocolToggle } from "./components/ProtocolToggle";
 import { RequestOverview } from "./components/RequestOverview";
 import { ProjectOverview } from "./components/ProjectOverview";
 
-import { parseOpenAPISpec, generateOpenAPISpec, exportToMatchstickJSON, parseMatchstickJSON, generatePostmanCollection, parsePostmanCollection, generateInsomniaExport, parseInsomniaExport } from "./utils/migration";
+import {
+  parseOpenAPISpec,
+  generateOpenAPISpec,
+  exportToMatchstickJSON,
+  parseMatchstickJSON,
+  generatePostmanCollection,
+  parsePostmanCollection,
+  generateInsomniaExport,
+  parseInsomniaExport,
+} from "./utils/migration";
 import { useProjectStore } from "./stores/projectStore";
 import { useToastStore } from "./stores/toastStore";
 import "./App.css";
@@ -107,7 +124,9 @@ function App() {
   const [showEnvDropdown, setShowEnvDropdown] = useState(false);
 
   const [showProjectOverview, setShowProjectOverview] = useState(false);
-  const [projectOverviewTab, setProjectOverviewTab] = useState<"overview" | "configuration" | "variables">("overview");
+  const [projectOverviewTab, setProjectOverviewTab] = useState<
+    "overview" | "configuration" | "variables"
+  >("overview");
   const [showImportModal, setShowImportModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
@@ -167,7 +186,8 @@ function App() {
     let contentType = null;
     if (body !== "None") {
       if ("Raw" in body) contentType = body.Raw.content_type;
-      else if ("FormUrlEncoded" in body) contentType = "application/x-www-form-urlencoded";
+      else if ("FormUrlEncoded" in body)
+        contentType = "application/x-www-form-urlencoded";
       else if ("Multipart" in body) contentType = "multipart/form-data";
       else if ("Binary" in body) contentType = "application/octet-stream";
     }
@@ -185,12 +205,14 @@ function App() {
     }
 
     if (activeRequest.request.cookies.length > 0) {
-      const enabledCookies = activeRequest.request.cookies.filter(c => isItemEnabled("cookie", c.name));
+      const enabledCookies = activeRequest.request.cookies.filter((c) =>
+        isItemEnabled("cookie", c.name),
+      );
       if (enabledCookies.length > 0) {
         computed.push({
           id: "computed:cookie",
           key: "Cookie",
-          value: `${enabledCookies.length} cookie${enabledCookies.length > 1 ? 's' : ''}`,
+          value: `${enabledCookies.length} cookie${enabledCookies.length > 1 ? "s" : ""}`,
           description: "Generated from cookies",
           enabled: true,
           locked: true,
@@ -207,7 +229,7 @@ function App() {
         authValue = `Basic user:pass`;
         authTypeLabel = "Basic Auth";
       } else if ("Bearer" in auth) {
-        authValue = `Bearer ${auth.Bearer.token ? (auth.Bearer.token.substring(0, 10) + '...') : ''}`;
+        authValue = `Bearer ${auth.Bearer.token ? auth.Bearer.token.substring(0, 10) + "..." : ""}`;
         authTypeLabel = "Bearer Token";
       } else if ("ApiKey" in auth && auth.ApiKey.add_to === "Header") {
         computed.push({
@@ -240,7 +262,8 @@ function App() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const activeEl = document.activeElement as HTMLElement | null;
-      const isInput = activeEl?.tagName === "INPUT" ||
+      const isInput =
+        activeEl?.tagName === "INPUT" ||
         activeEl?.tagName === "TEXTAREA" ||
         activeEl?.isContentEditable;
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
@@ -275,7 +298,11 @@ function App() {
         if (isInput) return;
         if (selectedItemId) {
           e.preventDefault();
-          window.dispatchEvent(new CustomEvent('trigger-rename', { detail: { itemId: selectedItemId } }));
+          window.dispatchEvent(
+            new CustomEvent("trigger-rename", {
+              detail: { itemId: selectedItemId },
+            }),
+          );
         }
       }
 
@@ -287,7 +314,7 @@ function App() {
       }
 
       const isDelete = isMac
-        ? (isCmdOrCtrl && (e.key === "Backspace" || e.key === "Delete"))
+        ? isCmdOrCtrl && (e.key === "Backspace" || e.key === "Delete")
         : e.key === "Delete";
 
       if (isDelete) {
@@ -300,7 +327,19 @@ function App() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeRequestId, markSaved, activeRequest, activeProject, addRequest, cutToClipboard, copyToClipboard, pasteItem, duplicateItem, deleteItem, selectedItemId]);
+  }, [
+    activeRequestId,
+    markSaved,
+    activeRequest,
+    activeProject,
+    addRequest,
+    cutToClipboard,
+    copyToClipboard,
+    pasteItem,
+    duplicateItem,
+    deleteItem,
+    selectedItemId,
+  ]);
 
   // Switch away from body tab if the current request doesn't support body (GET, HEAD)
   useEffect(() => {
@@ -360,7 +399,7 @@ function App() {
 
   const checkForInvalidVars = useCallback(() => {
     if (!activeRequest) return false;
-    const available = getActiveEnvironmentVariables().map(v => v.key);
+    const available = getActiveEnvironmentVariables().map((v) => v.key);
     // If no active environment/vars, but {{}} used, consider invalid?
     // Consistent with Input.tsx
 
@@ -390,7 +429,6 @@ function App() {
     if (!activeRequest) return;
     setLoading(true);
     try {
-
       const resolvedUrl = resolveVariables(activeRequest.request.url);
 
       const resolvedHeaders: Record<string, string> = {};
@@ -403,16 +441,18 @@ function App() {
       }
 
       const resolvedCookies = activeRequest.request.cookies
-        .filter(c => isItemEnabled("cookie", c.name))
-        .map(c => ({ ...c }));
+        .filter((c) => isItemEnabled("cookie", c.name))
+        .map((c) => ({ ...c }));
 
       const isGet = activeRequest.request.method === "GET";
 
       // Determine effective auth (inherited from project or request's own)
-      const hasProjectAuth = activeProject?.authorization && activeProject.authorization !== "None";
-      const effectiveAuth = activeRequest.useInheritedAuth && hasProjectAuth
-        ? activeProject!.authorization!
-        : activeRequest.request.auth;
+      const hasProjectAuth =
+        activeProject?.authorization && activeProject.authorization !== "None";
+      const effectiveAuth =
+        activeRequest.useInheritedAuth && hasProjectAuth
+          ? activeProject!.authorization!
+          : activeRequest.request.auth;
 
       const resolvedRequest = {
         ...activeRequest.request,
@@ -430,8 +470,20 @@ function App() {
         addToast(`Request failed: ${resp.status} ${resp.status_text}`, "error");
       }
 
-      const preferred: ResponseRenderer[] = ["Json", "Xml", "Html", "HtmlPreview", "Image", "Audio", "Video", "Pdf"];
-      const bestRenderer = preferred.find(r => resp.available_renderers.includes(r)) || resp.available_renderers[0] || "Raw";
+      const preferred: ResponseRenderer[] = [
+        "Json",
+        "Xml",
+        "Html",
+        "HtmlPreview",
+        "Image",
+        "Audio",
+        "Video",
+        "Pdf",
+      ];
+      const bestRenderer =
+        preferred.find((r) => resp.available_renderers.includes(r)) ||
+        resp.available_renderers[0] ||
+        "Raw";
       setResponseTab(bestRenderer);
 
       if (activeTab === "overview") {
@@ -454,7 +506,9 @@ function App() {
   }
 
   const [showCurlOverwriteDialog, setShowCurlOverwriteDialog] = useState(false);
-  const [pendingCurlCommand, setPendingCurlCommand] = useState<string | null>(null);
+  const [pendingCurlCommand, setPendingCurlCommand] = useState<string | null>(
+    null,
+  );
 
   function processCurlImport(command: string) {
     if (!activeRequest) return;
@@ -555,25 +609,31 @@ function App() {
     }));
   }
 
-  function buildQueryString(params: Record<string, string | undefined>, disabledKeys: Set<string> = new Set()): string {
-    const enabledParams = Object.entries(params).filter(([key, value]) => !disabledKeys.has(key) && value !== undefined) as [string, string][];
+  function buildQueryString(
+    params: Record<string, string | undefined>,
+    disabledKeys: Set<string> = new Set(),
+  ): string {
+    const enabledParams = Object.entries(params).filter(
+      ([key, value]) => !disabledKeys.has(key) && value !== undefined,
+    ) as [string, string][];
 
-    if (enabledParams.length === 0) return '';
+    if (enabledParams.length === 0) return "";
 
     const queryParts = enabledParams
       .filter(([, value]) => value !== undefined)
       .map(([key, value]) => {
         const encodedKey = encodeURIComponent(key);
-        const rawValue = value || '';
+        const rawValue = value || "";
 
-        if (rawValue.includes('{{')) {
-
-          let result = '';
+        if (rawValue.includes("{{")) {
+          let result = "";
           let lastIndex = 0;
           const regex = /\{\{[^}]+\}\}/g;
           let match;
           while ((match = regex.exec(rawValue)) !== null) {
-            result += encodeURIComponent(rawValue.slice(lastIndex, match.index));
+            result += encodeURIComponent(
+              rawValue.slice(lastIndex, match.index),
+            );
             result += match[0];
             lastIndex = regex.lastIndex;
           }
@@ -584,16 +644,15 @@ function App() {
         }
       });
 
-    return queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+    return queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
   }
 
   function syncUrlToQueryParams() {
     if (!activeRequest) return;
     try {
       const urlStr = activeRequest.request.url;
-      const queryIndex = urlStr.indexOf('?');
+      const queryIndex = urlStr.indexOf("?");
       if (queryIndex === -1) {
-
         updateRequest(activeRequest.id, (r) => ({
           ...r,
           request: {
@@ -607,16 +666,16 @@ function App() {
       const queryString = urlStr.slice(queryIndex + 1);
       const params: Record<string, string> = {};
 
-      queryString.split('&').forEach(part => {
-        const eqIndex = part.indexOf('=');
+      queryString.split("&").forEach((part) => {
+        const eqIndex = part.indexOf("=");
         if (eqIndex === -1) {
-          params[decodeURIComponent(part)] = '';
+          params[decodeURIComponent(part)] = "";
         } else {
           const key = decodeURIComponent(part.slice(0, eqIndex));
 
           const rawValue = part.slice(eqIndex + 1);
 
-          if (rawValue.includes('{{')) {
+          if (rawValue.includes("{{")) {
             params[key] = rawValue;
           } else {
             params[key] = decodeURIComponent(rawValue);
@@ -631,9 +690,7 @@ function App() {
           query_params: params,
         },
       }));
-    } catch {
-
-    }
+    } catch {}
   }
 
   function renderResponseBody() {
@@ -649,7 +706,11 @@ function App() {
         const formatted = json ? JSON.stringify(json, null, 2) : body;
         return (
           <div className="flex-1 min-h-0 h-full">
-            <CodeViewer key={`${requestId}-json`} code={formatted} language="json" />
+            <CodeViewer
+              key={`${requestId}-json`}
+              code={formatted}
+              language="json"
+            />
           </div>
         );
       }
@@ -666,25 +727,38 @@ function App() {
           </div>
         );
       case "HtmlPreview": {
-
         const requestUrl = activeRequest.request.url;
         let baseUrl = "";
         try {
-          const url = new URL(requestUrl.startsWith("http") ? requestUrl : `https://${requestUrl}`);
+          const url = new URL(
+            requestUrl.startsWith("http")
+              ? requestUrl
+              : `https://${requestUrl}`,
+          );
           baseUrl = `${url.protocol}//${url.host}`;
-        } catch {
-
-        }
+        } catch {}
 
         let previewHtml = body;
         if (baseUrl && !body.includes("<base")) {
-
           if (body.includes("<head>")) {
-            previewHtml = body.replace("<head>", `<head><base href="${baseUrl}/">`);
+            previewHtml = body.replace(
+              "<head>",
+              `<head><base href="${baseUrl}/">`,
+            );
           } else if (body.includes("<head ")) {
-            previewHtml = body.replace(/<head\s[^>]*>/, `$&<base href="${baseUrl}/">`);
-          } else if (body.includes("<!DOCTYPE") || body.includes("<!doctype") || body.includes("<html")) {
-            previewHtml = body.replace(/(<html[^>]*>)/i, `$1<head><base href="${baseUrl}/"></head>`);
+            previewHtml = body.replace(
+              /<head\s[^>]*>/,
+              `$&<base href="${baseUrl}/">`,
+            );
+          } else if (
+            body.includes("<!DOCTYPE") ||
+            body.includes("<!doctype") ||
+            body.includes("<html")
+          ) {
+            previewHtml = body.replace(
+              /(<html[^>]*>)/i,
+              `$1<head><base href="${baseUrl}/"></head>`,
+            );
           } else {
             previewHtml = `<base href="${baseUrl}/">${body}`;
           }
@@ -721,7 +795,10 @@ function App() {
         return (
           <div className="flex-1 min-h-0 h-full flex items-center justify-center p-4">
             <audio controls className="w-full max-w-md">
-              <source src={`data:${contentType};base64,${base64}`} type={contentType} />
+              <source
+                src={`data:${contentType};base64,${base64}`}
+                type={contentType}
+              />
               Your browser does not support audio playback.
             </audio>
           </div>
@@ -733,7 +810,10 @@ function App() {
         return (
           <div className="flex-1 min-h-0 h-full flex items-center justify-center p-4">
             <video controls className="max-w-full max-h-full">
-              <source src={`data:${contentType};base64,${base64}`} type={contentType} />
+              <source
+                src={`data:${contentType};base64,${base64}`}
+                type={contentType}
+              />
               Your browser does not support video playback.
             </video>
           </div>
@@ -755,7 +835,10 @@ function App() {
       default:
         return (
           <div className="flex-1 min-h-0 h-full overflow-auto">
-            <pre className="p-4 text-sm font-mono text-white/80 whitespace-pre-wrap break-all" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+            <pre
+              className="p-4 text-sm font-mono text-white/80 whitespace-pre-wrap break-all"
+              style={{ fontFamily: "'IBM Plex Mono', monospace" }}
+            >
               {body}
             </pre>
           </div>
@@ -765,28 +848,36 @@ function App() {
 
   function getRendererLabel(renderer: ResponseRenderer): string {
     switch (renderer) {
-      case "Raw": return "Raw";
-      case "Json": return "JSON";
-      case "Xml": return "XML";
-      case "Html": return "HTML";
-      case "HtmlPreview": return "Preview";
-      case "Image": return "Image";
-      case "Audio": return "Audio";
-      case "Video": return "Video";
-      case "Pdf": return "PDF";
-      default: return renderer;
+      case "Raw":
+        return "Raw";
+      case "Json":
+        return "JSON";
+      case "Xml":
+        return "XML";
+      case "Html":
+        return "HTML";
+      case "HtmlPreview":
+        return "Preview";
+      case "Image":
+        return "Image";
+      case "Audio":
+        return "Audio";
+      case "Video":
+        return "Video";
+      case "Pdf":
+        return "PDF";
+      default:
+        return renderer;
     }
   }
 
   return (
     <div className="h-screen flex flex-col bg-transparent text-text select-none">
-
       <header
         className="h-10 flex items-center px-4 bg-transparent shrink-0 group"
         data-tauri-drag-region
       >
         <div className="flex items-center gap-0 ml-[70px] no-drag">
-
           <button
             type="button"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -824,9 +915,9 @@ function App() {
                       setActiveRequestId(null);
                       setProjectOverviewTab("overview");
                       setShowProjectOverview(true);
-                    }
+                    },
                   })),
-                  { label: "", onClick: () => { }, divider: true },
+                  { label: "", onClick: () => {}, divider: true },
                   {
                     label: "+ Create Project",
                     onClick: () => {
@@ -838,7 +929,6 @@ function App() {
               />
             )}
           </div>
-
 
           {activeProject && (
             <div className="relative flex items-center gap-1 ml-3">
@@ -863,9 +953,10 @@ function App() {
                     ...activeProject.environments.map((env) => ({
                       label: env.name,
                       active: env.id === activeProject.activeEnvironmentId,
-                      onClick: () => setActiveEnvironment(activeProject.id, env.id),
+                      onClick: () =>
+                        setActiveEnvironment(activeProject.id, env.id),
                     })),
-                    { label: "", onClick: () => { }, divider: true },
+                    { label: "", onClick: () => {}, divider: true },
                     {
                       label: "Manage Environments...",
                       onClick: () => {
@@ -882,8 +973,7 @@ function App() {
         </div>
 
         <div className="flex-1" />
-
-      </header >
+      </header>
 
       <div className="flex-1 flex overflow-hidden relative">
         {isSidebarCollapsed && (
@@ -922,9 +1012,17 @@ function App() {
             clipboard={clipboard}
             width={sidebarWidth}
             onWidthChange={setSidebarWidth}
-            onProjectClick={() => { setActiveRequestId(null); setProjectOverviewTab("overview"); setShowProjectOverview(true); }}
-            onIconChange={(icon) => activeProject && updateProjectIcon(activeProject.id, icon)}
-            onIconColorChange={(color) => activeProject && updateProjectIconColor(activeProject.id, color)}
+            onProjectClick={() => {
+              setActiveRequestId(null);
+              setProjectOverviewTab("overview");
+              setShowProjectOverview(true);
+            }}
+            onIconChange={(icon) =>
+              activeProject && updateProjectIcon(activeProject.id, icon)
+            }
+            onIconColorChange={(color) =>
+              activeProject && updateProjectIconColor(activeProject.id, color)
+            }
             onImportClick={() => setShowImportModal(true)}
             showProjectOverview={showProjectOverview}
             className="relative"
@@ -932,10 +1030,11 @@ function App() {
         </div>
 
         <div
-          className={`absolute left-2 top-2 bottom-2 z-40 rounded-xl bg-[#1a1a1a]/98 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPeeking && isSidebarCollapsed
-            ? "opacity-100 translate-x-0 scale-100"
-            : "opacity-0 -translate-x-4 scale-[0.98] pointer-events-none"
-            }`}
+          className={`absolute left-2 top-2 bottom-2 z-40 rounded-xl bg-[#1a1a1a]/98 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+            isPeeking && isSidebarCollapsed
+              ? "opacity-100 translate-x-0 scale-100"
+              : "opacity-0 -translate-x-4 scale-[0.98] pointer-events-none"
+          }`}
           style={{ width: sidebarWidth }}
           onMouseLeave={() => setIsPeeking(false)}
         >
@@ -964,32 +1063,45 @@ function App() {
             clipboard={clipboard}
             width={sidebarWidth}
             onWidthChange={setSidebarWidth}
-            onProjectClick={() => { setActiveRequestId(null); setProjectOverviewTab("overview"); setShowProjectOverview(true); }}
-            onIconChange={(icon) => activeProject && updateProjectIcon(activeProject.id, icon)}
-            onIconColorChange={(color) => activeProject && updateProjectIconColor(activeProject.id, color)}
+            onProjectClick={() => {
+              setActiveRequestId(null);
+              setProjectOverviewTab("overview");
+              setShowProjectOverview(true);
+            }}
+            onIconChange={(icon) =>
+              activeProject && updateProjectIcon(activeProject.id, icon)
+            }
+            onIconColorChange={(color) =>
+              activeProject && updateProjectIconColor(activeProject.id, color)
+            }
             onImportClick={() => setShowImportModal(true)}
             showProjectOverview={showProjectOverview}
             className="h-full"
           />
         </div>
 
-
         <main
           className={`flex-1 bg-background m-1 mt-0 flex flex-col overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isSidebarCollapsed ? "rounded-tl-2xl rounded-xl" : "rounded-xl"}`}
         >
-          {showProjectOverview && activeProject ?
+          {showProjectOverview && activeProject ? (
             <ProjectOverview
               project={activeProject}
               initialTab={projectOverviewTab}
               onUpdateProject={(updates) => {
                 if (updates.name) renameProject(activeProject.id, updates.name);
-                if (updates.icon) updateProjectIcon(activeProject.id, updates.icon);
-                if (updates.iconColor) updateProjectIconColor(activeProject.id, updates.iconColor);
-                if (updates.description !== undefined || updates.baseUrl !== undefined || updates.authorization !== undefined) {
+                if (updates.icon)
+                  updateProjectIcon(activeProject.id, updates.icon);
+                if (updates.iconColor)
+                  updateProjectIconColor(activeProject.id, updates.iconColor);
+                if (
+                  updates.description !== undefined ||
+                  updates.baseUrl !== undefined ||
+                  updates.authorization !== undefined
+                ) {
                   updateProjectConfig(activeProject.id, {
                     description: updates.description,
                     baseUrl: updates.baseUrl,
-                    authorization: updates.authorization
+                    authorization: updates.authorization,
                   });
                 }
               }}
@@ -1004,9 +1116,15 @@ function App() {
                 // Trigger send after selecting
                 setTimeout(() => handleSend(), 100);
               }}
-              onAddEnvironment={(name) => addEnvironment(activeProject.id, name)}
-              onUpdateEnvironment={(envId, name) => updateEnvironment(activeProject.id, envId, name)}
-              onDeleteEnvironment={(envId) => deleteEnvironment(activeProject.id, envId)}
+              onAddEnvironment={(name) =>
+                addEnvironment(activeProject.id, name)
+              }
+              onUpdateEnvironment={(envId, name) =>
+                updateEnvironment(activeProject.id, envId, name)
+              }
+              onDeleteEnvironment={(envId) =>
+                deleteEnvironment(activeProject.id, envId)
+              }
               onAddEnvVar={addEnvironmentVariable}
               onUpdateEnvVar={updateEnvironmentVariable}
               onDeleteEnvVar={deleteEnvironmentVariable}
@@ -1015,399 +1133,458 @@ function App() {
                 setShowProjectOverview(false);
               }}
             />
-            : activeRequest ? (
-              <>
-                <div className="flex gap-4 border-b border-text/15 p-4">
-                  <div className={`flex-1 flex items-center bg-inputbox rounded-lg overflow-hidden relative transition-opacity ${loading ? "shimmer-loading opacity-80" : ""}`}>
+          ) : activeRequest ? (
+            <>
+              <div className="flex gap-4 border-b border-text/15 p-4">
+                <div
+                  className={`flex-1 flex items-center bg-inputbox rounded-lg overflow-hidden relative transition-opacity ${loading ? "shimmer-loading opacity-80" : ""}`}
+                >
+                  {loading && (
+                    <div className="absolute inset-0 z-10 bg-background/30 cursor-not-allowed" />
+                  )}
+                  <MethodSelector
+                    value={activeRequest.request.method}
+                    onChange={updateMethod}
+                  />
+                  <div className="w-px h-5 bg-white/10" />
+                  <UrlInput
+                    value={activeRequest.request.url}
+                    onChange={(v) => updateUrl(v)}
+                    onCurlPaste={handleAutoImportCurl}
+                    onInvalidInput={(msg) => addToast(msg, "info")}
+                    placeholder="Enter URL or paste cURL"
+                    availableVariables={getActiveEnvironmentVariables().map(
+                      (v) => v.key,
+                    )}
+                    disabled={loading}
+                  />
+                </div>
+                <button
+                  onClick={handleSend}
+                  disabled={loading || !activeRequest.request.url}
+                  className="px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-full text-background font-semibold transition-all"
+                >
+                  {loading ? "Sending" : "Send"}
+                </button>
+              </div>
+
+              <div ref={mainPanelRef} className=" flex-1 flex overflow-hidden">
+                <div
+                  className="flex p-2 pl-4 flex-col overflow-hidden"
+                  style={{
+                    width:
+                      activeRequest.response && activeTab !== "overview"
+                        ? `${mainSplitX}%`
+                        : "100%",
+                  }}
+                >
+                  <div className="flex items-center gap-1 py-2 shrink-0">
+                    {(
+                      [
+                        "overview",
+                        "params",
+                        "authorization",
+                        "body",
+                        "headers",
+                        "cookies",
+                      ] as const
+                    )
+                      .filter(
+                        (tab) =>
+                          tab !== "body" ||
+                          activeRequest.request.method !== "GET",
+                      )
+                      .map((tab) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setActiveTab(tab)}
+                          className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${
+                            activeTab === tab
+                              ? "text-accent bg-accent/10"
+                              : "text-white/80 hover:text-white/60"
+                          }`}
+                        >
+                          {tab === "overview"
+                            ? "Overview"
+                            : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                      ))}
+                  </div>
+
+                  <div className="flex-1 overflow-auto relative">
                     {loading && (
                       <div className="absolute inset-0 z-10 bg-background/30 cursor-not-allowed" />
                     )}
-                    <MethodSelector
-                      value={activeRequest.request.method}
-                      onChange={updateMethod}
-                    />
-                    <div className="w-px h-5 bg-white/10" />
-                    <UrlInput
-                      value={activeRequest.request.url}
-                      onChange={(v) => updateUrl(v)}
-                      onCurlPaste={handleAutoImportCurl}
-                      onInvalidInput={(msg) => addToast(msg, "info")}
-                      placeholder="Enter URL or paste cURL"
-                      availableVariables={getActiveEnvironmentVariables().map(v => v.key)}
-                      disabled={loading}
-                    />
-                  </div>
-                  <button
-                    onClick={handleSend}
-                    disabled={loading || !activeRequest.request.url}
-                    className="px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-full text-background font-semibold transition-all"
-                  >
-                    {loading ? "Sending" : "Send"}
-                  </button>
-                </div>
-
-                <div
-                  ref={mainPanelRef}
-                  className=" flex-1 flex overflow-hidden"
-                >
-
-                  <div
-                    className="flex p-2 pl-4 flex-col overflow-hidden"
-                    style={{ width: activeRequest.response && activeTab !== "overview" ? `${mainSplitX}%` : "100%" }}
-                  >
-
-                    <div className="flex items-center gap-1 py-2 shrink-0">
-                      {(["overview", "params", "authorization", "body", "headers", "cookies"] as const)
-                        .filter(tab => tab !== "body" || activeRequest.request.method !== "GET")
-                        .map(
-                          (tab) => (
-                            <button
-                              key={tab}
-                              type="button"
-                              onClick={() => setActiveTab(tab)}
-                              className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${activeTab === tab
-                                ? "text-accent bg-accent/10"
-                                : "text-white/80 hover:text-white/60"
-                                }`}
-                            >
-                              {tab === "overview"
-                                ? "Overview"
-                                : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                            </button>
-                          ),
+                    {activeTab === "authorization" && (
+                      <AuthEditor
+                        auth={activeRequest.request.auth}
+                        onChange={updateAuth}
+                        availableVariables={getActiveEnvironmentVariables().map(
+                          (v) => v.key,
                         )}
-                    </div>
+                        projectAuth={activeProject?.authorization}
+                        isInherited={activeRequest.useInheritedAuth ?? true}
+                        onInheritChange={updateAuthInheritance}
+                        onOpenProjectSettings={() => {
+                          setProjectOverviewTab("configuration");
+                          setShowProjectOverview(true);
+                        }}
+                      />
+                    )}
+                    {activeTab === "params" && (
+                      <div className="flex-1 flex flex-col min-h-0">
+                        <KeyValueTable
+                          title="Query Params"
+                          items={Object.entries(
+                            activeRequest.request.query_params,
+                          ).map(([key, value]) => ({
+                            id: key,
+                            key: key,
+                            value: value || "",
+                            description: "",
+                            enabled: isItemEnabled("param", key),
+                          }))}
+                          onChange={(items) => {
+                            const newQueryParams: Record<string, string> = {};
+                            const newDisabledItems = new Set(disabledItems);
+                            const activeId = activeRequest.id;
 
-
-                    <div className="flex-1 overflow-auto relative">
-                      {loading && (
-                        <div className="absolute inset-0 z-10 bg-background/30 cursor-not-allowed" />
-                      )}
-                      {activeTab === "authorization" && (
-                        <AuthEditor
-                          auth={activeRequest.request.auth}
-                          onChange={updateAuth}
-                          availableVariables={getActiveEnvironmentVariables().map(v => v.key)}
-                          projectAuth={activeProject?.authorization}
-                          isInherited={activeRequest.useInheritedAuth ?? true}
-                          onInheritChange={updateAuthInheritance}
-                          onOpenProjectSettings={() => {
-                            setProjectOverviewTab("configuration");
-                            setShowProjectOverview(true);
-                          }}
-                        />
-                      )}
-                      {activeTab === "params" && (
-                        <div className="flex-1 flex flex-col min-h-0">
-                          <KeyValueTable
-                            title="Query Params"
-                            items={Object.entries(activeRequest.request.query_params).map(([key, value]) => ({
-                              id: key,
-                              key: key,
-                              value: value || "",
-                              description: "",
-                              enabled: isItemEnabled("param", key),
-                            }))}
-                            onChange={(items) => {
-                              const newQueryParams: Record<string, string> = {};
-                              const newDisabledItems = new Set(disabledItems);
-                              const activeId = activeRequest.id;
-
-                              items.forEach((item) => {
-                                if (item.key.trim() || item.value.trim()) {
-                                  newQueryParams[item.key] = item.value;
-                                  const disabledKey = `${activeId}:param:${item.key}`;
-                                  if (item.enabled) {
-                                    newDisabledItems.delete(disabledKey);
-                                  } else {
-                                    newDisabledItems.add(disabledKey);
-                                  }
-                                }
-                              });
-
-                              Object.keys(activeRequest.request.query_params).forEach(oldKey => {
-                                if (!newQueryParams[oldKey]) {
-                                  newDisabledItems.delete(`${activeId}:param:${oldKey}`);
-                                }
-                              });
-
-                              setDisabledItems(newDisabledItems);
-                              updateRequest(activeId, (r) => {
-                                const baseUrl = r.request.url.split("?")[0];
-                                const prefix = `${activeId}:param:`;
-                                const currentDisabledKeys = new Set(
-                                  Array.from(newDisabledItems)
-                                    .filter(k => k.startsWith(prefix))
-                                    .map(k => k.slice(prefix.length))
-                                );
-                                const queryString = buildQueryString(newQueryParams, currentDisabledKeys);
-                                return {
-                                  ...r,
-                                  request: {
-                                    ...r.request,
-                                    query_params: newQueryParams,
-                                    url: baseUrl + queryString,
-                                  },
-                                };
-                              });
-                            }}
-                            availableVariables={getActiveEnvironmentVariables().map(v => v.key)}
-                            placeholder={{
-                              key: "Param",
-                              value: "Value"
-                            }}
-                          />
-                        </div>
-                      )}
-                      {activeTab === "headers" && (
-                        <div className="flex-1 flex flex-col min-h-0">
-                          <div className="flex items-center px-4 py-1.5 border-b border-white/5 bg-white/5">
-                            <span className="text-xs text-white/30">Headers</span>
-                          </div>
-                          <KeyValueTable
-                            items={[
-                              ...getComputedHeaders(),
-                              ...Object.entries(activeRequest.request.headers).map(([key, value]) => ({
-                                id: key,
-                                key: key,
-                                value: value || "",
-                                description: "",
-                                enabled: isItemEnabled("header", key),
-                              }))
-                            ]}
-                            onChange={(items) => {
-                              const userItems = items.filter(i => !i.id.startsWith("computed:"));
-                              const newHeaders: Record<string, string> = {};
-                              const newDisabledItems = new Set(disabledItems);
-                              const activeId = activeRequest.id;
-
-                              userItems.forEach((item) => {
-                                if (item.key.trim() || item.value.trim()) {
-                                  newHeaders[item.key] = item.value;
-                                  const disabledKey = `${activeId}:header:${item.key}`;
-                                  if (item.enabled) {
-                                    newDisabledItems.delete(disabledKey);
-                                  } else {
-                                    newDisabledItems.add(disabledKey);
-                                  }
-                                }
-                              });
-
-                              Object.keys(activeRequest.request.headers).forEach(oldKey => {
-                                if (!newHeaders[oldKey]) {
-                                  newDisabledItems.delete(`${activeId}:header:${oldKey}`);
-                                }
-                              });
-
-                              setDisabledItems(newDisabledItems);
-                              updateRequest(activeId, (r) => ({
-                                ...r,
-                                request: { ...r.request, headers: newHeaders }
-                              }));
-                            }}
-                            availableVariables={getActiveEnvironmentVariables().map(v => v.key)}
-                            placeholder={{
-                              key: "Header",
-                              value: "Value"
-                            }}
-                          />
-                        </div>
-                      )}
-                      {activeTab === "cookies" && (
-                        <div className="flex-1 flex flex-col min-h-0">
-                          <KeyValueTable
-                            title="Cookies"
-                            items={activeRequest.request.cookies.map((cookie, idx) => ({
-                              id: cookie.name || `${idx}`,
-                              key: cookie.name,
-                              value: cookie.value,
-                              description: `${cookie.domain || ""} ${cookie.path || ""}`.trim(),
-                              enabled: isItemEnabled("cookie", cookie.name),
-                            }))}
-                            onChange={(items) => {
-                              const activeId = activeRequest.id;
-                              const newDisabledItems = new Set(disabledItems);
-
-                              const newCookies = items.map(i => {
-                                const disabledKey = `${activeId}:cookie:${i.key}`;
-                                if (i.enabled) {
+                            items.forEach((item) => {
+                              if (item.key.trim() || item.value.trim()) {
+                                newQueryParams[item.key] = item.value;
+                                const disabledKey = `${activeId}:param:${item.key}`;
+                                if (item.enabled) {
                                   newDisabledItems.delete(disabledKey);
                                 } else {
                                   newDisabledItems.add(disabledKey);
                                 }
-
-                                return {
-                                  name: i.key,
-                                  value: i.value,
-                                  domain: null,
-                                  path: null,
-                                  expires: null,
-                                  http_only: null,
-                                  secure: null
-                                };
-                              });
-
-                              Object.keys(activeRequest.request.cookies).forEach(idx => {
-                                const oldCookie = activeRequest.request.cookies[Number(idx)];
-                                if (!newCookies.find(c => c.name === oldCookie.name)) {
-                                  newDisabledItems.delete(`${activeId}:cookie:${oldCookie.name}`);
-                                }
-                              });
-
-                              setDisabledItems(newDisabledItems);
-                              updateRequest(activeId, (r) => ({
-                                ...r,
-                                request: { ...r.request, cookies: newCookies }
-                              }));
-                            }}
-                            showDescription={false}
-                            placeholder={{
-                              key: "Cookie",
-                              value: "value"
-                            }}
-                          />
-
-                        </div>
-                      )}
-                      {activeTab === "body" && (
-                        <BodyEditor
-                          body={activeRequest.request.body}
-                          onChange={updateBody}
-                          availableVariables={getActiveEnvironmentVariables().map(v => v.key)}
-                        />
-                      )}
-                      {activeTab === "overview" && (
-                        <RequestOverview
-                          activeRequest={activeRequest}
-                          onRun={() => {
-                            handleSend();
-                            setActiveTab("body");
-                          }}
-                          onUpdateName={(name) => renameItem(activeRequest.id, name)}
-                          onUpdateDescription={(description) => {
-                            updateRequest(activeRequest.id, (r) => ({ ...r, description }));
-                          }}
-                          onUpdatePropertyDescription={(key, description) => {
-                            updateRequest(activeRequest.id, (r) => ({
-                              ...r,
-                              propertyDescriptions: {
-                                ...(r.propertyDescriptions || {}),
-                                [key]: description
                               }
+                            });
+
+                            Object.keys(
+                              activeRequest.request.query_params,
+                            ).forEach((oldKey) => {
+                              if (!newQueryParams[oldKey]) {
+                                newDisabledItems.delete(
+                                  `${activeId}:param:${oldKey}`,
+                                );
+                              }
+                            });
+
+                            setDisabledItems(newDisabledItems);
+                            updateRequest(activeId, (r) => {
+                              const baseUrl = r.request.url.split("?")[0];
+                              const prefix = `${activeId}:param:`;
+                              const currentDisabledKeys = new Set(
+                                Array.from(newDisabledItems)
+                                  .filter((k) => k.startsWith(prefix))
+                                  .map((k) => k.slice(prefix.length)),
+                              );
+                              const queryString = buildQueryString(
+                                newQueryParams,
+                                currentDisabledKeys,
+                              );
+                              return {
+                                ...r,
+                                request: {
+                                  ...r.request,
+                                  query_params: newQueryParams,
+                                  url: baseUrl + queryString,
+                                },
+                              };
+                            });
+                          }}
+                          availableVariables={getActiveEnvironmentVariables().map(
+                            (v) => v.key,
+                          )}
+                          placeholder={{
+                            key: "Param",
+                            value: "Value",
+                          }}
+                        />
+                      </div>
+                    )}
+                    {activeTab === "headers" && (
+                      <div className="flex-1 flex flex-col min-h-0">
+                        <div className="flex items-center px-4 py-1.5 border-b border-white/5 bg-white/5">
+                          <span className="text-xs text-white/30">Headers</span>
+                        </div>
+                        <KeyValueTable
+                          items={[
+                            ...getComputedHeaders(),
+                            ...Object.entries(
+                              activeRequest.request.headers,
+                            ).map(([key, value]) => ({
+                              id: key,
+                              key: key,
+                              value: value || "",
+                              description: "",
+                              enabled: isItemEnabled("header", key),
+                            })),
+                          ]}
+                          onChange={(items) => {
+                            const userItems = items.filter(
+                              (i) => !i.id.startsWith("computed:"),
+                            );
+                            const newHeaders: Record<string, string> = {};
+                            const newDisabledItems = new Set(disabledItems);
+                            const activeId = activeRequest.id;
+
+                            userItems.forEach((item) => {
+                              if (item.key.trim() || item.value.trim()) {
+                                newHeaders[item.key] = item.value;
+                                const disabledKey = `${activeId}:header:${item.key}`;
+                                if (item.enabled) {
+                                  newDisabledItems.delete(disabledKey);
+                                } else {
+                                  newDisabledItems.add(disabledKey);
+                                }
+                              }
+                            });
+
+                            Object.keys(activeRequest.request.headers).forEach(
+                              (oldKey) => {
+                                if (!newHeaders[oldKey]) {
+                                  newDisabledItems.delete(
+                                    `${activeId}:header:${oldKey}`,
+                                  );
+                                }
+                              },
+                            );
+
+                            setDisabledItems(newDisabledItems);
+                            updateRequest(activeId, (r) => ({
+                              ...r,
+                              request: { ...r.request, headers: newHeaders },
                             }));
                           }}
-                          onSwitchToBody={() => setActiveTab("body")}
+                          availableVariables={getActiveEnvironmentVariables().map(
+                            (v) => v.key,
+                          )}
+                          placeholder={{
+                            key: "Header",
+                            value: "Value",
+                          }}
                         />
-                      )}
-                    </div>
-                  </div>
-
-                  {activeRequest.response && activeTab !== "overview" && (
-                    <>
-
-                      <div
-                        className="w-2 cursor-col-resize flex items-center justify-center shrink-0 group"
-                        onMouseDown={handleMainMouseDown}
-                      >
-                        <div className="w-px h-full  group-hover:bg-accent/50 transition-colors" />
                       </div>
+                    )}
+                    {activeTab === "cookies" && (
+                      <div className="flex-1 flex flex-col min-h-0">
+                        <KeyValueTable
+                          title="Cookies"
+                          items={activeRequest.request.cookies.map(
+                            (cookie, idx) => ({
+                              id: cookie.name || `${idx}`,
+                              key: cookie.name,
+                              value: cookie.value,
+                              description:
+                                `${cookie.domain || ""} ${cookie.path || ""}`.trim(),
+                              enabled: isItemEnabled("cookie", cookie.name),
+                            }),
+                          )}
+                          onChange={(items) => {
+                            const activeId = activeRequest.id;
+                            const newDisabledItems = new Set(disabledItems);
 
-
-                      <div
-                        ref={responsePanelRef}
-                        className="flex-1 flex flex-col overflow-hidden bg-inset border-l border-white/10"
-                      >
-
-                        <div className="flex items-center justify-between p-2 px-4 shrink-0">
-                          <span className="text-xs font-medium text-white">
-                            Response
-                          </span>
-                          <div className="flex gap-1">
-                            {(activeRequest.response?.available_renderers || ["Raw"]).map((renderer) => (
-                              <button
-                                key={renderer}
-                                type="button"
-                                onClick={() => setResponseTab(renderer)}
-                                className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${responseTab === renderer
-                                  ? "text-accent bg-accent/10"
-                                  : "text-white/60 hover:text-white/50"
-                                  }`}
-                              >
-                                {getRendererLabel(renderer)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-
-                        <div
-                          className="overflow-auto "
-                          style={{ height: `${responseSplitY}%` }}
-                        >
-                          <div className="h-full">{renderResponseBody()}</div>
-                        </div>
-
-
-                        <div className="flex items-center justify-between bg-inset border-y border-white/10 shrink-0 pr-2">
-
-                          <div className="flex items-center gap-1">
-                            <div className="hidden">
-                              <span className="bg-[#22c55e]/20" />
-                              <span className="bg-[#eab308]/20" />
-                              <span className="bg-[#f97316]/20" />
-                              <span className="bg-[#ef4444]/20" />
-                            </div>
-                            <span
-                              className={`text-xs font-bold px-3 py-2 bg-[${getStatusColor(activeRequest.response?.status || 0)}]/20`}
-                              style={{
-                                color: getStatusColor(activeRequest.response?.status || 0),
-                              }}
-                            >
-                              {activeRequest.response?.status}{" "}
-                              {activeRequest.response?.status_text}
-                            </span>
-
-                            <button
-                              ref={timingRef}
-                              type="button"
-                              onMouseEnter={handleTimingEnter}
-                              onMouseLeave={handleTimingLeave}
-                              className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
-                            >
-                              {
-                                (() => {
-                                  const ms = activeRequest.response?.timing?.total_ms ?? 0
-                                  return ms >= 1000
-                                    ? `${(ms / 1000).toFixed(2)} s`
-                                    : `${ms.toFixed(2)} ms`
-                                })()
+                            const newCookies = items.map((i) => {
+                              const disabledKey = `${activeId}:cookie:${i.key}`;
+                              if (i.enabled) {
+                                newDisabledItems.delete(disabledKey);
+                              } else {
+                                newDisabledItems.add(disabledKey);
                               }
 
-                            </button>
-                            <span className="text-white/20">•</span>
+                              return {
+                                name: i.key,
+                                value: i.value,
+                                domain: null,
+                                path: null,
+                                expires: null,
+                                http_only: null,
+                                secure: null,
+                              };
+                            });
 
+                            Object.keys(activeRequest.request.cookies).forEach(
+                              (idx) => {
+                                const oldCookie =
+                                  activeRequest.request.cookies[Number(idx)];
+                                if (
+                                  !newCookies.find(
+                                    (c) => c.name === oldCookie.name,
+                                  )
+                                ) {
+                                  newDisabledItems.delete(
+                                    `${activeId}:cookie:${oldCookie.name}`,
+                                  );
+                                }
+                              },
+                            );
+
+                            setDisabledItems(newDisabledItems);
+                            updateRequest(activeId, (r) => ({
+                              ...r,
+                              request: { ...r.request, cookies: newCookies },
+                            }));
+                          }}
+                          showDescription={false}
+                          placeholder={{
+                            key: "Cookie",
+                            value: "value",
+                          }}
+                        />
+                      </div>
+                    )}
+                    {activeTab === "body" && (
+                      <BodyEditor
+                        body={activeRequest.request.body}
+                        onChange={updateBody}
+                        availableVariables={getActiveEnvironmentVariables().map(
+                          (v) => v.key,
+                        )}
+                      />
+                    )}
+                    {activeTab === "overview" && (
+                      <RequestOverview
+                        activeRequest={activeRequest}
+                        onRun={() => {
+                          handleSend();
+                          setActiveTab("body");
+                        }}
+                        onUpdateName={(name) =>
+                          renameItem(activeRequest.id, name)
+                        }
+                        onUpdateDescription={(description) => {
+                          updateRequest(activeRequest.id, (r) => ({
+                            ...r,
+                            description,
+                          }));
+                        }}
+                        onUpdatePropertyDescription={(key, description) => {
+                          updateRequest(activeRequest.id, (r) => ({
+                            ...r,
+                            propertyDescriptions: {
+                              ...(r.propertyDescriptions || {}),
+                              [key]: description,
+                            },
+                          }));
+                        }}
+                        onSwitchToBody={() => setActiveTab("body")}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {activeRequest.response && activeTab !== "overview" && (
+                  <>
+                    <div
+                      className="w-2 cursor-col-resize flex items-center justify-center shrink-0 group"
+                      onMouseDown={handleMainMouseDown}
+                    >
+                      <div className="w-px h-full  group-hover:bg-accent/50 transition-colors" />
+                    </div>
+
+                    <div
+                      ref={responsePanelRef}
+                      className="flex-1 flex flex-col overflow-hidden bg-inset border-l border-white/10"
+                    >
+                      <div className="flex items-center justify-between p-2 px-4 shrink-0">
+                        <span className="text-xs font-medium text-white">
+                          Response
+                        </span>
+                        <div className="flex gap-1">
+                          {(
+                            activeRequest.response?.available_renderers || [
+                              "Raw",
+                            ]
+                          ).map((renderer) => (
                             <button
-                              ref={sizeRef}
+                              key={renderer}
                               type="button"
-                              onMouseEnter={handleSizeEnter}
-                              onMouseLeave={handleSizeLeave}
-                              className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+                              onClick={() => setResponseTab(renderer)}
+                              className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${
+                                responseTab === renderer
+                                  ? "text-accent bg-accent/10"
+                                  : "text-white/60 hover:text-white/50"
+                              }`}
                             >
-                              {formatBytes(activeRequest.response?.response_size?.total_bytes || 0)}
+                              {getRendererLabel(renderer)}
                             </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div
+                        className="overflow-auto "
+                        style={{ height: `${responseSplitY}%` }}
+                      >
+                        <div className="h-full">{renderResponseBody()}</div>
+                      </div>
+
+                      <div className="flex items-center justify-between bg-inset border-y border-white/10 shrink-0 pr-2">
+                        <div className="flex items-center gap-1">
+                          <div className="hidden">
+                            <span className="bg-[#22c55e]/20" />
+                            <span className="bg-[#eab308]/20" />
+                            <span className="bg-[#f97316]/20" />
+                            <span className="bg-[#ef4444]/20" />
                           </div>
+                          <span
+                            className={`text-xs font-bold px-3 py-2 bg-[${getStatusColor(activeRequest.response?.status || 0)}]/20`}
+                            style={{
+                              color: getStatusColor(
+                                activeRequest.response?.status || 0,
+                              ),
+                            }}
+                          >
+                            {activeRequest.response?.status}{" "}
+                            {activeRequest.response?.status_text}
+                          </span>
 
+                          <button
+                            ref={timingRef}
+                            type="button"
+                            onMouseEnter={handleTimingEnter}
+                            onMouseLeave={handleTimingLeave}
+                            className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+                          >
+                            {(() => {
+                              const ms =
+                                activeRequest.response?.timing?.total_ms ?? 0;
+                              return ms >= 1000
+                                ? `${(ms / 1000).toFixed(2)} s`
+                                : `${ms.toFixed(2)} ms`;
+                            })()}
+                          </button>
+                          <span className="text-white/20">•</span>
 
-                          <ProtocolToggle
-                            value={requestProtocol}
-                            onChange={setRequestProtocol}
-                          />
+                          <button
+                            ref={sizeRef}
+                            type="button"
+                            onMouseEnter={handleSizeEnter}
+                            onMouseLeave={handleSizeLeave}
+                            className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+                          >
+                            {formatBytes(
+                              activeRequest.response?.response_size
+                                ?.total_bytes || 0,
+                            )}
+                          </button>
+                        </div>
 
+                        <ProtocolToggle
+                          value={requestProtocol}
+                          onChange={setRequestProtocol}
+                        />
 
-                          {timingRef.current && activeRequest.response?.timing && (
+                        {timingRef.current &&
+                          activeRequest.response?.timing && (
                             <TimingPopover
                               timing={activeRequest.response.timing}
-                              anchorRef={timingRef as React.RefObject<HTMLElement>}
+                              anchorRef={
+                                timingRef as React.RefObject<HTMLElement>
+                              }
                               open={showTimingPopover}
                               onClose={() => setShowTimingPopover(false)}
                               onMouseEnter={handleTimingEnter}
@@ -1415,145 +1592,151 @@ function App() {
                             />
                           )}
 
-                          {sizeRef.current && activeRequest.response?.response_size && (
+                        {sizeRef.current &&
+                          activeRequest.response?.response_size && (
                             <SizePopover
                               requestSize={activeRequest.response.request_size}
-                              responseSize={activeRequest.response.response_size}
-                              anchorRef={sizeRef as React.RefObject<HTMLElement>}
+                              responseSize={
+                                activeRequest.response.response_size
+                              }
+                              anchorRef={
+                                sizeRef as React.RefObject<HTMLElement>
+                              }
                               open={showSizePopover}
                               onClose={() => setShowSizePopover(false)}
                               onMouseEnter={handleSizeEnter}
                               onMouseLeave={handleSizeLeave}
                             />
                           )}
+                      </div>
+
+                      <div
+                        className="h-[1px] bg-white/10 cursor-row-resize transition-colors shrink-0"
+                        onMouseDown={handleResponseMouseDown}
+                      />
+
+                      <div
+                        className="flex flex-col overflow-hidden bg-card"
+                        style={{ height: `${100 - responseSplitY}%` }}
+                      >
+                        <div className="flex items-center gap-1 p-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setResponseDetailTab("headers")}
+                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
+                              responseDetailTab === "headers"
+                                ? "text-accent bg-accent/10"
+                                : "text-white/60 hover:text-white/50"
+                            }`}
+                          >
+                            Headers
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setResponseDetailTab("cookies")}
+                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
+                              responseDetailTab === "cookies"
+                                ? "text-accent bg-accent/10"
+                                : "text-white/60 hover:text-white/50"
+                            }`}
+                          >
+                            Cookies
+                          </button>
                         </div>
 
-
-                        <div
-                          className="h-[1px] bg-white/10 cursor-row-resize transition-colors shrink-0"
-                          onMouseDown={handleResponseMouseDown}
-                        />
-
-
-                        <div
-                          className="flex flex-col overflow-hidden bg-card"
-                          style={{ height: `${100 - responseSplitY}%` }}
-                        >
-
-                          <div className="flex items-center gap-1 p-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setResponseDetailTab("headers")}
-                              className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "headers"
-                                ? "text-accent bg-accent/10"
-                                : "text-white/60 hover:text-white/50"
-                                }`}
-                            >
-                              Headers
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setResponseDetailTab("cookies")}
-                              className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "cookies"
-                                ? "text-accent bg-accent/10"
-                                : "text-white/60 hover:text-white/50"
-                                }`}
-                            >
-                              Cookies
-                            </button>
-                          </div>
-
-
-                          <div className="flex-1 overflow-auto">
-                            {responseDetailTab === "headers" && (
-                              <div className="flex-1 min-h-0">
-                                <table className="w-full text-xs font-mono border-collapse">
-                                  <tbody>
-                                    {Object.entries(activeRequest.response?.headers || {}).map(([k, v]) => (
-                                      <tr
-                                        key={k}
-                                        className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
-                                      >
-                                        <td className="px-3 py-2 text-white/40 border-r border-white/5 w-1/3 min-w-[120px] align-top">
-                                          {k}
-                                        </td>
-                                        <td className="px-3 py-2 text-white/60 break-all align-top whitespace-pre-wrap">
-                                          {v}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                            {responseDetailTab === "cookies" && (
-                              <div className="flex-1 min-h-0">
-                                {activeRequest.response?.cookies && activeRequest.response.cookies.length > 0 ? (
-                                  <KeyValueTable
-                                    items={activeRequest.response.cookies.map((c, i) => ({
+                        <div className="flex-1 overflow-auto">
+                          {responseDetailTab === "headers" && (
+                            <div className="flex-1 min-h-0">
+                              <table className="w-full text-xs font-mono border-collapse">
+                                <tbody>
+                                  {Object.entries(
+                                    activeRequest.response?.headers || {},
+                                  ).map(([k, v]) => (
+                                    <tr
+                                      key={k}
+                                      className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                                    >
+                                      <td className="px-3 py-2 text-white/40 border-r border-white/5 w-1/3 min-w-[120px] align-top">
+                                        {k}
+                                      </td>
+                                      <td className="px-3 py-2 text-white/60 break-all align-top whitespace-pre-wrap">
+                                        {v}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                          {responseDetailTab === "cookies" && (
+                            <div className="flex-1 min-h-0">
+                              {activeRequest.response?.cookies &&
+                              activeRequest.response.cookies.length > 0 ? (
+                                <KeyValueTable
+                                  items={activeRequest.response.cookies.map(
+                                    (c, i) => ({
                                       id: `${i}`,
                                       key: c.name,
                                       value: c.value,
-                                      description: `${c.domain || ""} ${c.path || ""}`.trim(),
-                                      enabled: true
-                                    }))}
-                                    onChange={() => { }}
-                                    readOnly={true}
-                                    showDescription={false}
-                                  />
-                                ) : (
-                                  <div className="p-3 text-xs text-white/30">
-                                    No cookies
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                                      description:
+                                        `${c.domain || ""} ${c.path || ""}`.trim(),
+                                      enabled: true,
+                                    }),
+                                  )}
+                                  onChange={() => {}}
+                                  readOnly={true}
+                                  showDescription={false}
+                                />
+                              ) : (
+                                <div className="p-3 text-xs text-white/30">
+                                  No cookies
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-white/20 text-sm">
-                Select a request or create a new one
+                    </div>
+                  </>
+                )}
               </div>
-            )}
-
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-white/20 text-sm">
+              Select a request or create a new one
+            </div>
+          )}
         </main>
       </div>
 
-      {
-        showCurlImport && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-            <div className="bg-[#1a1a1a] rounded-xl p-5 w-full max-w-xl border border-white/10">
-              <div className="text-sm font-medium mb-4">Import cURL Command</div>
-              <textarea
-                value={curlInput}
-                onChange={(e) => setCurlInput(e.target.value)}
-                placeholder="curl https://api.example.com -H 'Content-Type: application/json'"
-                className="w-full h-40 bg-[#0d0d0d] border border-white/10 rounded-lg p-3 text-sm font-mono resize-none focus:outline-none focus:border-accent/50"
-              />
-              <div className="flex justify-end gap-3 mt-4">
-                <button
-                  onClick={() => setShowCurlImport(false)}
-                  className="px-4 py-2 text-sm bg-white/10 hover:bg-white/15 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleImportCurl}
-                  disabled={!activeRequest}
-                  className="px-4 py-2 text-sm bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-lg transition-colors"
-                >
-                  Import
-                </button>
-              </div>
+      {showCurlImport && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-[#1a1a1a] rounded-xl p-5 w-full max-w-xl border border-white/10">
+            <div className="text-sm font-medium mb-4">Import cURL Command</div>
+            <textarea
+              value={curlInput}
+              onChange={(e) => setCurlInput(e.target.value)}
+              placeholder="curl https://api.example.com -H 'Content-Type: application/json'"
+              className="w-full h-40 bg-[#0d0d0d] border border-white/10 rounded-lg p-3 text-sm font-mono resize-none focus:outline-none focus:border-accent/50"
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setShowCurlImport(false)}
+                className="px-4 py-2 text-sm bg-white/10 hover:bg-white/15 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImportCurl}
+                disabled={!activeRequest}
+                className="px-4 py-2 text-sm bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-lg transition-colors"
+              >
+                Import
+              </button>
             </div>
           </div>
-        )
-      }
+        </div>
+      )}
       <Dialog
         isOpen={!!itemToDelete}
         title="Delete Item"
@@ -1581,20 +1764,22 @@ function App() {
               const content = JSON.stringify(spec, null, 2);
 
               const filePath = await save({
-                filters: [{
-                  name: 'OpenAPI JSON',
-                  extensions: ['json']
-                }],
-                defaultPath: `${activeProject.name}-openapi.json`
+                filters: [
+                  {
+                    name: "OpenAPI JSON",
+                    extensions: ["json"],
+                  },
+                ],
+                defaultPath: `${activeProject.name}-openapi.json`,
               });
 
               if (filePath) {
                 await writeTextFile(filePath, content);
-                addToast('Exported as OpenAPI JSON', 'success');
+                addToast("Exported as OpenAPI JSON", "success");
               }
             } catch (err) {
               console.error(err);
-              addToast('Failed to export OpenAPI spec', 'error');
+              addToast("Failed to export OpenAPI spec", "error");
             }
           }
         }}
@@ -1604,20 +1789,22 @@ function App() {
               const json = exportToMatchstickJSON(activeProject);
 
               const filePath = await save({
-                filters: [{
-                  name: 'Matchstick JSON',
-                  extensions: ['json']
-                }],
-                defaultPath: `${activeProject.name}.matchstick.json`
+                filters: [
+                  {
+                    name: "Matchstick JSON",
+                    extensions: ["json"],
+                  },
+                ],
+                defaultPath: `${activeProject.name}.matchstick.json`,
               });
 
               if (filePath) {
                 await writeTextFile(filePath, json);
-                addToast('Exported as Matchstick JSON', 'success');
+                addToast("Exported as Matchstick JSON", "success");
               }
             } catch (err) {
               console.error(err);
-              addToast('Failed to export Matchstick JSON', 'error');
+              addToast("Failed to export Matchstick JSON", "error");
             }
           }
         }}
@@ -1628,20 +1815,22 @@ function App() {
               const content = JSON.stringify(collection, null, 2);
 
               const filePath = await save({
-                filters: [{
-                  name: 'Postman Collection',
-                  extensions: ['json']
-                }],
-                defaultPath: `${activeProject.name}.postman_collection.json`
+                filters: [
+                  {
+                    name: "Postman Collection",
+                    extensions: ["json"],
+                  },
+                ],
+                defaultPath: `${activeProject.name}.postman_collection.json`,
               });
 
               if (filePath) {
                 await writeTextFile(filePath, content);
-                addToast('Exported as Postman Collection', 'success');
+                addToast("Exported as Postman Collection", "success");
               }
             } catch (err) {
               console.error(err);
-              addToast('Failed to export Postman Collection', 'error');
+              addToast("Failed to export Postman Collection", "error");
             }
           }
         }}
@@ -1652,20 +1841,22 @@ function App() {
               const content = JSON.stringify(data, null, 2);
 
               const filePath = await save({
-                filters: [{
-                  name: 'Insomnia Export',
-                  extensions: ['json']
-                }],
-                defaultPath: `${activeProject.name}.insomnia.json`
+                filters: [
+                  {
+                    name: "Insomnia Export",
+                    extensions: ["json"],
+                  },
+                ],
+                defaultPath: `${activeProject.name}.insomnia.json`,
               });
 
               if (filePath) {
                 await writeTextFile(filePath, content);
-                addToast('Exported as Insomnia Export', 'success');
+                addToast("Exported as Insomnia Export", "success");
               }
             } catch (err) {
               console.error(err);
-              addToast('Failed to export Insomnia Export', 'error');
+              addToast("Failed to export Insomnia Export", "error");
             }
           }
         }}
@@ -1680,15 +1871,24 @@ function App() {
           if (project && project.root) {
             const results = processItemForSecrets(project.root);
             if (activeProject) {
-              const importedFolder = { ...project.root, name: project.name || 'Imported' };
+              const importedFolder = {
+                ...project.root,
+                name: project.name || "Imported",
+              };
               importToFolder(activeProject.root.id, importedFolder);
-              addToast(`Imported into current project${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+              addToast(
+                `Imported into current project${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                "success",
+              );
             } else {
               createProjectFromImport(project);
-              addToast(`Project imported successfully${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+              addToast(
+                `Project imported successfully${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                "success",
+              );
             }
           } else {
-            addToast('Failed to parse Matchstick JSON', 'error');
+            addToast("Failed to parse Matchstick JSON", "error");
           }
         }}
         onImportOpenAPI={(spec) => {
@@ -1696,15 +1896,24 @@ function App() {
           if (partialProject.name && partialProject.root) {
             const results = processItemForSecrets(partialProject.root);
             if (activeProject) {
-              const importedFolder = { ...partialProject.root, name: partialProject.name };
+              const importedFolder = {
+                ...partialProject.root,
+                name: partialProject.name,
+              };
               importToFolder(activeProject.root.id, importedFolder);
-              addToast(`Imported ${partialProject.name} as folder${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+              addToast(
+                `Imported ${partialProject.name} as folder${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                "success",
+              );
             } else {
               createProjectFromImport(partialProject);
-              addToast(`Imported ${partialProject.name}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+              addToast(
+                `Imported ${partialProject.name}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                "success",
+              );
             }
           } else {
-            addToast('Failed to parse OpenAPI spec', 'error');
+            addToast("Failed to parse OpenAPI spec", "error");
           }
         }}
         onImportPostman={(collection) => {
@@ -1713,18 +1922,30 @@ function App() {
             if (partialProject.name && partialProject.root) {
               const results = processItemForSecrets(partialProject.root);
               if (activeProject) {
-                const importedFolder = { ...partialProject.root, name: partialProject.name };
+                const importedFolder = {
+                  ...partialProject.root,
+                  name: partialProject.name,
+                };
                 importToFolder(activeProject.root.id, importedFolder);
-                addToast(`Imported ${partialProject.name} as folder${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+                addToast(
+                  `Imported ${partialProject.name} as folder${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                  "success",
+                );
               } else {
                 createProjectFromImport(partialProject);
-                addToast(`Imported ${partialProject.name}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+                addToast(
+                  `Imported ${partialProject.name}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                  "success",
+                );
               }
             } else {
-              addToast('Failed to parse Postman collection', 'error');
+              addToast("Failed to parse Postman collection", "error");
             }
           } catch (err: any) {
-            addToast(err.message || 'Failed to parse Postman collection', 'error');
+            addToast(
+              err.message || "Failed to parse Postman collection",
+              "error",
+            );
           }
         }}
         onImportInsomnia={(data) => {
@@ -1733,18 +1954,27 @@ function App() {
             if (partialProject.name && partialProject.root) {
               const results = processItemForSecrets(partialProject.root);
               if (activeProject) {
-                const importedFolder = { ...partialProject.root, name: partialProject.name };
+                const importedFolder = {
+                  ...partialProject.root,
+                  name: partialProject.name,
+                };
                 importToFolder(activeProject.root.id, importedFolder);
-                addToast(`Imported ${partialProject.name} as folder${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+                addToast(
+                  `Imported ${partialProject.name} as folder${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                  "success",
+                );
               } else {
                 createProjectFromImport(partialProject);
-                addToast(`Imported ${partialProject.name}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+                addToast(
+                  `Imported ${partialProject.name}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                  "success",
+                );
               }
             } else {
-              addToast('Failed to parse Insomnia export', 'error');
+              addToast("Failed to parse Insomnia export", "error");
             }
           } catch (err: any) {
-            addToast(err.message || 'Failed to parse Insomnia export', 'error');
+            addToast(err.message || "Failed to parse Insomnia export", "error");
           }
         }}
       />
@@ -1755,7 +1985,7 @@ function App() {
         onCreateBlank={(name: string) => {
           const id = createProject(name);
           selectProject(id);
-          addToast(`Project "${name}" created`, 'success');
+          addToast(`Project "${name}" created`, "success");
         }}
         onCreateFromPostman={(collection: object) => {
           try {
@@ -1764,12 +1994,15 @@ function App() {
               const results = processItemForSecrets(partialProject.root);
               const id = createProjectFromImport(partialProject);
               selectProject(id);
-              addToast(`Imported ${partialProject.name} from Postman${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+              addToast(
+                `Imported ${partialProject.name} from Postman${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                "success",
+              );
             } else {
-              addToast('Failed to parse Postman collection', 'error');
+              addToast("Failed to parse Postman collection", "error");
             }
           } catch (e: any) {
-            addToast(e.message || 'Import failed', 'error');
+            addToast(e.message || "Import failed", "error");
           }
         }}
         onCreateFromInsomnia={(data: object) => {
@@ -1779,12 +2012,15 @@ function App() {
               const results = processItemForSecrets(partialProject.root);
               const id = createProjectFromImport(partialProject);
               selectProject(id);
-              addToast(`Imported ${partialProject.name} from Insomnia${results.detected > 0 ? ` (${results.detected} secrets secured)` : ''}`, 'success');
+              addToast(
+                `Imported ${partialProject.name} from Insomnia${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+                "success",
+              );
             } else {
-              addToast('Failed to parse Insomnia export', 'error');
+              addToast("Failed to parse Insomnia export", "error");
             }
           } catch (e: any) {
-            addToast(e.message || 'Import failed', 'error');
+            addToast(e.message || "Import failed", "error");
           }
         }}
       />

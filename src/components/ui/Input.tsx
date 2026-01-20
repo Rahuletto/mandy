@@ -17,27 +17,35 @@ interface EnvInputProps {
   disabled?: boolean;
 }
 
-function buildHighlightedHtml(value: string, availableVariables: string[], masked: boolean): string {
-  if (!value) return '';
+function buildHighlightedHtml(
+  value: string,
+  availableVariables: string[],
+  masked: boolean,
+): string {
+  if (!value) return "";
 
   const regex = /(\{\{[^}]+\}\})/g;
   const parts = value.split(regex);
 
-  return parts.map(part => {
-    if (part.match(/^\{\{[^}]+\}\}$/)) {
-      const varName = part.slice(2, -2);
-      const exists = availableVariables.length === 0 || availableVariables.includes(varName);
-      const displayText = masked ? '•'.repeat(part.length) : escapeHtml(part);
+  return parts
+    .map((part) => {
+      if (part.match(/^\{\{[^}]+\}\}$/)) {
+        const varName = part.slice(2, -2);
+        const exists =
+          availableVariables.length === 0 ||
+          availableVariables.includes(varName);
+        const displayText = masked ? "•".repeat(part.length) : escapeHtml(part);
 
-      if (exists) {
-        return `<span class="env-var env-valid">${displayText}</span>`;
-      } else {
-        return `<span title="Invalid variable" class="env-var env-invalid">${displayText}</span>`;
+        if (exists) {
+          return `<span class="env-var env-valid">${displayText}</span>`;
+        } else {
+          return `<span title="Invalid variable" class="env-var env-invalid">${displayText}</span>`;
+        }
       }
-    }
-    const displayText = masked ? '•'.repeat(part.length) : escapeHtml(part);
-    return displayText;
-  }).join('');
+      const displayText = masked ? "•".repeat(part.length) : escapeHtml(part);
+      return displayText;
+    })
+    .join("");
 }
 
 export function EnvInput({
@@ -56,9 +64,9 @@ export function EnvInput({
   const isPassword = type === "password";
   const shouldMask = isPassword && !showPassword;
 
-  const highlightedHtml = useMemo(() =>
-    buildHighlightedHtml(value, availableVariables, shouldMask),
-    [value, availableVariables, shouldMask]
+  const highlightedHtml = useMemo(
+    () => buildHighlightedHtml(value, availableVariables, shouldMask),
+    [value, availableVariables, shouldMask],
   );
 
   useEffect(() => {
@@ -66,7 +74,7 @@ export function EnvInput({
       if (value) {
         editorRef.current.innerHTML = highlightedHtml;
       } else {
-        editorRef.current.innerHTML = '';
+        editorRef.current.innerHTML = "";
       }
     }
   }, [highlightedHtml, isFocused, value]);
@@ -74,9 +82,9 @@ export function EnvInput({
   const handleInput = useCallback(() => {
     if (disabled) return;
     if (editorRef.current) {
-      const text = editorRef.current.innerText || '';
-      if (text.includes('\n')) {
-        const cleaned = text.replace(/\n/g, '');
+      const text = editorRef.current.innerText || "";
+      if (text.includes("\n")) {
+        const cleaned = text.replace(/\n/g, "");
         editorRef.current.innerText = cleaned;
         onChange(cleaned);
         return;
@@ -85,35 +93,44 @@ export function EnvInput({
     }
   }, [onChange, disabled]);
 
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    if (disabled) {
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      if (disabled) {
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
-      return;
-    }
-    e.preventDefault();
-    const rawText = e.clipboardData.getData('text/plain').replace(/\n/g, ' ');
+      const rawText = e.clipboardData.getData("text/plain").replace(/\n/g, " ");
 
-    const { processStringForSecrets } = useProjectStore.getState();
-    const { addToast } = useToastStore.getState();
-    const { processedText, detectedCount } = processStringForSecrets(rawText);
+      const { processStringForSecrets } = useProjectStore.getState();
+      const { addToast } = useToastStore.getState();
+      const { processedText, detectedCount } = processStringForSecrets(rawText);
 
-    if (detectedCount > 0) {
-      addToast(`${detectedCount} secret${detectedCount > 1 ? 's' : ''} secured and converted to variable${detectedCount > 1 ? 's' : ''}`, 'success');
-    }
+      if (detectedCount > 0) {
+        addToast(
+          `${detectedCount} secret${detectedCount > 1 ? "s" : ""} secured and converted to variable${detectedCount > 1 ? "s" : ""}`,
+          "success",
+        );
+      }
 
-    document.execCommand('insertText', false, processedText);
-  }, [disabled]);
+      document.execCommand("insertText", false, processedText);
+    },
+    [disabled],
+  );
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (disabled) {
-      e.preventDefault();
-      return;
-    }
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onKeyDown?.(e);
-    }
-  }, [onKeyDown, disabled]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (disabled) {
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onKeyDown?.(e);
+      }
+    },
+    [onKeyDown, disabled],
+  );
 
   const handleFocus = useCallback(() => {
     if (disabled) return;
@@ -141,7 +158,9 @@ export function EnvInput({
   }, []);
 
   return (
-    <div className={`relative flex-1 flex items-center ${className} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}>
+    <div
+      className={`relative flex-1 flex items-center ${className} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+    >
       <div
         ref={editorRef}
         contentEditable={!disabled}
@@ -178,7 +197,6 @@ export function EnvInput({
     </div>
   );
 }
-
 
 interface UrlInputProps {
   value: string;
@@ -265,24 +283,24 @@ export function UrlInput({
 
     const onMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.classList.contains('env-invalid')) {
+      if (target.classList.contains("env-invalid")) {
         handleInvalidSpanEnter(e);
       }
     };
 
     const onMouseOut = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.classList.contains('env-invalid')) {
+      if (target.classList.contains("env-invalid")) {
         handleInvalidSpanLeave();
       }
     };
 
-    editor.addEventListener('mouseover', onMouseOver);
-    editor.addEventListener('mouseout', onMouseOut);
+    editor.addEventListener("mouseover", onMouseOver);
+    editor.addEventListener("mouseout", onMouseOut);
 
     return () => {
-      editor.removeEventListener('mouseover', onMouseOver);
-      editor.removeEventListener('mouseout', onMouseOut);
+      editor.removeEventListener("mouseover", onMouseOver);
+      editor.removeEventListener("mouseout", onMouseOut);
     };
   }, []);
 
@@ -292,7 +310,8 @@ export function UrlInput({
     let match;
     while ((match = regex.exec(value)) !== null) {
       const varName = match[1];
-      const exists = availableVariables.length === 0 || availableVariables.includes(varName);
+      const exists =
+        availableVariables.length === 0 || availableVariables.includes(varName);
       if (!exists) return true;
     }
     return false;
@@ -312,15 +331,21 @@ export function UrlInput({
     return invalid;
   }, [value, availableVariables]);
 
-  const replaceVariable = useCallback((oldVar: string, newVar: string) => {
-    const newValue = value.replace(new RegExp(`\\{\\{${oldVar}\\}\\}`, 'g'), `{{${newVar}}}`);
-    onChange(newValue);
-    setShowInvalidPopover(false);
-  }, [value, onChange]);
+  const replaceVariable = useCallback(
+    (oldVar: string, newVar: string) => {
+      const newValue = value.replace(
+        new RegExp(`\\{\\{${oldVar}\\}\\}`, "g"),
+        `{{${newVar}}}`,
+      );
+      onChange(newValue);
+      setShowInvalidPopover(false);
+    },
+    [value, onChange],
+  );
 
-  const highlightedHtml = useMemo(() =>
-    buildHighlightedHtml(value, availableVariables, false),
-    [value, availableVariables]
+  const highlightedHtml = useMemo(
+    () => buildHighlightedHtml(value, availableVariables, false),
+    [value, availableVariables],
   );
 
   useEffect(() => {
@@ -328,7 +353,7 @@ export function UrlInput({
       const currentText = editorRef.current.innerText || "";
       if (!isFocused) {
         editorRef.current.innerHTML = value ? highlightedHtml : "";
-      } else if (value !== currentText && value.startsWith('http')) {
+      } else if (value !== currentText && value.startsWith("http")) {
         editorRef.current.innerText = value;
       }
     }
@@ -337,16 +362,19 @@ export function UrlInput({
   const handleInput = useCallback(() => {
     if (disabled) return;
     if (editorRef.current) {
-      const text = editorRef.current.innerText || '';
+      const text = editorRef.current.innerText || "";
 
-      if (text.includes('\n') && !text.trim().toLowerCase().startsWith('curl ')) {
-        const cleaned = text.replace(/\n/g, '').trim();
+      if (
+        text.includes("\n") &&
+        !text.trim().toLowerCase().startsWith("curl ")
+      ) {
+        const cleaned = text.replace(/\n/g, "").trim();
         editorRef.current.innerText = cleaned;
         onChange(cleaned);
         return;
       }
 
-      if (text.trim().toLowerCase().startsWith('curl ')) {
+      if (text.trim().toLowerCase().startsWith("curl ")) {
         const command = text.trim();
         onCurlPaste?.(command);
         return;
@@ -355,53 +383,63 @@ export function UrlInput({
     }
   }, [onChange, onCurlPaste, disabled]);
 
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    if (disabled) {
-      e.preventDefault();
-      return;
-    }
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      if (disabled) {
+        e.preventDefault();
+        return;
+      }
 
-    const rawText = e.clipboardData.getData('text/plain');
-    const trimmedText = rawText.trim();
+      const rawText = e.clipboardData.getData("text/plain");
+      const trimmedText = rawText.trim();
 
-    if (trimmedText.toLowerCase().startsWith('curl ')) {
+      if (trimmedText.toLowerCase().startsWith("curl ")) {
+        e.preventDefault();
+        onCurlPaste?.(trimmedText);
+        if (editorRef.current) {
+          editorRef.current.blur();
+        }
+        return;
+      }
+
       e.preventDefault();
-      onCurlPaste?.(trimmedText);
+      const singleLineText = rawText.replace(/\n/g, " ").trim();
+
+      const { processStringForSecrets } = useProjectStore.getState();
+      const { addToast } = useToastStore.getState();
+      const { processedText, detectedCount } =
+        processStringForSecrets(singleLineText);
+
+      if (detectedCount > 0) {
+        addToast(
+          `${detectedCount} secret${detectedCount > 1 ? "s" : ""} secured and converted to variable${detectedCount > 1 ? "s" : ""}`,
+          "success",
+        );
+      }
+
       if (editorRef.current) {
-        editorRef.current.blur();
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          sel.deleteFromDocument();
+        }
+        document.execCommand("insertText", false, processedText);
       }
-      return;
-    }
+    },
+    [onCurlPaste, disabled],
+  );
 
-    e.preventDefault();
-    const singleLineText = rawText.replace(/\n/g, ' ').trim();
-
-    const { processStringForSecrets } = useProjectStore.getState();
-    const { addToast } = useToastStore.getState();
-    const { processedText, detectedCount } = processStringForSecrets(singleLineText);
-
-    if (detectedCount > 0) {
-      addToast(`${detectedCount} secret${detectedCount > 1 ? 's' : ''} secured and converted to variable${detectedCount > 1 ? 's' : ''}`, 'success');
-    }
-
-    if (editorRef.current) {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        sel.deleteFromDocument();
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (disabled) {
+        e.preventDefault();
+        return;
       }
-      document.execCommand('insertText', false, processedText);
-    }
-  }, [onCurlPaste, disabled]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (disabled) {
-      e.preventDefault();
-      return;
-    }
-    if (e.key === 'Enter') {
-      e.preventDefault();
-    }
-  }, [disabled]);
+      if (e.key === "Enter") {
+        e.preventDefault();
+      }
+    },
+    [disabled],
+  );
 
   const handleFocus = useCallback(() => {
     if (disabled) return;
@@ -480,10 +518,15 @@ export function UrlInput({
               onMouseLeave={handlePopoverLeave}
             >
               <div className="flex flex-col gap-2">
-                <div className="text-red-400 font-medium text-[11px]">Invalid environment variable</div>
+                <div className="text-red-400 font-medium text-[11px]">
+                  Invalid environment variable
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {invalidVariableNames.map((varName) => (
-                    <span key={varName} className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[11px] font-mono">
+                    <span
+                      key={varName}
+                      className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[11px] font-mono"
+                    >
                       {`{{${varName}}}`}
                     </span>
                   ))}
@@ -492,7 +535,9 @@ export function UrlInput({
                 {availableVariables.length > 0 && (
                   <>
                     <div className="border-t border-white/10 my-1" />
-                    <div className="text-white/50 font-medium text-[11px]">Available variables</div>
+                    <div className="text-white/50 font-medium text-[11px]">
+                      Available variables
+                    </div>
                     <div className="flex flex-wrap gap-1">
                       {availableVariables.map((varName) => (
                         <button
@@ -503,8 +548,12 @@ export function UrlInput({
                               replaceVariable(invalidVariableNames[0], varName);
                             }
                           }}
-                          className={`px-1.5 py-0.5 bg-accent/20 text-accent rounded text-[11px] font-mono transition-colors ${invalidVariableNames.length === 1 ? 'hover:bg-accent/30 cursor-pointer' : 'cursor-default'}`}
-                          title={invalidVariableNames.length === 1 ? `Replace {{${invalidVariableNames[0]}}} with {{${varName}}}` : varName}
+                          className={`px-1.5 py-0.5 bg-accent/20 text-accent rounded text-[11px] font-mono transition-colors ${invalidVariableNames.length === 1 ? "hover:bg-accent/30 cursor-pointer" : "cursor-default"}`}
+                          title={
+                            invalidVariableNames.length === 1
+                              ? `Replace {{${invalidVariableNames[0]}}} with {{${varName}}}`
+                              : varName
+                          }
                         >
                           {`{{${varName}}}`}
                         </button>

@@ -33,7 +33,6 @@
 .env-valid {
     color: var(--accent);
     background: #ff614133;
-
 }
 
 .env-invalid {
@@ -130,15 +129,17 @@ textarea,
 }
 
 .shimmer-loading::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg,
-            transparent 0%,
-            transparent 35%,
-            var(--accent) 50%,
-            transparent 65%,
-            transparent 100%);
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        transparent 35%,
+        var(--accent) 50%,
+        transparent 65%,
+        transparent 100%
+    );
     background-size: 200% 100%;
     animation: shimmer 1s ease-in-out infinite alternate;
     opacity: 0.2;

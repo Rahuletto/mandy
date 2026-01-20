@@ -111,16 +111,16 @@ export function Sidebar({
 
   const addMenuItems: MenuItem[] = activeProject
     ? [
-      {
-        label: "New Request",
-        onClick: () => onAddRequest(activeProject.root.id),
-      },
-      { label: "", onClick: () => { }, divider: true },
-      {
-        label: "New Folder",
-        onClick: () => onAddFolder(activeProject.root.id),
-      },
-    ]
+        {
+          label: "New Request",
+          onClick: () => onAddRequest(activeProject.root.id),
+        },
+        { label: "", onClick: () => {}, divider: true },
+        {
+          label: "New Folder",
+          onClick: () => onAddFolder(activeProject.root.id),
+        },
+      ]
     : [];
 
   return (
@@ -154,15 +154,24 @@ export function Sidebar({
         {activeProject ? (
           <>
             <div>
-              <div className={`flex items-center opacity-80 gap-2 px-3 py-2 transition-colors cursor-pointer ${showProjectOverview
-                ? "bg-accent/10"
-                : "hover:bg-white/5"
-                }`} onClick={onProjectClick}>
+              <div
+                className={`flex items-center opacity-80 gap-2 px-3 py-2 transition-colors cursor-pointer ${
+                  showProjectOverview ? "bg-accent/10" : "hover:bg-white/5"
+                }`}
+                onClick={onProjectClick}
+              >
                 <button
                   ref={iconButtonRef}
-                  onClick={(e) => { e.stopPropagation(); setShowIconPicker(true); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowIconPicker(true);
+                  }}
                   className="w-5 h-5 flex items-center justify-center transition-colors cursor-pointer"
-                  style={{ color: showProjectOverview ? "var(--color-accent)" : (activeProject.iconColor || "rgba(255, 255, 255, 0.6)") }}
+                  style={{
+                    color: showProjectOverview
+                      ? "var(--color-accent)"
+                      : activeProject.iconColor || "rgba(255, 255, 255, 0.6)",
+                  }}
                 >
                   {(() => {
                     const IconComponent = getIconComponent(activeProject.icon);
@@ -170,8 +179,11 @@ export function Sidebar({
                   })()}
                 </button>
                 <span
-                  className={`flex-1 text-left text-xs truncate transition-colors ${showProjectOverview ? "text-accent font-medium" : "text-white/70 hover:text-white"
-                    }`}
+                  className={`flex-1 text-left text-xs truncate transition-colors ${
+                    showProjectOverview
+                      ? "text-accent font-medium"
+                      : "text-white/70 hover:text-white"
+                  }`}
                 >
                   {activeProject.name}
                 </span>
@@ -248,4 +260,3 @@ export function Sidebar({
     </div>
   );
 }
-
