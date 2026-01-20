@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { BsThreeDots } from "react-icons/bs";
 
 export interface DropdownItem {
@@ -15,12 +15,43 @@ export interface DropdownItem {
 interface DropdownProps {
     items: DropdownItem[];
     onClose: () => void;
-    className?: string;
+    className?: string; // Kept for backward compatibility but using fixed positioning
     width?: string;
 }
 
-export function Dropdown({ items, onClose, className = "", width = "min-w-[160px]" }: DropdownProps) {
+export function Dropdown({ items, onClose, width = "min-w-[160px]" }: DropdownProps) {
     const ref = useRef<HTMLDivElement>(null);
+    const [isVisible, setIsVisible] = useState(false);
+    const [pos, setPos] = useState({ left: -9999, top: -9999 });
+
+    useLayoutEffect(() => {
+        if (!ref.current) return;
+
+        const parent = ref.current.parentElement;
+        if (!parent) return;
+
+        const parentRect = parent.getBoundingClientRect();
+        const rect = ref.current.getBoundingClientRect();
+        const padding = 12;
+
+        let newLeft = parentRect.left;
+        let newTop = parentRect.bottom + 4;
+
+        if (newLeft + rect.width > window.innerWidth - padding) {
+            newLeft = window.innerWidth - rect.width - padding;
+        }
+
+        if (newTop + rect.height > window.innerHeight - padding) {
+            newTop = parentRect.top - rect.height - 4;
+
+            if (newTop < padding) {
+                newTop = window.innerHeight - rect.height - padding;
+            }
+        }
+
+        setPos({ left: Math.max(padding, newLeft), top: Math.max(padding, newTop) });
+        setIsVisible(true);
+    }, []);
 
     useEffect(() => {
         function handleClick(e: MouseEvent) {
@@ -42,7 +73,8 @@ export function Dropdown({ items, onClose, className = "", width = "min-w-[160px
     return (
         <div
             ref={ref}
-            className={`absolute z-50 bg-[#1e1e1e] border border-white/10 rounded-xl shadow-2xl py-2 ${width} ${className} animate-blur-in`}
+            className={`fixed z-[9999] bg-[#1e1e1e] border border-white/10 rounded-xl shadow-2xl py-2 ${width} ${isVisible ? 'animate-blur-in' : 'opacity-0'} max-h-[calc(100vh-24px)] overflow-auto shadow-black/50`}
+            style={{ left: pos.left, top: pos.top }}
         >
             {items.map((item, i) =>
                 item.divider ? (
