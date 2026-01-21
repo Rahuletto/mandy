@@ -146,3 +146,86 @@ textarea,
     pointer-events: none;
     border-radius: inherit;
 }
+
+@keyframes completed-sweep {
+    0% {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    20% {
+        opacity: 1;
+    }
+    80% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+.completed-flash {
+    overflow: hidden;
+}
+
+.completed-flash::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(74, 222, 128, 0.12) 40%, rgba(74, 222, 128, 0.18) 50%, rgba(74, 222, 128, 0.12) 60%, transparent 100%);
+    animation: completed-sweep 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    pointer-events: none;
+}
+
+@keyframes rainbow-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 200% 50%;
+    }
+}
+
+.rainbow-bg {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.rainbow-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 107, 107, 0.2),
+        rgba(254, 202, 87, 0.2),
+        rgba(72, 219, 251, 0.2),
+        rgba(255, 159, 243, 0.2),
+        rgba(84, 160, 255, 0.2),
+        rgba(95, 39, 205, 0.2),
+        rgba(255, 107, 107, 0.2)
+    );
+    background-size: 200% 100%;
+    animation: rainbow-shift 3s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.rainbow-text {
+    background: linear-gradient(
+        90deg,
+        #ff6b6b,
+        #feca57,
+        #48dbfb,
+        #ff9ff3,
+        #54a0ff,
+        #5f27cd,
+        #ff6b6b
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rainbow-shift 3s linear infinite;
+}

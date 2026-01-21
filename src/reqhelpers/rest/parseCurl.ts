@@ -24,8 +24,24 @@ export function parseCurlCommand(curl: string): Partial<ApiRequest> {
 
     if (token.startsWith("http")) {
       request.url = token;
+      const qIndex = token.indexOf("?");
+      if (qIndex !== -1) {
+        const queryString = token.slice(qIndex + 1);
+        queryString.split("&").forEach((part) => {
+          if (!part) return;
+          const [k, v] = part.split("=");
+          if (k) {
+            try {
+              request.query_params![decodeURIComponent(k)] = v ? decodeURIComponent(v) : "";
+            } catch {
+              request.query_params![k] = v || "";
+            }
+          }
+        });
+      }
       continue;
     }
+
 
     switch (token) {
       case "-X":

@@ -47,6 +47,8 @@ interface FileTreeProps {
   searchQuery: string;
   unsavedIds: Set<string>;
   onImportClick: () => void;
+  loadingRequests?: Set<string>;
+  completedRequests?: Set<string>;
 }
 
 const METHOD_COLORS: Record<string, string> = {
@@ -106,6 +108,8 @@ interface SortableItemProps {
   isInNestingFolder?: boolean;
   isCut?: boolean;
   itemRectsRef?: React.MutableRefObject<Map<string, DOMRect>>;
+  isLoading?: boolean;
+  isCompleted?: boolean;
 }
 
 function SortableItem({
@@ -127,6 +131,8 @@ function SortableItem({
   isInNestingFolder,
   isCut,
   itemRectsRef,
+  isLoading,
+  isCompleted,
 }: SortableItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: item.id });
@@ -155,10 +161,10 @@ function SortableItem({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group relative flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-colors ${isActive
+      className={`group relative flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-all duration-500 ${isActive
         ? "bg-accent/20 text-accent font-medium"
         : "hover:bg-white/5 text-white/80"
-        } ${isOver ? "bg-white/5" : ""} ${isNesting && isFolder ? "bg-accent/20 outline-1 outline-accent/50 rounded-b-none" : ""}`}
+        } ${isOver ? "bg-white/5" : ""} ${isNesting && isFolder ? "bg-accent/20 outline-1 outline-accent/50 rounded-b-none" : ""} ${isCompleted && !isActive ? "completed-flash" : ""}`}
       onClick={() => {
         if (item.type === "folder") {
           onSelect();
@@ -237,7 +243,10 @@ function SortableItem({
         <span className="truncate flex-1">{item.name}</span>
       )}
 
-      {isUnsaved && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
+      {isLoading && (
+        <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin shrink-0" />
+      )}
+      {isUnsaved && !isLoading && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
 
       <div className="flex items-center opacity-0 group-hover:opacity-100 gap-1 transition-opacity">
         {isFolder && (
@@ -329,6 +338,8 @@ export function FileTree({
   searchQuery,
   unsavedIds,
   onImportClick,
+  loadingRequests = new Set(),
+  completedRequests = new Set(),
 }: FileTreeProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -719,6 +730,8 @@ export function FileTree({
               isNesting={isNesting && overFolderId === item.id}
               isCut={clipboard?.id === item.id && clipboard.type === "cut"}
               itemRectsRef={itemRectsRef}
+              isLoading={loadingRequests.has(item.id)}
+              isCompleted={completedRequests.has(item.id)}
             />
           ))}
         </SortableContext>

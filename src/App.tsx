@@ -3,6 +3,7 @@ import type { Methods, ResponseRenderer, HttpProtocol } from "./bindings";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { TbLayoutSidebar } from "react-icons/tb";
+import { GiTeapot } from "react-icons/gi";
 import { isMac } from "./utils/platform";
 import {
   sendRequest,
@@ -12,7 +13,8 @@ import {
   BodyType,
   AuthType,
 } from "./reqhelpers/rest";
-import { formatBytes, getStatusColor } from "./utils/format";
+import { formatBytes, getStatusColor, STATUS_TEXT } from "./utils/format";
+import { playSuccessChime } from "./utils/sounds";
 import { CodeViewer } from "./components/CodeMirror";
 import { BodyEditor } from "./components/editors/BodyEditor";
 import { AuthEditor } from "./components/editors/AuthEditor";
@@ -49,8 +51,9 @@ import {
   parseInsomniaExport,
 } from "./utils/migration";
 import { useProjectStore } from "./stores/projectStore";
-import type { Folder, TreeItem } from "./types/project";
+import type { Folder, TreeItem, RequestFile } from "./types/project";
 import { useToastStore } from "./stores/toastStore";
+
 import "./App.css";
 
 function App() {
@@ -95,6 +98,7 @@ function App() {
     pasteItem,
     selectedItemId,
     setSelectedItem,
+    addToRecentRequests,
   } = useProjectStore();
 
 
@@ -106,7 +110,7 @@ function App() {
     if (!state.activeProjectId || !state.activeRequestId) return null;
     const project = state.projects.find((p) => p.id === state.activeProjectId);
     if (!project) return null;
-    const findItem = (root: Folder, itemId: string): TreeItem | null => {
+    const findItem = (root: any, itemId: string): any => {
       if (root.id === itemId) return root;
       for (const child of root.children) {
         if (child.id === itemId) return child;
@@ -117,13 +121,16 @@ function App() {
       }
       return null;
     };
+
     const item = findItem(project.root, state.activeRequestId);
     return item?.type === "request" ? item : null;
   });
 
   const { addToast } = useToastStore();
 
-  const [loading, setLoading] = useState(false);
+  const [loadingRequests, setLoadingRequests] = useState<Set<string>>(new Set());
+  const [completedRequests, setCompletedRequests] = useState<Set<string>>(new Set());
+  const loading = activeRequest ? loadingRequests.has(activeRequest.id) : false;
   const [activeTab, setActiveTab] = useState<
     "overview" | "params" | "authorization" | "body" | "headers" | "cookies"
   >("overview");
@@ -348,6 +355,8 @@ function App() {
           setItemToDelete(selectedItemId);
         }
       }
+
+
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -367,6 +376,7 @@ function App() {
 
   // Switch away from body tab if the current request doesn't support body (GET, HEAD)
   useEffect(() => {
+
     if (activeRequest && activeTab === "body") {
       const method = activeRequest.request.method;
       if (method === "GET" || method === "HEAD") {
@@ -451,7 +461,8 @@ function App() {
 
   async function performSend() {
     if (!activeRequest) return;
-    setLoading(true);
+    const requestId = activeRequest.id;
+    setLoadingRequests((prev) => new Set(prev).add(requestId));
     try {
       const resolvedUrl = resolveVariables(activeRequest.request.url);
 
@@ -489,9 +500,10 @@ function App() {
       };
       const resp = await sendRequest(resolvedRequest);
       setRequestResponse(activeRequest.id, resp);
+      addToRecentRequests(activeRequest.id);
 
       if (resp.status < 200 || resp.status >= 300) {
-        addToast(`Request failed: ${resp.status} ${resp.status_text}`, "error");
+        addToast(`Request failed: ${resp.status} ${STATUS_TEXT[resp.status] || resp.status_text}`, "error");
       }
 
       const preferred: ResponseRenderer[] = [
@@ -513,11 +525,52 @@ function App() {
       if (activeTab === "overview") {
         setActiveTab("body");
       }
+
+      setCompletedRequests((prev) => new Set(prev).add(requestId));
+      playSuccessChime();
+      setTimeout(() => {
+        setCompletedRequests((prev) => {
+          const next = new Set(prev);
+          next.delete(requestId);
+          return next;
+        });
+      }, 2000);
     } catch (err: any) {
       console.error(err);
-      addToast(err.toString(), "error");
+      const errorMessage = err?.message || err?.toString() || "Unknown error";
+      const errorResponse: import("./bindings").ApiResponse = {
+        status: 0,
+        status_text: "Error",
+        headers: {},
+        cookies: [],
+        body_base64: btoa(errorMessage),
+        timing: {
+          total_ms: 0,
+          dns_lookup_ms: 0,
+          tcp_handshake_ms: 0,
+          tls_handshake_ms: 0,
+          transfer_start_ms: 0,
+          ttfb_ms: 0,
+          content_download_ms: 0,
+        },
+        request_size: { headers_bytes: 0, body_bytes: 0, total_bytes: 0 },
+        response_size: { headers_bytes: 0, body_bytes: 0, total_bytes: 0 },
+        redirects: [],
+        remote_addr: null,
+        http_version: "",
+        available_renderers: ["Raw"],
+        detected_content_type: "text/plain",
+        protocol_used: "",
+        error: errorMessage,
+      };
+      setRequestResponse(requestId, errorResponse);
+      setResponseTab("Raw");
     } finally {
-      setLoading(false);
+      setLoadingRequests((prev) => {
+        const next = new Set(prev);
+        next.delete(requestId);
+        return next;
+      });
     }
   }
 
@@ -589,11 +642,41 @@ function App() {
 
   function updateUrl(url: string) {
     if (!activeRequest) return;
+
+    // Parse params from the new URL
+    const params: Record<string, string> = {};
+    const queryIndex = url.indexOf("?");
+    if (queryIndex !== -1) {
+      const queryString = url.slice(queryIndex + 1);
+      queryString.split("&").forEach((part) => {
+        if (!part) return;
+        const eqIndex = part.indexOf("=");
+        if (eqIndex === -1) {
+          params[decodeURIComponent(part)] = "";
+        } else {
+          const key = decodeURIComponent(part.slice(0, eqIndex));
+          const rawValue = part.slice(eqIndex + 1);
+          if (rawValue.includes("{{")) {
+            params[key] = rawValue;
+          } else {
+            try {
+              params[key] = decodeURIComponent(rawValue);
+            } catch {
+              params[key] = rawValue;
+            }
+          }
+        }
+      });
+    }
+
     updateRequest(activeRequest.id, (r) => ({
       ...r,
-      request: { ...r.request, url },
+      request: {
+        ...r.request,
+        url,
+        query_params: params
+      },
     }));
-    syncUrlToQueryParams();
   }
 
   function updateMethod(method: Methods) {
@@ -624,6 +707,7 @@ function App() {
       request: { ...r.request, auth },
     }));
   }
+
 
   function updateAuthInheritance(inherit: boolean) {
     if (!activeRequest) return;
@@ -671,51 +755,29 @@ function App() {
     return queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
   }
 
-  function syncUrlToQueryParams() {
+  function updateQueryParams(params: Record<string, string>) {
     if (!activeRequest) return;
-    try {
-      const urlStr = activeRequest.request.url;
-      const queryIndex = urlStr.indexOf("?");
-      if (queryIndex === -1) {
-        updateRequest(activeRequest.id, (r) => ({
-          ...r,
-          request: {
-            ...r.request,
-            query_params: {},
-          },
-        }));
-        return;
-      }
 
-      const queryString = urlStr.slice(queryIndex + 1);
-      const params: Record<string, string> = {};
+    // Build new URL from base and params
+    let baseUrl = activeRequest.request.url;
+    const qIndex = baseUrl.indexOf("?");
+    if (qIndex !== -1) {
+      baseUrl = baseUrl.substring(0, qIndex);
+    }
 
-      queryString.split("&").forEach((part) => {
-        const eqIndex = part.indexOf("=");
-        if (eqIndex === -1) {
-          params[decodeURIComponent(part)] = "";
-        } else {
-          const key = decodeURIComponent(part.slice(0, eqIndex));
+    const queryString = buildQueryString(params);
+    const newUrl = baseUrl + queryString;
 
-          const rawValue = part.slice(eqIndex + 1);
-
-          if (rawValue.includes("{{")) {
-            params[key] = rawValue;
-          } else {
-            params[key] = decodeURIComponent(rawValue);
-          }
-        }
-      });
-
-      updateRequest(activeRequest.id, (r) => ({
-        ...r,
-        request: {
-          ...r.request,
-          query_params: params,
-        },
-      }));
-    } catch { }
+    updateRequest(activeRequest.id, (r) => ({
+      ...r,
+      request: {
+        ...r.request,
+        url: newUrl,
+        query_params: params
+      },
+    }));
   }
+
 
   function renderResponseBody() {
     if (!activeRequest?.response) return null;
@@ -1067,6 +1129,8 @@ function App() {
             onImportClick={() => setShowImportModal(true)}
             showProjectOverview={showProjectOverview}
             className="relative"
+            loadingRequests={loadingRequests}
+            completedRequests={completedRequests}
           />
         </div>
 
@@ -1117,6 +1181,8 @@ function App() {
             onImportClick={() => setShowImportModal(true)}
             showProjectOverview={showProjectOverview}
             className="h-full"
+            loadingRequests={loadingRequests}
+            completedRequests={completedRequests}
           />
         </div>
 
@@ -1602,15 +1668,15 @@ function App() {
                             <span className="bg-[#ef4444]/20" />
                           </div>
                           <span
-                            className={`text-xs font-bold px-3 py-2 bg-[${getStatusColor(activeRequest.response?.status || 0)}]/20`}
-                            style={{
-                              color: getStatusColor(
-                                activeRequest.response?.status || 0,
-                              ),
-                            }}
+                            className={`text-xs font-bold px-3 py-2 flex items-center gap-1.5 ${activeRequest.response?.status === 418 ? "rainbow-bg rainbow-text" : ""}`}
+                            style={activeRequest.response?.status !== 418 ? {
+                              color: getStatusColor(activeRequest.response?.status || 0),
+                              backgroundColor: `${getStatusColor(activeRequest.response?.status || 0)}20`,
+                            } : undefined}
                           >
+                            {activeRequest.response?.status === 418 && <GiTeapot size={14} />}
                             {activeRequest.response?.status}{" "}
-                            {activeRequest.response?.status_text}
+                            {STATUS_TEXT[activeRequest.response?.status || 0] || activeRequest.response?.status_text}
                           </span>
 
                           <button
@@ -2156,5 +2222,6 @@ function App() {
     </div>
   );
 }
+
 
 export default App;

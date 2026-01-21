@@ -1024,7 +1024,7 @@ export const useProjectStore = create<ProjectState>()(
             timestamp: Date.now(),
           };
 
-          const filtered = project.recentRequests.filter(
+          const filtered = (project.recentRequests || []).filter(
             (r) => r.requestId !== requestId,
           );
           const updated = [recent, ...filtered].slice(0, 10);

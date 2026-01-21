@@ -30,6 +30,8 @@ export function Dialog({
         onCancel();
       }
       if (e.key === "Enter") {
+        e.preventDefault();
+        onConfirm();
       }
     };
 
@@ -42,7 +44,7 @@ export function Dialog({
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
     };
-  }, [isOpen, onCancel]);
+  }, [isOpen, onCancel, onConfirm]);
 
   if (!isOpen) return null;
 

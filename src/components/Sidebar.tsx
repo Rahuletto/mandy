@@ -33,6 +33,8 @@ interface SidebarProps {
   onImportClick: () => void;
   showProjectOverview?: boolean;
   className?: string;
+  loadingRequests?: Set<string>;
+  completedRequests?: Set<string>;
 }
 
 export function Sidebar({
@@ -60,6 +62,8 @@ export function Sidebar({
   onImportClick,
   showProjectOverview = false,
   className = "",
+  loadingRequests = new Set(),
+  completedRequests = new Set(),
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isResizing, setIsResizing] = useState(false);
@@ -210,6 +214,8 @@ export function Sidebar({
             searchQuery={searchQuery}
             unsavedIds={unsavedIds}
             onImportClick={onImportClick}
+            loadingRequests={loadingRequests}
+            completedRequests={completedRequests}
           />
         </>
       ) : (
