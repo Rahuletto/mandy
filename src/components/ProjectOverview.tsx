@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import type { Project, Folder, RequestFile } from "../types/project";
 import type { AuthType } from "../bindings";
 import { HiChevronRight, HiChevronDown, HiTrash } from "react-icons/hi";
@@ -121,7 +121,7 @@ function getValueType(value: unknown): string {
   return typeof value;
 }
 
-function RequestDetails({
+const RequestDetails = React.memo(function RequestDetails({
   request,
   onSelect,
   onRun,
@@ -307,9 +307,9 @@ function RequestDetails({
       )}
     </div>
   );
-}
+});
 
-function FolderSection({
+const FolderSection = React.memo(function FolderSection({
   folder,
   depth = 0,
   expandedIds,
@@ -399,7 +399,7 @@ function FolderSection({
       )}
     </div>
   );
-}
+});
 
 export function ProjectOverview({
   project,
@@ -437,8 +437,13 @@ export function ProjectOverview({
 
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || "");
+  const allRequests = useMemo(
+    () => collectRequests(project.root),
+    [project.root],
+  );
+  const requestCount = allRequests.length;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    new Set(getAllFolderIds(project.root)),
+    requestCount > 20 ? new Set() : new Set(getAllFolderIds(project.root)),
   );
   const [baseUrl, setBaseUrl] = useState(project.baseUrl || "");
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -452,10 +457,6 @@ export function ProjectOverview({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const iconButtonRef = useRef<HTMLButtonElement>(null);
 
-  const allRequests = useMemo(
-    () => collectRequests(project.root),
-    [project.root],
-  );
   const selectedLanguage = useProjectStore((state) => state.selectedLanguage);
   const setSelectedLanguage = useProjectStore(
     (state) => state.setSelectedLanguage,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, memo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -57,12 +57,14 @@ const METHOD_COLORS: Record<string, string> = {
   OPTIONS: "#06b6d4",
 };
 
+const LAZY_BATCH_SIZE = 100;
+
 function matchesSearch(item: TreeItem, query: string): boolean {
   if (!query) return true;
   const q = query.toLowerCase();
   if (item.name.toLowerCase().includes(q)) return true;
   if (item.type === "folder") {
-    return item.children.some((c) => matchesSearch(c, query));
+    return item.children.some((c) => matchesSearch(c, q));
   }
   return false;
 }
@@ -137,7 +139,7 @@ function SortableItem({
         isActive
           ? "bg-accent/20 text-accent font-medium"
           : "hover:bg-white/5 text-white/80"
-      } ${isOver && isFolder ? "bg-accent/10 outline outline-1 outline-accent/30" : ""}`}
+      } ${isOver && isFolder ? "bg-accent/10 outline-1 outline-accent/30" : ""}`}
       onClick={() => {
         if (item.type === "folder") {
           onSelect();
@@ -235,12 +237,14 @@ function SortableItem({
   );
 }
 
-function DragOverlayItem({ item }: { item: TreeItem; depth: number }) {
+const DragOverlayItem = memo(function DragOverlayItem({
+  item,
+}: {
+  item: TreeItem;
+  depth: number;
+}) {
   return (
-    <div
-      className="flex items-center gap-1.5 px-3 py-2 text-xs bg-inset border border-accent/50 rounded shadow-2xl backdrop-blur-md opacity-90"
-      style={{ paddingLeft: 12 }}
-    >
+    <div className="flex items-center gap-1.5 px-3 py-2 text-xs bg-inset border border-accent/50 rounded shadow-2xl backdrop-blur-md opacity-90">
       {item.type === "folder" ? (
         <>
           <FaFolder size={16} className="text-white/60" />
@@ -264,7 +268,7 @@ function DragOverlayItem({ item }: { item: TreeItem; depth: number }) {
       )}
     </div>
   );
-}
+});
 
 export function FileTree({
   root,
@@ -295,6 +299,8 @@ export function FileTree({
   const [renameValue, setRenameValue] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overFolderId, setOverFolderId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [renderedCount, setRenderedCount] = useState(LAZY_BATCH_SIZE);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -306,6 +312,29 @@ export function FileTree({
     matchesSearch(item, searchQuery),
   );
   const itemIds = flatItems.map(({ item }) => item.id);
+  const visibleItems = flatItems.slice(0, renderedCount);
+  const hasMore = renderedCount < flatItems.length;
+
+  useEffect(() => {
+    setRenderedCount(LAZY_BATCH_SIZE);
+  }, [root.id, searchQuery]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = containerRef.current!;
+      if (scrollHeight - scrollTop - clientHeight < 200 && hasMore) {
+        setRenderedCount((prev) =>
+          Math.min(prev + LAZY_BATCH_SIZE, flatItems.length),
+        );
+      }
+    };
+
+    const el = containerRef.current;
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [hasMore, flatItems.length]);
 
   useEffect(() => {
     const handleTriggerRename = (e: Event) => {
@@ -350,7 +379,6 @@ export function FileTree({
       return;
     }
 
-    // Haptic feedback when crossing over a new item
     if (lastOverIdRef.current !== overId) {
       haptic("alignment");
       lastOverIdRef.current = overId;
@@ -361,7 +389,6 @@ export function FileTree({
     );
 
     if (overData.item.type === "folder") {
-      // Use the same logic as handleDragEnd to decide if we're moving INTO or NEXT TO
       if (
         !overData.item.expanded ||
         (activeData && activeData.parentId !== overData.item.id)
@@ -388,34 +415,23 @@ export function FileTree({
 
     if (!activeData || !overData) return;
 
-    // Determine move strategy
-    // If we're dropping on a folder, and that folder is NOT the current parent, or it's a subfolder, move it IN
     if (overData.item.type === "folder") {
-      // If the folder is collapsed, or we are dragging from outside this folder, move INTO it
       if (!overData.item.expanded || activeData.parentId !== overData.item.id) {
-        // Move into the folder at the beginning
         onMoveItem(active.id as string, overData.item.id, 0);
         return;
       }
     }
 
-    // Default: Move next to (after) the item we are over
-    // If we were moving UP in the same parent, maybe move BEFORE?
-    // For now, moveItemAfter is consistent with current behavior but let's make it smarter
-
-    // Find index of active and over in the flat list to see direction
     const activeFlatIdx = flatItems.findIndex((f) => f.item.id === active.id);
     const overFlatIdx = flatItems.findIndex((f) => f.item.id === overId);
 
     if (activeFlatIdx > overFlatIdx) {
-      // Moving UP
       onMoveItem(
         active.id as string,
         overData.parentId,
         findItemIndexInParent(overId, overData.parentId),
       );
     } else {
-      // Moving DOWN
       onMoveItem(
         active.id as string,
         overData.parentId,
@@ -444,7 +460,7 @@ export function FileTree({
   function handleContextMenu(
     e: React.MouseEvent,
     item: TreeItem,
-    filterAddOnly = false,
+    filterAddOnly?: boolean,
   ) {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, item, filterAddOnly });
@@ -531,7 +547,7 @@ export function FileTree({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex-1 overflow-auto">
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto">
         {flatItems.length === 0 ? (
           <div className="p-4 text-center text-white/30 text-xs">
             No requests yet.
@@ -543,7 +559,7 @@ export function FileTree({
             items={itemIds}
             strategy={verticalListSortingStrategy}
           >
-            {flatItems.map(({ item, depth }) => (
+            {visibleItems.map(({ item, depth }) => (
               <SortableItem
                 key={item.id}
                 item={item}

@@ -984,7 +984,7 @@ function App() {
         )}
 
         <div
-          className="shrink-0 overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          className="shrink-0 h-full overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           style={{ width: isSidebarCollapsed ? 0 : sidebarWidth }}
         >
           <Sidebar

@@ -126,10 +126,10 @@ export function Sidebar({
   return (
     <div
       ref={sidebarRef}
-      className={`flex flex-col bg-transparent select-none shrink-0 ${className}`}
+      className={`flex flex-col h-full bg-transparent select-none shrink-0 ${className}`}
       style={{ width }}
     >
-      <div className="px-3 py-3 flex items-center gap-2">
+      <div className="px-3 py-3 flex items-center gap-2 shrink-0">
         <div className="flex-1">
           <input
             type="text"
@@ -150,89 +150,87 @@ export function Sidebar({
         </button>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        {activeProject ? (
-          <>
-            <div>
-              <div
-                className={`flex items-center opacity-80 gap-2 px-3 py-2 transition-colors cursor-pointer ${
-                  showProjectOverview ? "bg-accent/10" : "hover:bg-white/5"
-                }`}
-                onClick={onProjectClick}
+      {activeProject ? (
+        <>
+          <div className="shrink-0">
+            <div
+              className={`flex items-center opacity-80 gap-2 px-3 py-2 transition-colors cursor-pointer ${
+                showProjectOverview ? "bg-accent/10" : "hover:bg-white/5"
+              }`}
+              onClick={onProjectClick}
+            >
+              <button
+                ref={iconButtonRef}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowIconPicker(true);
+                }}
+                className="w-5 h-5 flex items-center justify-center transition-colors cursor-pointer"
+                style={{
+                  color: showProjectOverview
+                    ? "var(--color-accent)"
+                    : activeProject.iconColor || "rgba(255, 255, 255, 0.6)",
+                }}
               >
-                <button
-                  ref={iconButtonRef}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowIconPicker(true);
-                  }}
-                  className="w-5 h-5 flex items-center justify-center transition-colors cursor-pointer"
-                  style={{
-                    color: showProjectOverview
-                      ? "var(--color-accent)"
-                      : activeProject.iconColor || "rgba(255, 255, 255, 0.6)",
-                  }}
-                >
-                  {(() => {
-                    const IconComponent = getIconComponent(activeProject.icon);
-                    return <IconComponent size={16} />;
-                  })()}
-                </button>
-                <span
-                  className={`flex-1 text-left text-xs truncate transition-colors ${
-                    showProjectOverview
-                      ? "text-accent font-medium"
-                      : "text-white/70 hover:text-white"
-                  }`}
-                >
-                  {activeProject.name}
-                </span>
-              </div>
+                {(() => {
+                  const IconComponent = getIconComponent(activeProject.icon);
+                  return <IconComponent size={16} />;
+                })()}
+              </button>
+              <span
+                className={`flex-1 text-left text-xs truncate transition-colors ${
+                  showProjectOverview
+                    ? "text-accent font-medium"
+                    : "text-white/70 hover:text-white"
+                }`}
+              >
+                {activeProject.name}
+              </span>
             </div>
-            <FileTree
-              root={activeProject.root}
-              selectedItemId={selectedItemId}
-              onSelect={onSelect}
-              onToggleFolder={onToggleFolder}
-              onAddRequest={onAddRequest}
-              onAddFolder={onAddFolder}
-              onRename={onRename}
-              onDelete={onDelete}
-              onDuplicate={onDuplicate}
-              onSort={onSort}
-              onMoveItem={onMoveItem}
-              onCut={onCut}
-              onCopy={onCopy}
-              onPaste={onPaste}
-              clipboard={clipboard}
-              searchQuery={searchQuery}
-              unsavedIds={unsavedIds}
-            />
-            <div className="px-3 pt-2 opacity-0 hover:opacity-100 transition-opacity duration-300">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onAddRequest(activeProject.root.id)}
-                  className="flex-1 px-3 py-2 text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <FaPlus size={10} />
-                  Create
-                </button>
-                <button
-                  onClick={onImportClick}
-                  className="flex-1 px-3 py-2 text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <HiDownload size={12} />
-                  Import
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-white/30 text-xs p-4">
-            No project selected
           </div>
-        )}
-      </div>
+          <FileTree
+            root={activeProject.root}
+            selectedItemId={selectedItemId}
+            onSelect={onSelect}
+            onToggleFolder={onToggleFolder}
+            onAddRequest={onAddRequest}
+            onAddFolder={onAddFolder}
+            onRename={onRename}
+            onDelete={onDelete}
+            onDuplicate={onDuplicate}
+            onSort={onSort}
+            onMoveItem={onMoveItem}
+            onCut={onCut}
+            onCopy={onCopy}
+            onPaste={onPaste}
+            clipboard={clipboard}
+            searchQuery={searchQuery}
+            unsavedIds={unsavedIds}
+          />
+          <div className="px-3 py-2 opacity-0 hover:opacity-100 transition-opacity duration-300 shrink-0">
+            <div className="flex gap-2">
+              <button
+                onClick={() => onAddRequest(activeProject.root.id)}
+                className="flex-1 px-3 py-2 text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <FaPlus size={10} />
+                Create
+              </button>
+              <button
+                onClick={onImportClick}
+                className="flex-1 px-3 py-2 text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <HiDownload size={12} />
+                Import
+              </button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-white/30 text-xs p-4">
+          No project selected
+        </div>
+      )}
 
       <div
         className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-accent/50 transition-colors"
