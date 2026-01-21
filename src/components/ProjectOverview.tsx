@@ -105,11 +105,14 @@ function collectRequests(folder: Folder): RequestFile[] {
   return results;
 }
 
-function getAllFolderIds(folder: Folder): string[] {
-  const ids = [folder.id];
+function getFirstFolderAtEachDepth(folder: Folder, depth: number = 0): string[] {
+  const ids: string[] = [];
   for (const child of folder.children) {
     if (child.type === "folder") {
-      ids.push(...getAllFolderIds(child));
+      if (depth === 0) {
+        ids.push(child.id);
+      }
+      ids.push(...getFirstFolderAtEachDepth(child, depth + 1));
     }
   }
   return ids;
@@ -326,15 +329,6 @@ const FolderSection = React.memo(function FolderSection({
 }) {
   const isExpanded = expandedIds.has(folder.id);
 
-  const sortedChildren = useMemo(() => {
-    return [...folder.children].sort((a, b) => {
-      if (a.type !== b.type) {
-        return a.type === "request" ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [folder.children]);
-
   return (
     <div className="w-full">
       <button
@@ -364,7 +358,7 @@ const FolderSection = React.memo(function FolderSection({
         <div
           className={`flex flex-col gap-2 ${depth > 0 ? "ml-3 border-l border-white/10 pl-4 mb-1 mt-1" : ""}`}
         >
-          {sortedChildren.map((child, index) => {
+          {folder.children.map((child, index) => {
             if (child.type === "folder") {
               return (
                 <FolderSection
@@ -379,8 +373,8 @@ const FolderSection = React.memo(function FolderSection({
               );
             }
 
-            const prev = sortedChildren[index - 1];
-            const next = sortedChildren[index + 1];
+            const prev = folder.children[index - 1];
+            const next = folder.children[index + 1];
             const isFirstInGroup = !prev || prev.type !== "request";
             const isLastInGroup = !next || next.type !== "request";
 
@@ -441,9 +435,8 @@ export function ProjectOverview({
     () => collectRequests(project.root),
     [project.root],
   );
-  const requestCount = allRequests.length;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    requestCount > 20 ? new Set() : new Set(getAllFolderIds(project.root)),
+    new Set([project.root.id, ...getFirstFolderAtEachDepth(project.root)]),
   );
   const [baseUrl, setBaseUrl] = useState(project.baseUrl || "");
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -595,20 +588,24 @@ export function ProjectOverview({
                 )}
 
                 {editingDescription ? (
-                  <input
+                  <textarea
                     autoFocus
-                    className="text-sm text-white/50 bg-transparent border-none outline-none w-full mt-2"
+                    className="text-sm text-white/50 bg-transparent border-none outline-none w-full mt-2 resize-none"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     onBlur={handleDescriptionBlur}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && handleDescriptionBlur()
-                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleDescriptionBlur();
+                      }
+                    }}
                     placeholder="Add a description..."
+                    rows={description.split("\n").length || 1}
                   />
                 ) : (
                   <p
-                    className="text-sm text-white/40 mt-2 cursor-text hover:text-white/60"
+                    className="text-sm text-white/40 mt-2 whitespace-pre-wrap cursor-text hover:text-white/60"
                     onClick={() => setEditingDescription(true)}
                   >
                     {project.description || "Add a description..."}

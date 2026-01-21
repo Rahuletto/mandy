@@ -3,7 +3,6 @@ import type { Project, SortMode } from "../types/project";
 import { FileTree } from "./FileTree";
 import { ContextMenu, MenuItem, IconPicker, getIconComponent } from "./ui";
 import { FaPlus } from "react-icons/fa6";
-import { HiDownload } from "react-icons/hi";
 
 interface SidebarProps {
   activeProject: Project | null;
@@ -120,6 +119,10 @@ export function Sidebar({
           label: "New Folder",
           onClick: () => onAddFolder(activeProject.root.id),
         },
+        {
+          label: "Import Collection",
+          onClick: onImportClick,
+        },
       ]
     : [];
 
@@ -206,25 +209,8 @@ export function Sidebar({
             clipboard={clipboard}
             searchQuery={searchQuery}
             unsavedIds={unsavedIds}
+            onImportClick={onImportClick}
           />
-          <div className="px-3 py-2 opacity-0 hover:opacity-100 transition-opacity duration-300 shrink-0">
-            <div className="flex gap-2">
-              <button
-                onClick={() => onAddRequest(activeProject.root.id)}
-                className="flex-1 px-3 py-2 text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-              >
-                <FaPlus size={10} />
-                Create
-              </button>
-              <button
-                onClick={onImportClick}
-                className="flex-1 px-3 py-2 text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-              >
-                <HiDownload size={12} />
-                Import
-              </button>
-            </div>
-          </div>
         </>
       ) : (
         <div className="flex-1 flex items-center justify-center text-white/30 text-xs p-4">

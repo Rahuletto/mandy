@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, memo } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -17,7 +17,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { VscChevronRight, VscChevronDown, VscAdd } from "react-icons/vsc";
-import { FaFolder, FaFolderOpen } from "react-icons/fa6";
+import { FaFolder, FaFolderOpen, FaPlus } from "react-icons/fa6";
+import { HiDownload } from "react-icons/hi";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
 import { ContextMenu, MenuItem } from "./ui";
 import { getSimpleShortcut, getShortcutDisplay } from "../utils/platform";
@@ -45,6 +46,7 @@ interface FileTreeProps {
   clipboard: { id: string; type: "cut" | "copy" } | null;
   searchQuery: string;
   unsavedIds: Set<string>;
+  onImportClick: () => void;
 }
 
 const METHOD_COLORS: Record<string, string> = {
@@ -98,7 +100,10 @@ interface SortableItemProps {
   onRenameCancel: () => void;
   isDragging?: boolean;
   isOver?: boolean;
+  isNesting?: boolean;
+  isInNestingFolder?: boolean;
   isCut?: boolean;
+  itemRectsRef?: React.MutableRefObject<Map<string, DOMRect>>;
 }
 
 function SortableItem({
@@ -116,10 +121,23 @@ function SortableItem({
   onRenameCancel,
   isDragging,
   isOver,
+  isNesting,
+  isInNestingFolder,
   isCut,
+  itemRectsRef,
 }: SortableItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: item.id });
+  const itemRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!itemRef.current || !itemRectsRef) return;
+    const rect = itemRef.current.getBoundingClientRect();
+    itemRectsRef.current.set(item.id, rect);
+    return () => {
+      itemRectsRef.current.delete(item.id);
+    };
+  }, [item.id, itemRectsRef]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -139,7 +157,7 @@ function SortableItem({
         isActive
           ? "bg-accent/20 text-accent font-medium"
           : "hover:bg-white/5 text-white/80"
-      } ${isOver && isFolder ? "bg-accent/10 outline-1 outline-accent/30" : ""}`}
+      } ${isOver ? "bg-white/5" : ""} ${isNesting && isFolder ? "bg-accent/20 outline-1 outline-accent/50 rounded-b-none" : ""}`}
       onClick={() => {
         if (item.type === "folder") {
           onSelect();
@@ -150,6 +168,16 @@ function SortableItem({
       }}
       onContextMenu={onContextMenu}
     >
+      {isNesting && isFolder && (
+        <div
+          className="absolute left-0 top-0 bottom-0 bg-accent/20 pointer-events-none"
+          style={{
+            width: depth * 12 + 12,
+            borderLeftWidth: 2,
+            borderLeftColor: "var(--color-accent)",
+          }}
+        />
+      )}
       <div className="absolute left-0 top-0 bottom-0 flex pointer-events-none">
         {Array.from({ length: depth }).map((_, i) => (
           <div
@@ -239,15 +267,26 @@ function SortableItem({
 
 const DragOverlayItem = memo(function DragOverlayItem({
   item,
+  depth,
 }: {
   item: TreeItem;
   depth: number;
 }) {
   return (
-    <div className="flex items-center gap-1.5 px-3 py-2 text-xs bg-inset border border-accent/50 rounded shadow-2xl backdrop-blur-md opacity-90">
+    <div className="flex items-center gap-1.5 pl-3 pr-2 py-1.5 text-xs bg-inset border-2 border-dashed rounded-lg border-accent/50 rounded shadow-2xl backdrop-blur-md opacity-90">
+      <div className="absolute left-0 top-0 bottom-0 flex pointer-events-none">
+        {Array.from({ length: depth }).map((_, i) => (
+          <div
+            key={i}
+            className="w-[12px] border-r border-white/10 h-full"
+            style={{ marginLeft: i === 0 ? 8 : 0 }}
+          />
+        ))}
+      </div>
+      <div style={{ width: depth * 12 }} className="shrink-0" />
       {item.type === "folder" ? (
         <>
-          <FaFolder size={16} className="text-white/60" />
+          <FaFolder size={16} className="text-white/60 shrink-0" />
           <span className="truncate text-white/90 font-medium">
             {item.name}
           </span>
@@ -288,6 +327,7 @@ export function FileTree({
   clipboard,
   searchQuery,
   unsavedIds,
+  onImportClick,
 }: FileTreeProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -299,7 +339,11 @@ export function FileTree({
   const [renameValue, setRenameValue] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overFolderId, setOverFolderId] = useState<string | null>(null);
+  const [isNesting, setIsNesting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const itemRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHoveredFolderRef = useRef<string | null>(null);
   const [renderedCount, setRenderedCount] = useState(LAZY_BATCH_SIZE);
 
   const sensors = useSensors(
@@ -357,6 +401,21 @@ export function FileTree({
     return found ? { item: found.item, depth: found.depth } : null;
   }
 
+  function isInsideFolder(
+    itemId: string,
+    folderId: string,
+  ): boolean {
+    let current = flatItems.find((f) => f.item.id === itemId);
+    while (current && current.depth > 0) {
+      const parent = flatItems.find(
+        (f) => f.item.id === current?.parentId,
+      );
+      if (parent?.item.id === folderId) return true;
+      current = parent;
+    }
+    return false;
+  }
+
   function handleDragStart(event: DragStartEvent) {
     haptic("generic");
     setActiveId(event.active.id as string);
@@ -364,11 +423,64 @@ export function FileTree({
 
   const lastOverIdRef = useRef<string | null>(null);
 
+  function clearHoverTimer() {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    lastHoveredFolderRef.current = null;
+  }
+
+  function startHoverTimer(folderId: string) {
+    clearHoverTimer();
+    hoverTimerRef.current = setTimeout(() => {
+      if (lastHoveredFolderRef.current === folderId) {
+        const folder = findFolderById(root, folderId);
+        if (folder && !folder.expanded) {
+          onToggleFolder(folderId);
+        }
+        lastHoveredFolderRef.current = null;
+      }
+    }, 700);
+    lastHoveredFolderRef.current = folderId;
+  }
+
+  function shouldNestInFolder(
+    overId: string,
+    activatorEvent: PointerEvent | undefined,
+    activeData: { item: TreeItem; depth: number; parentId: string } | undefined,
+    overData: { item: TreeItem; depth: number; parentId: string } | undefined,
+  ): boolean {
+    if (!overData || overData.item.type !== "folder") return false;
+    if (!activatorEvent) return false;
+
+    const rect = itemRectsRef.current.get(overId);
+    if (!rect) return false;
+
+    const pointerY = activatorEvent.clientY;
+    const relativeY = pointerY - rect.top;
+    const nestThreshold = rect.height * 0.35;
+
+    if (relativeY < nestThreshold || relativeY > rect.height - nestThreshold) {
+      return false;
+    }
+
+    if (!overData.item.expanded) return true;
+
+    if (activeData && activeData.parentId === overData.item.id) {
+      return false;
+    }
+
+    return true;
+  }
+
   function handleDragOver(event: DragOverEvent) {
     const overId = event.over?.id as string | undefined;
     if (!overId) {
       lastOverIdRef.current = null;
       setOverFolderId(null);
+      setIsNesting(false);
+      clearHoverTimer();
       return;
     }
 
@@ -376,6 +488,7 @@ export function FileTree({
     if (!overData) {
       lastOverIdRef.current = null;
       setOverFolderId(null);
+      clearHoverTimer();
       return;
     }
 
@@ -388,17 +501,27 @@ export function FileTree({
       ({ item }) => item.id === event.active.id,
     );
 
-    if (overData.item.type === "folder") {
-      if (
-        !overData.item.expanded ||
-        (activeData && activeData.parentId !== overData.item.id)
-      ) {
-        setOverFolderId(overId);
-        return;
+    const activatorEvent = event.activatorEvent as PointerEvent | undefined;
+    const shouldNest = shouldNestInFolder(
+      overId,
+      activatorEvent,
+      activeData,
+      overData,
+    );
+
+    if (shouldNest) {
+      setOverFolderId(overId);
+      setIsNesting(true);
+      clearHoverTimer();
+    } else {
+      setOverFolderId(null);
+      setIsNesting(false);
+      if (overData.item.type === "folder") {
+        startHoverTimer(overId);
+      } else {
+        clearHoverTimer();
       }
     }
-
-    setOverFolderId(overData.parentId || null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -406,6 +529,8 @@ export function FileTree({
     const { active, over } = event;
     setActiveId(null);
     setOverFolderId(null);
+    setIsNesting(false);
+    clearHoverTimer();
 
     if (!over || active.id === over.id) return;
 
@@ -415,11 +540,17 @@ export function FileTree({
 
     if (!activeData || !overData) return;
 
-    if (overData.item.type === "folder") {
-      if (!overData.item.expanded || activeData.parentId !== overData.item.id) {
-        onMoveItem(active.id as string, overData.item.id, 0);
-        return;
-      }
+    const activatorEvent = event.activatorEvent as PointerEvent | undefined;
+    const shouldNest = shouldNestInFolder(
+      overId,
+      activatorEvent,
+      activeData,
+      overData,
+    );
+
+    if (shouldNest && overData.item.type === "folder") {
+      onMoveItem(active.id as string, overData.item.id, 0);
+      return;
     }
 
     const activeFlatIdx = flatItems.findIndex((f) => f.item.id === active.id);
@@ -577,12 +708,32 @@ export function FileTree({
                 onRenameSubmit={handleRenameSubmit}
                 onRenameCancel={handleRenameCancel}
                 isDragging={activeId === item.id}
-                isOver={overFolderId === item.id}
+                isOver={!isNesting && overFolderId === item.id}
+                isNesting={isNesting && overFolderId === item.id}
                 isCut={clipboard?.id === item.id && clipboard.type === "cut"}
+                itemRectsRef={itemRectsRef}
               />
             ))}
           </SortableContext>
         )}
+        <div className="px-3 py-2">
+          <div className="flex gap-2 opacity-0 hover:opacity-100 transition-opacity duration-300">
+            <button
+              onClick={() => onAddRequest(root.id)}
+              className="flex-1 px-3 py-2 text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+            >
+              <FaPlus size={10} />
+              Create
+            </button>
+            <button
+              onClick={onImportClick}
+              className="flex-1 px-3 py-2 text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+            >
+              <HiDownload size={12} />
+              Import
+            </button>
+          </div>
+        </div>
       </div>
 
       <DragOverlay>
