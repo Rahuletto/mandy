@@ -284,14 +284,13 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
             )}
 
             <textarea
-              className="w-full bg-transparent border-none outline-none text-white/60 resize-none overflow-hidden min-h-[1.5rem] mb-3 placeholder:text-white/20"
+              className="w-full bg-transparent border-none outline-none text-white/60 resize-none overflow-hidden min-h-6 h-fit mb-3 placeholder:text-white/20"
               placeholder="Add a description..."
               value={description}
               onChange={(e) => {
                 setDescription(e.target.value);
                 onUpdateDescription(e.target.value);
               }}
-              style={{ height: "auto" }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
                 target.style.height = "auto";

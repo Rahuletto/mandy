@@ -51,7 +51,11 @@ interface FileTreeProps {
   completedRequests?: Set<string>;
 }
 
-import { METHOD_COLORS, SHORT_METHODS, getShortMethod, getMethodColor } from "../utils/methodConstants";
+import {
+  METHOD_COLORS,
+  getShortMethod,
+  getMethodColor,
+} from "../utils/methodConstants";
 
 const LAZY_BATCH_SIZE = 100;
 
