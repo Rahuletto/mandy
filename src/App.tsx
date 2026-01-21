@@ -101,9 +101,9 @@ function App() {
     addToRecentRequests,
   } = useProjectStore();
 
-
-  const activeProject = useProjectStore((state) =>
-    state.projects.find((p) => p.id === state.activeProjectId) || null,
+  const activeProject = useProjectStore(
+    (state) =>
+      state.projects.find((p) => p.id === state.activeProjectId) || null,
   );
 
   const activeRequest = useProjectStore((state) => {
@@ -128,8 +128,12 @@ function App() {
 
   const { addToast } = useToastStore();
 
-  const [loadingRequests, setLoadingRequests] = useState<Set<string>>(new Set());
-  const [completedRequests, setCompletedRequests] = useState<Set<string>>(new Set());
+  const [loadingRequests, setLoadingRequests] = useState<Set<string>>(
+    new Set(),
+  );
+  const [completedRequests, setCompletedRequests] = useState<Set<string>>(
+    new Set(),
+  );
   const loading = activeRequest ? loadingRequests.has(activeRequest.id) : false;
   const [activeTab, setActiveTab] = useState<
     "overview" | "params" | "authorization" | "body" | "headers" | "cookies"
@@ -355,8 +359,6 @@ function App() {
           setItemToDelete(selectedItemId);
         }
       }
-
-
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -376,7 +378,6 @@ function App() {
 
   // Switch away from body tab if the current request doesn't support body (GET, HEAD)
   useEffect(() => {
-
     if (activeRequest && activeTab === "body") {
       const method = activeRequest.request.method;
       if (method === "GET" || method === "HEAD") {
@@ -384,6 +385,28 @@ function App() {
       }
     }
   }, [activeRequest?.id, activeTab]);
+
+  useEffect(() => {
+    if (activeRequest?.response) {
+      const preferred: ResponseRenderer[] = [
+        "Json",
+        "Xml",
+        "Html",
+        "HtmlPreview",
+        "Image",
+        "Audio",
+        "Video",
+        "Pdf",
+      ];
+      const bestRenderer =
+        preferred.find((r) =>
+          activeRequest.response.available_renderers.includes(r),
+        ) ||
+        activeRequest.response.available_renderers[0] ||
+        "Raw";
+      setResponseTab(bestRenderer);
+    }
+  }, [activeRequest?.id, activeRequest?.response]);
 
   const handleMainMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -503,7 +526,10 @@ function App() {
       addToRecentRequests(activeRequest.id);
 
       if (resp.status < 200 || resp.status >= 300) {
-        addToast(`Request failed: ${resp.status} ${STATUS_TEXT[resp.status] || resp.status_text}`, "error");
+        addToast(
+          `Request failed: ${resp.status} ${STATUS_TEXT[resp.status] || resp.status_text}`,
+          "error",
+        );
       }
 
       const preferred: ResponseRenderer[] = [
@@ -674,7 +700,7 @@ function App() {
       request: {
         ...r.request,
         url,
-        query_params: params
+        query_params: params,
       },
     }));
   }
@@ -707,7 +733,6 @@ function App() {
       request: { ...r.request, auth },
     }));
   }
-
 
   function updateAuthInheritance(inherit: boolean) {
     if (!activeRequest) return;
@@ -773,11 +798,10 @@ function App() {
       request: {
         ...r.request,
         url: newUrl,
-        query_params: params
+        query_params: params,
       },
     }));
   }
-
 
   function renderResponseBody() {
     if (!activeRequest?.response) return null;
@@ -822,7 +846,7 @@ function App() {
               : `https://${requestUrl}`,
           );
           baseUrl = `${url.protocol}//${url.host}`;
-        } catch { }
+        } catch {}
 
         let previewHtml = body;
         if (baseUrl && !body.includes("<base")) {
@@ -1008,7 +1032,7 @@ function App() {
                       setShowProjectOverview(true);
                     },
                   })),
-                  { label: "", onClick: () => { }, divider: true },
+                  { label: "", onClick: () => {}, divider: true },
                   {
                     label: "+ Create Project",
                     onClick: () => {
@@ -1047,7 +1071,7 @@ function App() {
                       onClick: () =>
                         setActiveEnvironment(activeProject.id, env.id),
                     })),
-                    { label: "", onClick: () => { }, divider: true },
+                    { label: "", onClick: () => {}, divider: true },
                     {
                       label: "Manage Environments...",
                       onClick: () => {
@@ -1074,7 +1098,6 @@ function App() {
           title="Homepage"
         >
           <Logo className="shrink-0 w-4 h-4" />
-
         </button>
       </header>
 
@@ -1135,10 +1158,11 @@ function App() {
         </div>
 
         <div
-          className={`absolute left-2 top-2 bottom-2 z-40 rounded-xl bg-[#1a1a1a]/98 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPeeking && isSidebarCollapsed
-            ? "opacity-100 translate-x-0 scale-100"
-            : "opacity-0 -translate-x-4 scale-[0.98] pointer-events-none"
-            }`}
+          className={`absolute left-2 top-2 bottom-2 z-40 rounded-xl bg-[#1a1a1a]/98 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+            isPeeking && isSidebarCollapsed
+              ? "opacity-100 translate-x-0 scale-100"
+              : "opacity-0 -translate-x-4 scale-[0.98] pointer-events-none"
+          }`}
           style={{ width: sidebarWidth }}
           onMouseLeave={() => setIsPeeking(false)}
         >
@@ -1261,7 +1285,6 @@ function App() {
               }}
               onImportClick={() => setShowImportModal(true)}
               recentRequests={activeProject?.recentRequests || []}
-
               onSelectRecent={(id) => {
                 setActiveRequestId(id);
               }}
@@ -1338,10 +1361,11 @@ function App() {
                           key={tab}
                           type="button"
                           onClick={() => setActiveTab(tab)}
-                          className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${activeTab === tab
-                            ? "text-accent bg-accent/10"
-                            : "text-white/80 hover:text-white/60"
-                            }`}
+                          className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${
+                            activeTab === tab
+                              ? "text-accent bg-accent/10"
+                              : "text-white/80 hover:text-white/60"
+                          }`}
                         >
                           {tab === "overview"
                             ? "Overview"
@@ -1641,10 +1665,11 @@ function App() {
                               key={renderer}
                               type="button"
                               onClick={() => setResponseTab(renderer)}
-                              className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${responseTab === renderer
-                                ? "text-accent bg-accent/10"
-                                : "text-white/60 hover:text-white/50"
-                                }`}
+                              className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${
+                                responseTab === renderer
+                                  ? "text-accent bg-accent/10"
+                                  : "text-white/60 hover:text-white/50"
+                              }`}
                             >
                               {getRendererLabel(renderer)}
                             </button>
@@ -1669,14 +1694,23 @@ function App() {
                           </div>
                           <span
                             className={`text-xs font-bold px-3 py-2 flex items-center gap-1.5 ${activeRequest.response?.status === 418 ? "rainbow-bg rainbow-text" : ""}`}
-                            style={activeRequest.response?.status !== 418 ? {
-                              color: getStatusColor(activeRequest.response?.status || 0),
-                              backgroundColor: `${getStatusColor(activeRequest.response?.status || 0)}20`,
-                            } : undefined}
+                            style={
+                              activeRequest.response?.status !== 418
+                                ? {
+                                    color: getStatusColor(
+                                      activeRequest.response?.status || 0,
+                                    ),
+                                    backgroundColor: `${getStatusColor(activeRequest.response?.status || 0)}20`,
+                                  }
+                                : undefined
+                            }
                           >
-                            {activeRequest.response?.status === 418 && <GiTeapot size={14} />}
+                            {activeRequest.response?.status === 418 && (
+                              <GiTeapot size={14} />
+                            )}
                             {activeRequest.response?.status}{" "}
-                            {STATUS_TEXT[activeRequest.response?.status || 0] || activeRequest.response?.status_text}
+                            {STATUS_TEXT[activeRequest.response?.status || 0] ||
+                              activeRequest.response?.status_text}
                           </span>
 
                           <button
@@ -1760,20 +1794,22 @@ function App() {
                           <button
                             type="button"
                             onClick={() => setResponseDetailTab("headers")}
-                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "headers"
-                              ? "text-accent bg-accent/10"
-                              : "text-white/60 hover:text-white/50"
-                              }`}
+                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
+                              responseDetailTab === "headers"
+                                ? "text-accent bg-accent/10"
+                                : "text-white/60 hover:text-white/50"
+                            }`}
                           >
                             Headers
                           </button>
                           <button
                             type="button"
                             onClick={() => setResponseDetailTab("cookies")}
-                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "cookies"
-                              ? "text-accent bg-accent/10"
-                              : "text-white/60 hover:text-white/50"
-                              }`}
+                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
+                              responseDetailTab === "cookies"
+                                ? "text-accent bg-accent/10"
+                                : "text-white/60 hover:text-white/50"
+                            }`}
                           >
                             Cookies
                           </button>
@@ -1806,7 +1842,7 @@ function App() {
                           {responseDetailTab === "cookies" && (
                             <div className="flex-1 min-h-0">
                               {activeRequest.response?.cookies &&
-                                activeRequest.response.cookies.length > 0 ? (
+                              activeRequest.response.cookies.length > 0 ? (
                                 <KeyValueTable
                                   items={activeRequest.response.cookies.map(
                                     (c, i) => ({
@@ -1818,7 +1854,7 @@ function App() {
                                       enabled: true,
                                     }),
                                   )}
-                                  onChange={() => { }}
+                                  onChange={() => {}}
                                   readOnly={true}
                                   showDescription={false}
                                 />
@@ -1858,7 +1894,6 @@ function App() {
               }}
               onImportClick={() => setShowImportModal(true)}
               recentRequests={activeProject?.recentRequests || []}
-
               onSelectRecent={(id) => {
                 setActiveRequestId(id);
               }}
@@ -2222,6 +2257,5 @@ function App() {
     </div>
   );
 }
-
 
 export default App;
