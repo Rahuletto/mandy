@@ -15,6 +15,8 @@ import { generateSnippet } from "../utils/snippets";
 import { KeyValueTable } from "./KeyValueTable";
 import { AuthEditor } from "./editors/AuthEditor";
 import { useProjectStore } from "../stores/projectStore";
+import { hexToRgba } from "../utils/format";
+import { METHOD_COLORS_TAILWIND, getMethodColorTailwind } from "../utils/methodConstants";
 
 const LANGUAGES = [
   { id: "shell", label: "Shell cURL" },
@@ -25,49 +27,6 @@ const LANGUAGES = [
   { id: "java", label: "Java HttpClient" },
   { id: "php", label: "PHP Guzzle" },
 ];
-
-import { hexToRgba } from "../utils/format";
-
-const METHOD_COLORS: Record<
-  string,
-  { bg: string; text: string; bgHover: string }
-> = {
-  GET: {
-    bg: "bg-green-500/10",
-    text: "text-green-400",
-    bgHover: "hover:bg-green-500/20",
-  },
-  POST: {
-    bg: "bg-blue-500/10",
-    text: "text-blue-400",
-    bgHover: "hover:bg-blue-500/20",
-  },
-  PUT: {
-    bg: "bg-yellow-500/10",
-    text: "text-yellow-400",
-    bgHover: "hover:bg-yellow-500/20",
-  },
-  PATCH: {
-    bg: "bg-purple-500/10",
-    text: "text-purple-400",
-    bgHover: "hover:bg-purple-500/20",
-  },
-  DELETE: {
-    bg: "bg-red-500/10",
-    text: "text-red-400",
-    bgHover: "hover:bg-red-500/20",
-  },
-  HEAD: {
-    bg: "bg-gray-500/10",
-    text: "text-gray-400",
-    bgHover: "hover:bg-gray-500/20",
-  },
-  OPTIONS: {
-    bg: "bg-cyan-500/10",
-    text: "text-cyan-400",
-    bgHover: "hover:bg-cyan-500/20",
-  },
-};
 
 interface ProjectOverviewProps {
   project: Project;
@@ -139,7 +98,7 @@ const RequestDetails = React.memo(function RequestDetails({
 }) {
   const [expanded, setExpanded] = useState(true);
 
-  const colors = METHOD_COLORS[request.request.method] || METHOD_COLORS.GET;
+  const colors = getMethodColorTailwind(request.request.method);
 
   const queryParams = Object.entries(request.request.query_params);
   const body = request.request.body;
@@ -448,12 +407,33 @@ export function ProjectOverview({
     project.activeEnvironmentId,
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isLangSelectorSticky, setIsLangSelectorSticky] = useState(false);
   const iconButtonRef = useRef<HTMLButtonElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const langSelectorRef = useRef<HTMLDivElement>(null);
 
   const selectedLanguage = useProjectStore((state) => state.selectedLanguage);
   const setSelectedLanguage = useProjectStore(
     (state) => state.setSelectedLanguage,
   );
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    const langSelector = langSelectorRef.current;
+    if (!scrollContainer || !langSelector) return;
+
+    const handleScroll = () => {
+      const rect = langSelector.getBoundingClientRect();
+      const containerRect = scrollContainer.getBoundingClientRect();
+      
+      // If selector top is above container top + header height, show sticky
+      const isHidden = rect.top < containerRect.top + 10;
+      setIsLangSelectorSticky(isHidden);
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll);
+    return () => scrollContainer.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleNameBlur = () => {
     setEditingName(false);
@@ -530,6 +510,38 @@ export function ProjectOverview({
           </div>
 
           <div className="flex items-center gap-2">
+            <div
+              className={`relative transition-all duration-300 ease-out origin-right ${
+                isLangSelectorSticky
+                  ? "opacity-100 scale-100 w-auto"
+                  : "opacity-0 scale-95 w-0 overflow-hidden"
+              }`}
+            >
+              <button
+                onClick={() => setShowLangDropdown(!showLangDropdown)}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/5 rounded-lg text-xs text-white/50 hover:text-white/90 transition-all cursor-pointer group whitespace-nowrap"
+              >
+                <span>
+                  {LANGUAGES.find((l) => l.id === selectedLanguage)?.label}
+                </span>
+                <HiChevronDown
+                  size={14}
+                  className="text-white/20 group-hover:text-white/40 transition-colors mt-0.5"
+                />
+              </button>
+              {showLangDropdown && (
+                <Dropdown
+                  className="right-0 top-full mt-1"
+                  onClose={() => setShowLangDropdown(false)}
+                  width="min-w-[180px]"
+                  items={LANGUAGES.map((lang) => ({
+                    label: lang.label,
+                    active: selectedLanguage === lang.id,
+                    onClick: () => setSelectedLanguage(lang.id),
+                  }))}
+                />
+              )}
+            </div>
             <button
               onClick={onExport}
               className="px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
@@ -564,7 +576,7 @@ export function ProjectOverview({
         anchorRef={iconButtonRef}
       />
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6" ref={scrollContainerRef}>
         {activeTab === "overview" && (
           <div className="space-y-6 p-3">
             <div className="flex items-start justify-between">
@@ -613,7 +625,12 @@ export function ProjectOverview({
                 )}
               </div>
 
-              <div className="flex flex-col items-end shrink-0 relative">
+              <div
+                className={`flex flex-col items-end shrink-0 relative transition-all duration-300 ease-out ${
+                  isLangSelectorSticky ? "opacity-0 pointer-events-none" : "opacity-100"
+                }`}
+                ref={langSelectorRef}
+              >
                 <button
                   onClick={() => setShowLangDropdown(!showLangDropdown)}
                   className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/5 rounded-lg text-xs text-white/50 hover:text-white/90 transition-all cursor-pointer group"

@@ -51,15 +51,7 @@ interface FileTreeProps {
   completedRequests?: Set<string>;
 }
 
-const METHOD_COLORS: Record<string, string> = {
-  GET: "#22c55e",
-  POST: "#eab308",
-  PUT: "#3b82f6",
-  PATCH: "#a855f7",
-  DELETE: "#ef4444",
-  HEAD: "#6b7280",
-  OPTIONS: "#06b6d4",
-};
+import { METHOD_COLORS, SHORT_METHODS, getShortMethod, getMethodColor } from "../utils/methodConstants";
 
 const LAZY_BATCH_SIZE = 100;
 
@@ -87,7 +79,6 @@ function flattenTree(
   }
   return result;
 }
-
 
 interface SortableItemProps {
   item: TreeItem;
@@ -161,10 +152,11 @@ function SortableItem({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group relative flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-all duration-500 ${isActive
-        ? "bg-accent/20 text-accent font-medium"
-        : "hover:bg-white/5 text-white/80"
-        } ${isOver ? "bg-white/5" : ""} ${isNesting && isFolder ? "bg-accent/20 outline-1 outline-accent/50 rounded-b-none" : ""} ${isCompleted && !isActive ? "completed-flash" : ""}`}
+      className={`group relative flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-all duration-500 ${
+        isActive
+          ? "bg-accent/20 text-accent font-medium"
+          : "hover:bg-white/5 text-white/80"
+      } ${isOver ? "bg-white/5" : ""} ${isNesting && isFolder ? "bg-accent/20 outline-1 outline-accent/50 rounded-b-none" : ""} ${isCompleted && !isActive ? "completed-flash" : ""}`}
       onClick={() => {
         if (item.type === "folder") {
           onSelect();
@@ -218,11 +210,10 @@ function SortableItem({
         <span
           className="font-mono text-[11px] font-bold shrink-0 mr-2 w-10 text-right"
           style={{
-            color:
-              METHOD_COLORS[(item as RequestFile).request.method] || "#888",
+            color: getMethodColor((item as RequestFile).request.method),
           }}
         >
-          {(item as RequestFile).request.method}
+          {getShortMethod((item as RequestFile).request.method)}
         </span>
       )}
 
@@ -246,7 +237,9 @@ function SortableItem({
       {isLoading && (
         <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin shrink-0" />
       )}
-      {isUnsaved && !isLoading && <span className="w-1.5 h-1.5 rounded-full bg-accent" />}
+      {isUnsaved && !isLoading && (
+        <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+      )}
 
       <div className="flex items-center opacity-0 group-hover:opacity-100 gap-1 transition-opacity">
         {isFolder && (
@@ -425,7 +418,6 @@ export function FileTree({
     return false;
   }
 
-
   function handleDragStart(event: DragStartEvent) {
     haptic("generic");
     setActiveId(event.active.id as string);
@@ -541,7 +533,6 @@ export function FileTree({
         clearHoverTimer();
       }
     }
-
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -579,7 +570,6 @@ export function FileTree({
       onMoveItem(active.id as string, overData.item.id, 0);
       return;
     }
-
 
     const activeFlatIdx = flatItems.findIndex((f) => f.item.id === active.id);
     const overFlatIdx = flatItems.findIndex((f) => f.item.id === overId);
@@ -658,7 +648,7 @@ export function FileTree({
         disabled: !clipboard || item.type !== "folder",
         onClick: () => item.type === "folder" && onPaste(item.id),
       },
-      { label: "", onClick: () => { }, divider: true },
+      { label: "", onClick: () => {}, divider: true },
       {
         label: "Rename",
         onClick: () => startRename(item),
@@ -669,19 +659,19 @@ export function FileTree({
         onClick: () => onDuplicate(item.id),
         shortcut: getSimpleShortcut("Duplicate"),
       },
-      { label: "", onClick: () => { }, divider: true },
+      { label: "", onClick: () => {}, divider: true },
     ];
 
     if (item.type === "folder") {
       return [
         { label: "New Request", onClick: () => onAddRequest(item.id) },
-        { label: "", onClick: () => { }, divider: true },
+        { label: "", onClick: () => {}, divider: true },
         { label: "New Folder", onClick: () => onAddFolder(item.id) },
-        { label: "", onClick: () => { }, divider: true },
+        { label: "", onClick: () => {}, divider: true },
         ...commonActions,
         { label: "Sort by Method", onClick: () => onSort(item.id, "method") },
         { label: "Sort A-Z", onClick: () => onSort(item.id, "alphabetical") },
-        { label: "", onClick: () => { }, divider: true },
+        { label: "", onClick: () => {}, divider: true },
         { label: "Delete", onClick: () => onDelete(item.id), danger: true },
       ];
     }

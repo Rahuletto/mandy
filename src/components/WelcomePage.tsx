@@ -3,7 +3,7 @@ import { BiPlus, BiFile } from "react-icons/bi";
 import { FaFolder } from "react-icons/fa6";
 import { TbChevronDown, TbPlus } from "react-icons/tb";
 import { Logo } from "./ui";
-
+import { getShortMethod } from "../utils/methodConstants";
 
 interface WelcomePageProps {
   onNewRequest: () => void;
@@ -21,7 +21,7 @@ interface WelcomePageProps {
   onNewProject: () => void;
 }
 
-const getMethodColor = (method: string) => {
+const getMethodColorTw = (method: string) => {
   switch (method.toUpperCase()) {
     case "GET":
       return "text-green-500/60";
@@ -163,9 +163,9 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
                 >
                   <div className="w-10 flex justify-end">
                     <span
-                      className={`text-[9px] font-bold font-mono transition-colors ${getMethodColor(req.method)} group-hover:opacity-100`}
+                      className={`text-[9px] font-bold font-mono transition-colors ${getMethodColorTw(req.method)} group-hover:opacity-100`}
                     >
-                      {req.method}
+                      {getShortMethod(req.method)}
                     </span>
                   </div>
                   <span className="text-[14px] font-medium truncate">

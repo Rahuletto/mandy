@@ -1,16 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Methods } from "../bindings";
-
-const METHOD_COLORS: Record<string, string> = {
-  GET: "#22c55e",
-  POST: "#f97316",
-  PUT: "#3b82f6",
-  PATCH: "#a855f7",
-  DELETE: "#ef4444",
-  HEAD: "#6b7280",
-  OPTIONS: "#06b6d4",
-};
+import { METHOD_COLORS, getMethodColor } from "../utils/methodConstants";
 
 const METHODS: Methods[] = [
   "GET",
@@ -96,7 +87,7 @@ export function MethodSelector({ value, onChange }: MethodSelectorProps) {
                 className={` text-left px-3 py-1.5 text-xs font-bold font-mono transition-colors hover:bg-white/10 no-drag ${
                   method === value ? "bg-white/5" : ""
                 }`}
-                style={{ color: METHOD_COLORS[method] }}
+                style={{ color: getMethodColor(method) }}
               >
                 {method}
               </button>
@@ -108,4 +99,4 @@ export function MethodSelector({ value, onChange }: MethodSelectorProps) {
   );
 }
 
-export { METHOD_COLORS };
+
