@@ -219,18 +219,9 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
         }
     }
 
-    match req.protocol.unwrap_or_default() {
-        HttpProtocol::Tcp => {
-
-            easy.http_version(HttpVersion::V2TLS)
-                .map_err(|e| e.to_string())?;
-        }
-        HttpProtocol::Quic => {
-
-            easy.http_version(HttpVersion::V3)
-                .map_err(|e| e.to_string())?;
-        }
-    }
+    // Always use HTTP/2 over TCP (QUIC removed)
+    easy.http_version(HttpVersion::V2TLS)
+        .map_err(|e| e.to_string())?;
 
     if let Some(timeout) = req.timeout_ms {
         easy.timeout(Duration::from_millis(timeout as u64))

@@ -65,7 +65,6 @@ pub struct Cookie {
 pub enum HttpProtocol {
     #[default]
     Tcp,   // HTTP/1.1 or HTTP/2 over TCP
-    Quic,  // HTTP/3 over QUIC
 }
 
 #[derive(Serialize, Deserialize, Type, Clone)]
