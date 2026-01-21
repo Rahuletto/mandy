@@ -10,7 +10,7 @@ import {
 import { SiSwagger, SiPostman, SiInsomnia } from "react-icons/si";
 
 type ImportSource =
-  | "matchstick"
+  | "mandy"
   | "openapi"
   | "openapi-file"
   | "openapi-url"
@@ -27,6 +27,7 @@ interface ImportModalProps {
   onImportOpenAPI: (spec: object) => void;
   onImportPostman: (json: object) => void;
   onImportInsomnia: (json: object) => void;
+  initialSource?: ImportSource | null;
 }
 
 export function ImportModal({
@@ -36,11 +37,18 @@ export function ImportModal({
   onImportOpenAPI,
   onImportPostman,
   onImportInsomnia,
+  initialSource = null,
 }: ImportModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [selectedSource, setSelectedSource] = useState<ImportSource | null>(
-    null,
+    initialSource,
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedSource(initialSource);
+    }
+  }, [isOpen, initialSource]);
   const [fileContent, setFileContent] = useState("");
   const [urlInput, setUrlInput] = useState("");
   const [error, setError] = useState("");
@@ -89,7 +97,7 @@ export function ImportModal({
     setLoading(true);
 
     try {
-      if (selectedSource === "matchstick") {
+      if (selectedSource === "mandy") {
         JSON.parse(fileContent); // Validate JSON
         onImportMatchstick(fileContent);
         handleClose();
@@ -131,8 +139,8 @@ export function ImportModal({
 
   const importSources = [
     {
-      id: "matchstick" as ImportSource,
-      label: "Import from Matchstick",
+      id: "mandy" as ImportSource,
+      label: "Import from Mandy",
       icon: TbFileDescription,
       color: "text-accent",
       available: true,
@@ -269,11 +277,10 @@ export function ImportModal({
                     source.available && setSelectedSource(source.id)
                   }
                   disabled={!source.available}
-                  className={`w-full flex items-center gap-3 p-2.5 px-3 rounded-lg transition-colors text-left group ${
-                    source.available
-                      ? "hover:bg-white/5 cursor-pointer"
-                      : "opacity-40 cursor-not-allowed"
-                  }`}
+                  className={`w-full flex items-center gap-3 p-2.5 px-3 rounded-lg transition-colors text-left group ${source.available
+                    ? "hover:bg-white/5 cursor-pointer"
+                    : "opacity-40 cursor-not-allowed"
+                    }`}
                 >
                   <Icon
                     size={16}
@@ -324,18 +331,16 @@ export function ImportModal({
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className={`w-full flex flex-col items-center gap-2 p-6 border border-dashed transition-all rounded-lg group ${
-                    fileContent
-                      ? "border-accent/40 bg-accent/5"
-                      : "border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]"
-                  }`}
+                  className={`w-full flex flex-col items-center gap-2 p-6 border border-dashed transition-all rounded-lg group ${fileContent
+                    ? "border-accent/40 bg-accent/5"
+                    : "border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]"
+                    }`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                      fileContent
-                        ? "bg-accent/20"
-                        : "bg-white/5 group-hover:bg-white/10"
-                    }`}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${fileContent
+                      ? "bg-accent/20"
+                      : "bg-white/5 group-hover:bg-white/10"
+                      }`}
                   >
                     <TbUpload
                       size={16}

@@ -42,8 +42,8 @@ export function ExportModal({
 
   const exportOptions = [
     {
-      id: "matchstick",
-      label: "Matchstick Native",
+      id: "mandy",
+      label: "Mandy",
       icon: TbArchive,
       onClick: onExportMatchstick,
     },

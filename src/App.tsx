@@ -25,7 +25,9 @@ import {
   ExportModal,
   ImportModal,
   NewProjectModal,
+  Logo,
 } from "./components/ui";
+
 import { KeyValueTable } from "./components/KeyValueTable";
 
 import { MethodSelector } from "./components/MethodSelector";
@@ -34,18 +36,20 @@ import { SizePopover } from "./components/popovers/SizePopover";
 import { ProtocolToggle } from "./components/ProtocolToggle";
 import { RequestOverview } from "./components/RequestOverview";
 import { ProjectOverview } from "./components/ProjectOverview";
+import { WelcomePage } from "./components/WelcomePage";
 
 import {
   parseOpenAPISpec,
   generateOpenAPISpec,
-  exportToMatchstickJSON,
-  parseMatchstickJSON,
+  exportToMandyJSON,
+  parseMandyJSON,
   generatePostmanCollection,
   parsePostmanCollection,
   generateInsomniaExport,
   parseInsomniaExport,
 } from "./utils/migration";
 import { useProjectStore } from "./stores/projectStore";
+import type { Folder, TreeItem } from "./types/project";
 import { useToastStore } from "./stores/toastStore";
 import "./App.css";
 
@@ -65,7 +69,6 @@ function App() {
     updateProjectIconColor,
     deleteProject,
     updateProjectConfig,
-    getActiveProject,
     setActiveEnvironment,
     addEnvironment,
     updateEnvironment,
@@ -85,7 +88,6 @@ function App() {
     moveItem,
     updateRequest,
     setRequestResponse,
-    getActiveRequest,
     markSaved,
     clipboard,
     copyToClipboard,
@@ -95,8 +97,30 @@ function App() {
     setSelectedItem,
   } = useProjectStore();
 
-  const activeProject = getActiveProject();
-  const activeRequest = getActiveRequest();
+
+  const activeProject = useProjectStore((state) =>
+    state.projects.find((p) => p.id === state.activeProjectId) || null,
+  );
+
+  const activeRequest = useProjectStore((state) => {
+    if (!state.activeProjectId || !state.activeRequestId) return null;
+    const project = state.projects.find((p) => p.id === state.activeProjectId);
+    if (!project) return null;
+    const findItem = (root: Folder, itemId: string): TreeItem | null => {
+      if (root.id === itemId) return root;
+      for (const child of root.children) {
+        if (child.id === itemId) return child;
+        if (child.type === "folder") {
+          const found = findItem(child, itemId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const item = findItem(project.root, state.activeRequestId);
+    return item?.type === "request" ? item : null;
+  });
+
   const { addToast } = useToastStore();
 
   const [loading, setLoading] = useState(false);
@@ -690,7 +714,7 @@ function App() {
           query_params: params,
         },
       }));
-    } catch {}
+    } catch { }
   }
 
   function renderResponseBody() {
@@ -736,7 +760,7 @@ function App() {
               : `https://${requestUrl}`,
           );
           baseUrl = `${url.protocol}//${url.host}`;
-        } catch {}
+        } catch { }
 
         let previewHtml = body;
         if (baseUrl && !body.includes("<base")) {
@@ -880,7 +904,12 @@ function App() {
         <div className="flex items-center gap-0 ml-[70px] no-drag">
           <button
             type="button"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onClick={() => {
+              setIsSidebarCollapsed(!isSidebarCollapsed);
+              if (!isSidebarCollapsed) {
+                setActiveRequestId(null);
+              }
+            }}
             className="h-6 flex items-center justify-center rounded-md text-white hover:bg-white/20 cursor-pointer transition-all duration-200 ease-out w-0 opacity-0 overflow-hidden group-hover:w-6 group-hover:opacity-50 group-hover:mr-2"
             title={isSidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}
           >
@@ -894,7 +923,7 @@ function App() {
                 setShowProjectDropdown(!showProjectDropdown);
                 setShowEnvDropdown(false);
               }}
-              className="text-sm font-semibold px-2 py-1 rounded-md bg-white/5 text-white hover:bg-white/10 transition-colors flex items-center gap-1 shadow-sm"
+              className="text-sm font-semibold px-2 py-1 rounded-md bg-white/5 text-white hover:bg-white/10 transition-colors flex items-center gap-1"
             >
               {activeProject?.name || "Workspace Name"}
             </button>
@@ -917,7 +946,7 @@ function App() {
                       setShowProjectOverview(true);
                     },
                   })),
-                  { label: "", onClick: () => {}, divider: true },
+                  { label: "", onClick: () => { }, divider: true },
                   {
                     label: "+ Create Project",
                     onClick: () => {
@@ -956,7 +985,7 @@ function App() {
                       onClick: () =>
                         setActiveEnvironment(activeProject.id, env.id),
                     })),
-                    { label: "", onClick: () => {}, divider: true },
+                    { label: "", onClick: () => { }, divider: true },
                     {
                       label: "Manage Environments...",
                       onClick: () => {
@@ -973,6 +1002,18 @@ function App() {
         </div>
 
         <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => {
+            setActiveRequestId(null);
+            setShowProjectOverview(false);
+          }}
+          className="h-6 flex items-center justify-center rounded-md text-white hover:bg-white/20 cursor-pointer transition-all duration-200 ease-out w-6 opacity-30 hover:opacity-50 overflow-hidden "
+          title="Homepage"
+        >
+          <Logo className="shrink-0 w-4 h-4" />
+
+        </button>
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">
@@ -1030,11 +1071,10 @@ function App() {
         </div>
 
         <div
-          className={`absolute left-2 top-2 bottom-2 z-40 rounded-xl bg-[#1a1a1a]/98 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
-            isPeeking && isSidebarCollapsed
-              ? "opacity-100 translate-x-0 scale-100"
-              : "opacity-0 -translate-x-4 scale-[0.98] pointer-events-none"
-          }`}
+          className={`absolute left-2 top-2 bottom-2 z-40 rounded-xl bg-[#1a1a1a]/98 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${isPeeking && isSidebarCollapsed
+            ? "opacity-100 translate-x-0 scale-100"
+            : "opacity-0 -translate-x-4 scale-[0.98] pointer-events-none"
+            }`}
           style={{ width: sidebarWidth }}
           onMouseLeave={() => setIsPeeking(false)}
         >
@@ -1133,6 +1173,39 @@ function App() {
                 setShowProjectOverview(false);
               }}
             />
+          ) : !activeRequest && !showProjectOverview ? (
+            <WelcomePage
+              onNewRequest={() => {
+                if (activeProject) {
+                  const newId = addRequest(
+                    activeProject.root.id,
+                    "New Request",
+                  );
+                  setActiveRequestId(newId);
+                } else {
+                  setShowNewProjectModal(true);
+                }
+              }}
+              onNewFolder={() => {
+                if (activeProject) {
+                  addFolder(activeProject.root.id, "New Folder");
+                } else {
+                  setShowNewProjectModal(true);
+                }
+              }}
+              onImportClick={() => setShowImportModal(true)}
+              recentRequests={activeProject?.recentRequests || []}
+
+              onSelectRecent={(id) => {
+                setActiveRequestId(id);
+              }}
+              projects={projects}
+              activeProjectId={activeProject?.id || null}
+              onSelectProject={(id) => {
+                selectProject(id);
+              }}
+              onNewProject={() => setShowNewProjectModal(true)}
+            />
           ) : activeRequest ? (
             <>
               <div className="flex gap-4 border-b border-text/15 p-4">
@@ -1199,11 +1272,10 @@ function App() {
                           key={tab}
                           type="button"
                           onClick={() => setActiveTab(tab)}
-                          className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${
-                            activeTab === tab
-                              ? "text-accent bg-accent/10"
-                              : "text-white/80 hover:text-white/60"
-                          }`}
+                          className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${activeTab === tab
+                            ? "text-accent bg-accent/10"
+                            : "text-white/80 hover:text-white/60"
+                            }`}
                         >
                           {tab === "overview"
                             ? "Overview"
@@ -1503,11 +1575,10 @@ function App() {
                               key={renderer}
                               type="button"
                               onClick={() => setResponseTab(renderer)}
-                              className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${
-                                responseTab === renderer
-                                  ? "text-accent bg-accent/10"
-                                  : "text-white/60 hover:text-white/50"
-                              }`}
+                              className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${responseTab === renderer
+                                ? "text-accent bg-accent/10"
+                                : "text-white/60 hover:text-white/50"
+                                }`}
                             >
                               {getRendererLabel(renderer)}
                             </button>
@@ -1623,22 +1694,20 @@ function App() {
                           <button
                             type="button"
                             onClick={() => setResponseDetailTab("headers")}
-                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
-                              responseDetailTab === "headers"
-                                ? "text-accent bg-accent/10"
-                                : "text-white/60 hover:text-white/50"
-                            }`}
+                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "headers"
+                              ? "text-accent bg-accent/10"
+                              : "text-white/60 hover:text-white/50"
+                              }`}
                           >
                             Headers
                           </button>
                           <button
                             type="button"
                             onClick={() => setResponseDetailTab("cookies")}
-                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
-                              responseDetailTab === "cookies"
-                                ? "text-accent bg-accent/10"
-                                : "text-white/60 hover:text-white/50"
-                            }`}
+                            className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${responseDetailTab === "cookies"
+                              ? "text-accent bg-accent/10"
+                              : "text-white/60 hover:text-white/50"
+                              }`}
                           >
                             Cookies
                           </button>
@@ -1671,7 +1740,7 @@ function App() {
                           {responseDetailTab === "cookies" && (
                             <div className="flex-1 min-h-0">
                               {activeRequest.response?.cookies &&
-                              activeRequest.response.cookies.length > 0 ? (
+                                activeRequest.response.cookies.length > 0 ? (
                                 <KeyValueTable
                                   items={activeRequest.response.cookies.map(
                                     (c, i) => ({
@@ -1683,7 +1752,7 @@ function App() {
                                       enabled: true,
                                     }),
                                   )}
-                                  onChange={() => {}}
+                                  onChange={() => { }}
                                   readOnly={true}
                                   showDescription={false}
                                 />
@@ -1702,9 +1771,38 @@ function App() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-white/20 text-sm">
-              Select a request or create a new one
-            </div>
+            <WelcomePage
+              onNewRequest={() => {
+                if (activeProject) {
+                  const newId = addRequest(
+                    activeProject.root.id,
+                    "New Request",
+                  );
+                  setActiveRequestId(newId);
+                } else {
+                  setShowNewProjectModal(true);
+                }
+              }}
+              onNewFolder={() => {
+                if (activeProject) {
+                  addFolder(activeProject.root.id, "New Folder");
+                } else {
+                  setShowNewProjectModal(true);
+                }
+              }}
+              onImportClick={() => setShowImportModal(true)}
+              recentRequests={activeProject?.recentRequests || []}
+
+              onSelectRecent={(id) => {
+                setActiveRequestId(id);
+              }}
+              projects={projects}
+              activeProjectId={activeProject?.id || null}
+              onSelectProject={(id) => {
+                selectProject(id);
+              }}
+              onNewProject={() => setShowNewProjectModal(true)}
+            />
           )}
         </main>
       </div>
@@ -1786,7 +1884,7 @@ function App() {
         onExportMatchstick={async () => {
           if (activeProject) {
             try {
-              const json = exportToMatchstickJSON(activeProject);
+              const json = exportToMandyJSON(activeProject);
 
               const filePath = await save({
                 filters: [
@@ -1867,7 +1965,7 @@ function App() {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImportMatchstick={(json) => {
-          const project = parseMatchstickJSON(json);
+          const project = parseMandyJSON(json);
           if (project && project.root) {
             const results = processItemForSecrets(project.root);
             if (activeProject) {

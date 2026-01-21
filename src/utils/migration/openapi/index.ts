@@ -1,4 +1,4 @@
 export { parseOpenAPISpec } from "./import";
 export { generateOpenAPISpec } from "./export";
-export { exportToMatchstickJSON, parseMatchstickJSON } from "./matchstick";
+export { exportToMandyJSON, parseMandyJSON } from "./matchstick";
 export type * from "./types";

@@ -3,7 +3,7 @@ import { BsThreeDots } from "react-icons/bs";
 
 export interface DropdownItem {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
   icon?: React.ReactNode;
   rightAction?: React.ReactNode;
   danger?: boolean;
@@ -102,16 +102,17 @@ export function Dropdown({
           >
             <button
               onClick={() => {
-                item.onClick();
+                item.onClick?.();
                 onClose();
               }}
+              disabled={item.header}
               className={`flex-1 text-left px-4 py-2 text-xs flex items-center gap-2.5 ${
                 item.danger
                   ? "text-red-400"
                   : item.active
                     ? "text-accent font-semibold"
                     : "text-white/80"
-              }`}
+              } ${item.header ? "cursor-default" : "cursor-pointer"}`}
             >
               {item.icon && <span className="text-white/40">{item.icon}</span>}
               <span className="truncate">{item.label}</span>

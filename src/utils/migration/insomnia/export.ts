@@ -254,7 +254,7 @@ export function generateInsomniaExport(project: Project): InsomniaExport {
     _type: "export",
     __export_format: 4,
     __export_date: new Date().toISOString(),
-    __export_source: "matchstick.app",
+    __export_source: "mandy.app",
     resources,
   };
 }

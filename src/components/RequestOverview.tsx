@@ -387,7 +387,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
         </div>
 
         <div className="w-[60%] shrink-0 py-4 self-start sticky top-0 h-[80vh]">
-          <div className="h-full rounded-xl bg-background border border-white/5 overflow-hidden flex flex-col shadow-2xl">
+          <div className="h-full rounded-xl bg-background border border-white/5 overflow-hidden flex flex-col">
             <div className="flex shrink-0 items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
               <div className="flex items-center gap-2">
                 <span
@@ -493,7 +493,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
               </div>
               <button
                 onClick={onRun}
-                className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors shadow-lg z-20"
+                className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20"
               >
                 Run
               </button>

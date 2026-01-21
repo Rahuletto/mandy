@@ -1,11 +1,11 @@
 import type { Project, Folder } from "../../../types/project";
 import { generateId } from "../shared";
 
-export function exportToMatchstickJSON(project: Project): string {
+export function exportToMandyJSON(project: Project): string {
   return JSON.stringify(project, null, 2);
 }
 
-export function parseMatchstickJSON(json: string): Project | null {
+export function parseMandyJSON(json: string): Project | null {
   try {
     const parsed = JSON.parse(json);
     if (parsed.root && parsed.name) {

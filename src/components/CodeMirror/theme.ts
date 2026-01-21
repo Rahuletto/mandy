@@ -37,7 +37,7 @@ const colors = {
   lintInfo: "#4fc3f7",
 };
 
-export const matchstickTheme = EditorView.theme(
+export const mandyTheme = EditorView.theme(
   {
     "&": {
       height: "100%",
@@ -195,7 +195,7 @@ export const matchstickTheme = EditorView.theme(
   { dark: true },
 );
 
-const matchstickHighlightStyle = HighlightStyle.define([
+const mandyHighlightStyle = HighlightStyle.define([
   { tag: t.comment, color: colors.comment, fontStyle: "italic" },
   { tag: t.lineComment, color: colors.comment, fontStyle: "italic" },
   { tag: t.blockComment, color: colors.comment, fontStyle: "italic" },
@@ -273,8 +273,8 @@ const matchstickHighlightStyle = HighlightStyle.define([
   { tag: t.changed, color: colors.function },
 ]);
 
-export const matchstickHighlighting = syntaxHighlighting(
-  matchstickHighlightStyle,
+export const mandyHighlighting = syntaxHighlighting(
+  mandyHighlightStyle,
 );
 
-export const matchstickExtension = [matchstickTheme, matchstickHighlighting];
+export const mandyExtension = [mandyTheme, mandyHighlighting];

@@ -74,16 +74,18 @@ function matchesSearch(item: TreeItem, query: string): boolean {
 function flattenTree(
   folder: Folder,
   depth: number = 0,
+  forceExpandAll: boolean = false,
 ): { item: TreeItem; depth: number; parentId: string }[] {
   const result: { item: TreeItem; depth: number; parentId: string }[] = [];
   for (const child of folder.children) {
     result.push({ item: child, depth, parentId: folder.id });
-    if (child.type === "folder" && child.expanded) {
-      result.push(...flattenTree(child, depth + 1));
+    if (child.type === "folder" && (forceExpandAll || child.expanded)) {
+      result.push(...flattenTree(child, depth + 1, forceExpandAll));
     }
   }
   return result;
 }
+
 
 interface SortableItemProps {
   item: TreeItem;
@@ -153,11 +155,10 @@ function SortableItem({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group relative flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-colors ${
-        isActive
-          ? "bg-accent/20 text-accent font-medium"
-          : "hover:bg-white/5 text-white/80"
-      } ${isOver ? "bg-white/5" : ""} ${isNesting && isFolder ? "bg-accent/20 outline-1 outline-accent/50 rounded-b-none" : ""}`}
+      className={`group relative flex items-center gap-1 px-2 py-1.5 cursor-pointer text-xs select-none transition-colors ${isActive
+        ? "bg-accent/20 text-accent font-medium"
+        : "hover:bg-white/5 text-white/80"
+        } ${isOver ? "bg-white/5" : ""} ${isNesting && isFolder ? "bg-accent/20 outline-1 outline-accent/50 rounded-b-none" : ""}`}
       onClick={() => {
         if (item.type === "folder") {
           onSelect();
@@ -352,10 +353,12 @@ export function FileTree({
     }),
   );
 
-  const flatItems = flattenTree(root).filter(({ item }) =>
+  const flatItems = flattenTree(root, 0, !!searchQuery).filter(({ item }) =>
     matchesSearch(item, searchQuery),
   );
+  const fullFlatItems = flattenTree(root, 0, true);
   const itemIds = flatItems.map(({ item }) => item.id);
+
   const visibleItems = flatItems.slice(0, renderedCount);
   const hasMore = renderedCount < flatItems.length;
 
@@ -397,24 +400,20 @@ export function FileTree({
   function findItemInTree(
     id: string,
   ): { item: TreeItem; depth: number } | null {
-    const found = flatItems.find(({ item }) => item.id === id);
+    const found = fullFlatItems.find(({ item }) => item.id === id);
     return found ? { item: found.item, depth: found.depth } : null;
   }
 
-  function isInsideFolder(
-    itemId: string,
-    folderId: string,
-  ): boolean {
-    let current = flatItems.find((f) => f.item.id === itemId);
+  function isInsideFolder(itemId: string, folderId: string): boolean {
+    let current = fullFlatItems.find((f) => f.item.id === itemId);
     while (current && current.depth > 0) {
-      const parent = flatItems.find(
-        (f) => f.item.id === current?.parentId,
-      );
+      const parent = fullFlatItems.find((f) => f.item.id === current?.parentId);
       if (parent?.item.id === folderId) return true;
       current = parent;
     }
     return false;
   }
+
 
   function handleDragStart(event: DragStartEvent) {
     haptic("generic");
@@ -510,9 +509,18 @@ export function FileTree({
     );
 
     if (shouldNest) {
-      setOverFolderId(overId);
-      setIsNesting(true);
-      clearHoverTimer();
+      if (
+        activeData &&
+        activeData.item.type === "folder" &&
+        isInsideFolder(overId, activeData.item.id)
+      ) {
+        setOverFolderId(null);
+        setIsNesting(false);
+      } else {
+        setOverFolderId(overId);
+        setIsNesting(true);
+        clearHoverTimer();
+      }
     } else {
       setOverFolderId(null);
       setIsNesting(false);
@@ -522,6 +530,7 @@ export function FileTree({
         clearHoverTimer();
       }
     }
+
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -549,9 +558,17 @@ export function FileTree({
     );
 
     if (shouldNest && overData.item.type === "folder") {
+      if (
+        activeData &&
+        activeData.item.type === "folder" &&
+        isInsideFolder(overId, activeData.item.id)
+      ) {
+        return;
+      }
       onMoveItem(active.id as string, overData.item.id, 0);
       return;
     }
+
 
     const activeFlatIdx = flatItems.findIndex((f) => f.item.id === active.id);
     const overFlatIdx = flatItems.findIndex((f) => f.item.id === overId);
@@ -630,7 +647,7 @@ export function FileTree({
         disabled: !clipboard || item.type !== "folder",
         onClick: () => item.type === "folder" && onPaste(item.id),
       },
-      { label: "", onClick: () => {}, divider: true },
+      { label: "", onClick: () => { }, divider: true },
       {
         label: "Rename",
         onClick: () => startRename(item),
@@ -641,19 +658,19 @@ export function FileTree({
         onClick: () => onDuplicate(item.id),
         shortcut: getSimpleShortcut("Duplicate"),
       },
-      { label: "", onClick: () => {}, divider: true },
+      { label: "", onClick: () => { }, divider: true },
     ];
 
     if (item.type === "folder") {
       return [
         { label: "New Request", onClick: () => onAddRequest(item.id) },
-        { label: "", onClick: () => {}, divider: true },
+        { label: "", onClick: () => { }, divider: true },
         { label: "New Folder", onClick: () => onAddFolder(item.id) },
-        { label: "", onClick: () => {}, divider: true },
+        { label: "", onClick: () => { }, divider: true },
         ...commonActions,
         { label: "Sort by Method", onClick: () => onSort(item.id, "method") },
         { label: "Sort A-Z", onClick: () => onSort(item.id, "alphabetical") },
-        { label: "", onClick: () => {}, divider: true },
+        { label: "", onClick: () => { }, divider: true },
         { label: "Delete", onClick: () => onDelete(item.id), danger: true },
       ];
     }
@@ -679,43 +696,32 @@ export function FileTree({
       onDragEnd={handleDragEnd}
     >
       <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto">
-        {flatItems.length === 0 ? (
-          <div className="p-4 text-center text-white/30 text-xs">
-            No requests yet.
-            <br />
-            Click + to add one.
-          </div>
-        ) : (
-          <SortableContext
-            items={itemIds}
-            strategy={verticalListSortingStrategy}
-          >
-            {visibleItems.map(({ item, depth }) => (
-              <SortableItem
-                key={item.id}
-                item={item}
-                depth={depth}
-                isActive={item.id === selectedItemId}
-                isUnsaved={unsavedIds.has(item.id)}
-                onSelect={() => onSelect(item.id, item.type === "folder")}
-                onToggle={() => onToggleFolder(item.id)}
-                onContextMenu={(e, filterAddOnly) =>
-                  handleContextMenu(e, item, filterAddOnly)
-                }
-                isRenaming={renamingId === item.id}
-                renameValue={renameValue}
-                setRenameValue={setRenameValue}
-                onRenameSubmit={handleRenameSubmit}
-                onRenameCancel={handleRenameCancel}
-                isDragging={activeId === item.id}
-                isOver={!isNesting && overFolderId === item.id}
-                isNesting={isNesting && overFolderId === item.id}
-                isCut={clipboard?.id === item.id && clipboard.type === "cut"}
-                itemRectsRef={itemRectsRef}
-              />
-            ))}
-          </SortableContext>
-        )}
+        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+          {visibleItems.map(({ item, depth }) => (
+            <SortableItem
+              key={item.id}
+              item={item}
+              depth={depth}
+              isActive={item.id === selectedItemId}
+              isUnsaved={unsavedIds.has(item.id)}
+              onSelect={() => onSelect(item.id, item.type === "folder")}
+              onToggle={() => onToggleFolder(item.id)}
+              onContextMenu={(e, filterAddOnly) =>
+                handleContextMenu(e, item, filterAddOnly)
+              }
+              isRenaming={renamingId === item.id}
+              renameValue={renameValue}
+              setRenameValue={setRenameValue}
+              onRenameSubmit={handleRenameSubmit}
+              onRenameCancel={handleRenameCancel}
+              isDragging={activeId === item.id}
+              isOver={!isNesting && overFolderId === item.id}
+              isNesting={isNesting && overFolderId === item.id}
+              isCut={clipboard?.id === item.id && clipboard.type === "cut"}
+              itemRectsRef={itemRectsRef}
+            />
+          ))}
+        </SortableContext>
         <div className="px-3 py-2">
           <div className="flex gap-2 opacity-0 hover:opacity-100 transition-opacity duration-300">
             <button

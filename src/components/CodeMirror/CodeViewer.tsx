@@ -9,7 +9,7 @@ import {
 import { EditorState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
 import { foldGutter, foldKeymap } from "@codemirror/language";
-import { matchstickExtension } from "./theme";
+import { mandyExtension } from "./theme";
 import { languageExtensions, type Language } from "./languageExtensions";
 import type { Extension } from "@codemirror/state";
 import { prettifyCode } from "../../utils/codeUtils";
@@ -80,7 +80,7 @@ export function CodeViewer({
           "aria-readonly": "true",
         }),
         keymap.of([...defaultKeymap, ...foldKeymap]),
-        matchstickExtension,
+        mandyExtension,
         language === "shell" || language === "bash" ? curlHighlighter : [],
         transparentGutter
           ? EditorView.theme({

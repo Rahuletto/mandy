@@ -21,7 +21,15 @@ export interface RequestFile {
   propertyDescriptions?: Record<string, string>;
   request: ApiRequest;
   response: ApiResponse | null;
-  useInheritedAuth?: boolean; // true = inherit from project, false/undefined = use request's own auth
+  useInheritedAuth?: boolean;
+}
+
+export interface RecentRequest {
+  requestId: string;
+  name: string;
+  method: string;
+  url: string;
+  timestamp: number;
 }
 
 export interface Folder {
@@ -39,10 +47,11 @@ export interface Project {
   icon?: string;
   iconColor?: string;
   baseUrl?: string;
-  authorization?: AuthType; // Project-level authorization
+  authorization?: AuthType;
   root: Folder;
   environments: Environment[];
   activeEnvironmentId: string | null;
+  recentRequests: RecentRequest[];
 }
 
 export type TreeItem = Folder | RequestFile;

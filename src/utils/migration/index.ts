@@ -3,7 +3,7 @@ export { generateInsomniaExport, parseInsomniaExport } from "./insomnia";
 export {
   generateOpenAPISpec,
   parseOpenAPISpec,
-  parseMatchstickJSON,
-  exportToMatchstickJSON,
+  parseMandyJSON,
+  exportToMandyJSON,
 } from "./openapi";
 export { generateCurl } from "./curl";

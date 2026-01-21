@@ -1975,6 +1975,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "mandy"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "curl",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-macos-haptics",
+ "tauri-plugin-opener",
+ "tauri-specta",
+ "tokio",
+ "url",
+ "window-vibrancy 0.7.1",
+]
+
+[[package]]
 name = "markup5ever"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2004,28 +2026,6 @@ name = "matches"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
-
-[[package]]
-name = "matchstick"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "curl",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-macos-haptics",
- "tauri-plugin-opener",
- "tauri-specta",
- "tokio",
- "url",
- "window-vibrancy 0.7.1",
-]
 
 [[package]]
 name = "memchr"

@@ -8,6 +8,7 @@ import type {
   SortMode,
   Environment,
   EnvironmentVariable,
+  RecentRequest,
 } from "../types/project";
 import type { ApiResponse } from "../bindings";
 import { createDefaultRequest } from "../reqhelpers/rest";
@@ -48,6 +49,7 @@ function createEmptyProject(name: string): Project {
       },
     ],
     activeEnvironmentId: null,
+    recentRequests: [],
   };
 }
 
@@ -148,6 +150,9 @@ interface ProjectState {
   activeRequestId: string | null;
   selectedItemId: string | null;
   unsavedChanges: Set<string>;
+
+  addToRecentRequests: (requestId: string) => void;
+  getRecentRequests: () => RecentRequest[];
 
   createProject: (name: string) => string;
   selectProject: (id: string) => void;
@@ -473,51 +478,80 @@ export const useProjectStore = create<ProjectState>()(
         return result;
       },
 
-      setActiveRequestId: (id) => set({ activeRequestId: id }),
+      setActiveRequestId: (id) => {
+        set({ activeRequestId: id });
+        if (id) {
+          get().addToRecentRequests(id);
+        }
+      },
       setSelectedItem: (id) => set({ selectedItemId: id }),
 
       addRequest: (parentFolderId, name = "New Request") => {
         const newId = generateId();
-        set((state) => {
-          const project = state.projects.find(
-            (p) => p.id === state.activeProjectId,
-          );
-          if (!project) return state;
-          const folder = findFolder(project.root, parentFolderId);
-          if (folder) {
-            folder.children.push({
-              id: newId,
-              type: "request",
-              name,
-              request: createDefaultRequest(),
-              response: null,
-              useInheritedAuth: true,
-            });
-          }
-          return { projects: [...state.projects], activeRequestId: newId };
-        });
+        const request: RequestFile = {
+          id: newId,
+          type: "request",
+          name,
+          request: createDefaultRequest(),
+          response: null,
+          useInheritedAuth: true,
+        };
+
+        set((state) => ({
+          ...state,
+          projects: state.projects.map((p) => {
+            if (p.id !== state.activeProjectId) return p;
+
+            const addChildToFolder = (folder: Folder): Folder => {
+              if (folder.id === parentFolderId) {
+                return { ...folder, children: [...folder.children, request] };
+              }
+              return {
+                ...folder,
+                children: folder.children.map((child) =>
+                  child.type === "folder" ? addChildToFolder(child) : child
+                )
+              };
+            };
+
+            return { ...p, root: addChildToFolder(p.root) };
+          }),
+          activeRequestId: newId,
+        }));
+        get().addToRecentRequests(newId);
         return newId;
       },
 
       addFolder: (parentFolderId, name = "New Folder") => {
         const newId = generateId();
-        set((state) => {
-          const project = state.projects.find(
-            (p) => p.id === state.activeProjectId,
-          );
-          if (!project) return state;
-          const folder = findFolder(project.root, parentFolderId);
-          if (folder) {
-            folder.children.push({
-              id: newId,
-              type: "folder",
-              name,
-              children: [],
-              expanded: true,
-            });
-          }
-          return { projects: [...state.projects] };
-        });
+        const newFolder: Folder = {
+          id: newId,
+          type: "folder",
+          name,
+          children: [],
+          expanded: true,
+        };
+
+        set((state) => ({
+          ...state,
+          projects: state.projects.map((p) => {
+            if (p.id !== state.activeProjectId) return p;
+
+            const addChildToFolder = (folder: Folder): Folder => {
+              if (folder.id === parentFolderId) {
+                return { ...folder, children: [...folder.children, newFolder] };
+              }
+              return {
+                ...folder,
+                children: folder.children.map((child) =>
+                  child.type === "folder" ? addChildToFolder(child) : child
+                )
+              };
+            };
+
+            return { ...p, root: addChildToFolder(p.root) };
+          }),
+        }));
         return newId;
       },
 
@@ -960,6 +994,7 @@ export const useProjectStore = create<ProjectState>()(
           description: partialProject.description,
           baseUrl: partialProject.baseUrl,
           authorization: partialProject.authorization,
+          recentRequests: [],
         };
 
         set((state) => ({
@@ -970,9 +1005,48 @@ export const useProjectStore = create<ProjectState>()(
 
         return newProject.id;
       },
+
+      addToRecentRequests: (requestId) => {
+        set((state) => {
+          const project = state.projects.find(
+            (p) => p.id === state.activeProjectId,
+          );
+          if (!project) return state;
+
+          const item = findItem(project.root, requestId);
+          if (!item || item.type !== "request") return state;
+
+          const recent: RecentRequest = {
+            requestId: item.id,
+            name: item.name,
+            method: item.request.method,
+            url: item.request.url,
+            timestamp: Date.now(),
+          };
+
+          const filtered = project.recentRequests.filter(
+            (r) => r.requestId !== requestId,
+          );
+          const updated = [recent, ...filtered].slice(0, 10);
+
+          return {
+            projects: state.projects.map((p) =>
+              p.id === project.id ? { ...p, recentRequests: updated } : p,
+            ),
+          };
+        });
+      },
+
+      getRecentRequests: () => {
+        const state = get();
+        const project = state.projects.find(
+          (p) => p.id === state.activeProjectId,
+        );
+        return project?.recentRequests || [];
+      },
     }),
     {
-      name: "matchstick-projects",
+      name: "mandy-projects",
       partialize: (state) => ({
         projects: state.projects,
         activeProjectId: state.activeProjectId,
@@ -1041,6 +1115,7 @@ export const useProjectStore = create<ProjectState>()(
                   },
                 ],
                 activeEnvironmentId: null,
+                recentRequests: [],
               },
             ];
             state.activeProjectId = state.projects[0].id;

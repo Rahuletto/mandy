@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "matchstick",
+  "productName": "Mandy",
   "version": "0.1.0",
-  "identifier": "com.marban.matchstick",
+  "identifier": "com.marban.mandy",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "matchstick",
+        "title": "Mandy",
         "transparent": true,
         "titleBarStyle": "Overlay",
         "width": 1200,

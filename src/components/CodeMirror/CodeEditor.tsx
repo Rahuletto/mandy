@@ -11,17 +11,17 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import {
   bracketMatching,
   indentOnInput,
-  foldGutter,
+
   foldKeymap,
 } from "@codemirror/language";
-import { lintGutter, lintKeymap } from "@codemirror/lint";
+import { lintKeymap } from "@codemirror/lint";
 import {
   autocompletion,
   completionKeymap,
   closeBrackets,
   closeBracketsKeymap,
 } from "@codemirror/autocomplete";
-import { matchstickExtension } from "./theme";
+import { mandyExtension } from "./theme";
 import { languageExtensions, type Language } from "./languageExtensions";
 import { prettifyCode } from "../../utils/codeUtils";
 import { copyToClipboard } from "../../utils/clipboard";
@@ -103,7 +103,7 @@ export function CodeEditor({
           defaultKeymap: true,
         }),
 
-        matchstickExtension,
+        mandyExtension,
         keymap.of([
           ...defaultKeymap,
           ...historyKeymap,
