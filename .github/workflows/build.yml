@@ -29,13 +29,9 @@ jobs:
         uses: oven-sh/setup-bun@v2
 
       - name: Install Rust stable
-        uses: dtolnay/rust-action@stable
-
-      - name: Add Rust targets (macOS)
-        if: matrix.platform == 'macos-latest'
-        run: |
-          rustup target add aarch64-apple-darwin
-          rustup target add x86_64-apple-darwin
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install dependencies (Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
