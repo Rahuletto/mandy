@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Create a GitHub Release'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -54,8 +61,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: ${{ matrix.args }}
+          tagName: ${{ inputs.release && format('v{0}', github.run_number) || '' }}
+          releaseName: ${{ inputs.release && format('Mandy v{0}', github.run_number) || '' }}
+          releaseDraft: true
+          prerelease: false
 
       - name: Upload artifacts
+        if: ${{ !inputs.release }}
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.target }}
