@@ -1,8 +1,8 @@
 export { CodeEditor } from "./CodeEditor";
 export { CodeViewer } from "./CodeViewer";
 export {
-  mandyExtension,
-  mandyTheme,
-  mandyHighlighting,
+  getMandyExtension,
+  createMandyTheme,
+  createMandyHighlighting,
 } from "./theme";
 export { languageExtensions, type Language } from "./languageExtensions";

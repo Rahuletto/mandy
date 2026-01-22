@@ -9,13 +9,14 @@ import {
 import { EditorState } from "@codemirror/state";
 import { defaultKeymap } from "@codemirror/commands";
 import { foldGutter, foldKeymap } from "@codemirror/language";
-import { mandyExtension } from "./theme";
+import { getMandyExtension } from "./theme";
 import { languageExtensions, type Language } from "./languageExtensions";
 import type { Extension } from "@codemirror/state";
 import { prettifyCode } from "../../utils/codeUtils";
 import { copyToClipboard } from "../../utils/clipboard";
 import { BiCopy, BiCheck } from "react-icons/bi";
 import { curlHighlighter } from "./curlHighlighter";
+import { subscribeToThemeChanges } from "../../utils/themeColors";
 
 interface CodeViewerProps {
   code: string;
@@ -34,6 +35,14 @@ export function CodeViewer({
   const viewRef = useRef<EditorView | null>(null);
   const [copied, setCopied] = useState(false);
   const [activeExtensions, setActiveExtensions] = useState<Extension[]>([]);
+  const [themeKey, setThemeKey] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToThemeChanges(() => {
+      setThemeKey((k) => k + 1);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -80,7 +89,7 @@ export function CodeViewer({
           "aria-readonly": "true",
         }),
         keymap.of([...defaultKeymap, ...foldKeymap]),
-        mandyExtension,
+        ...getMandyExtension(),
         language === "shell" || language === "bash" ? curlHighlighter : [],
         transparentGutter
           ? EditorView.theme({
@@ -105,7 +114,7 @@ export function CodeViewer({
       viewRef.current?.destroy();
       viewRef.current = null;
     };
-  }, [displayCode, language, activeExtensions, transparentGutter]);
+  }, [displayCode, language, activeExtensions, transparentGutter, themeKey]);
 
   return (
     <div className="h-full w-full overflow-hidden rounded relative group">

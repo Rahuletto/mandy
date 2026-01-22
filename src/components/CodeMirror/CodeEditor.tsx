@@ -21,11 +21,12 @@ import {
   closeBrackets,
   closeBracketsKeymap,
 } from "@codemirror/autocomplete";
-import { mandyExtension } from "./theme";
+import { getMandyExtension } from "./theme";
 import { languageExtensions, type Language } from "./languageExtensions";
 import { prettifyCode } from "../../utils/codeUtils";
 import { copyToClipboard } from "../../utils/clipboard";
 import { BiCopy, BiCheck } from "react-icons/bi";
+import { subscribeToThemeChanges } from "../../utils/themeColors";
 import type { Extension } from "@codemirror/state";
 
 interface CodeEditorProps {
@@ -47,10 +48,18 @@ export function CodeEditor({
   const onChangeRef = useRef(onChange);
   const [copied, setCopied] = useState(false);
   const [activeExtensions, setActiveExtensions] = useState<Extension[]>([]);
+  const [themeKey, setThemeKey] = useState(0);
 
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToThemeChanges(() => {
+      setThemeKey((k) => k + 1);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -103,7 +112,7 @@ export function CodeEditor({
           defaultKeymap: true,
         }),
 
-        mandyExtension,
+        ...getMandyExtension(),
         keymap.of([
           ...defaultKeymap,
           ...historyKeymap,
@@ -146,7 +155,7 @@ export function CodeEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [language, readOnly, handlePrettify, activeExtensions]);
+  }, [language, readOnly, handlePrettify, activeExtensions, themeKey]);
 
   useEffect(() => {
     if (viewRef.current) {

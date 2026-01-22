@@ -151,7 +151,7 @@ export function Sidebar({
           onClick={handleAddClick}
           disabled={!activeProject}
           type="button"
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-accent text-text text-lg font-bold shadow-lg hover:bg-accent/90 transition-all disabled:opacity-30 disabled:grayscale shrink-0"
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-accent text-[#fefefe] text-lg font-bold hover:bg-accent/90 transition-all disabled:opacity-30 cursor-pointer shrink-0"
         >
           <FaPlus size={16} />
         </button>
@@ -175,8 +175,8 @@ export function Sidebar({
                 className="w-5 h-5 flex items-center justify-center transition-colors cursor-pointer"
                 style={{
                   color: showProjectOverview
-                    ? "var(--color-accent)"
-                    : activeProject.iconColor || "rgba(255, 255, 255, 0.6)",
+                    ? "var(--accent)"
+                    : activeProject.iconColor || "var(--accent)",
                 }}
               >
                 {(() => {

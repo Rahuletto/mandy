@@ -170,7 +170,7 @@ export function IconPicker({
   return (
     <div
       ref={popoverRef}
-      className={`fixed z-50 bg-[#1e1e1e] border border-white/10 rounded-xl shadow-2xl p-3 w-[216px] ${
+      className={`fixed z-50 bg-card border border-border rounded-xl shadow-2xl p-3 w-[216px] ${
         isAnimatingOut ? "animate-blur-out" : "animate-blur-in"
       }`}
       style={{

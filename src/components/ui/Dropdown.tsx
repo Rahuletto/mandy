@@ -80,12 +80,12 @@ export function Dropdown({
   return (
     <div
       ref={ref}
-      className={`fixed z-[9999] bg-[#1e1e1e] border border-white/10 rounded-xl shadow-2xl py-2 ${width} ${isVisible ? "animate-blur-in" : "opacity-0"} max-h-[calc(100vh-24px)] overflow-auto shadow-black/50`}
+      className={`fixed z-[9999] bg-card border border-border rounded-xl shadow-2xl py-2 ${width} ${isVisible ? "animate-blur-in" : "opacity-0"} max-h-[calc(100vh-24px)] overflow-auto shadow-black/50`}
       style={{ left: pos.left, top: pos.top }}
     >
       {items.map((item, i) =>
         item.divider ? (
-          <div key={i} className="border-t border-white/10 my-1" />
+          <div key={i} className="border-t border-border my-1" />
         ) : item.header ? (
           <div
             key={i}

@@ -16,7 +16,10 @@ import { KeyValueTable } from "./KeyValueTable";
 import { AuthEditor } from "./editors/AuthEditor";
 import { useProjectStore } from "../stores/projectStore";
 import { hexToRgba } from "../utils/format";
-import { METHOD_COLORS_TAILWIND, getMethodColorTailwind } from "../utils/methodConstants";
+import {
+  METHOD_COLORS_TAILWIND,
+  getMethodColorTailwind,
+} from "../utils/methodConstants";
 
 const LANGUAGES = [
   { id: "shell", label: "Shell cURL" },
@@ -64,7 +67,10 @@ function collectRequests(folder: Folder): RequestFile[] {
   return results;
 }
 
-function getFirstFolderAtEachDepth(folder: Folder, depth: number = 0): string[] {
+function getFirstFolderAtEachDepth(
+  folder: Folder,
+  depth: number = 0,
+): string[] {
   const ids: string[] = [];
   for (const child of folder.children) {
     if (child.type === "folder") {
@@ -258,7 +264,7 @@ const RequestDetails = React.memo(function RequestDetails({
                     e.stopPropagation();
                     onRun();
                   }}
-                  className="absolute bottom-3 right-3 px-4 py-1.5 bg-accent hover:bg-accent/90 text-background text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-lg z-10"
+                  className="absolute bottom-3 right-3 px-4 py-1.5 bg-accent hover:bg-accent/90 text-background text-xs font-semibold rounded-lg transition-colors cursor-pointer z-10"
                 >
                   Run
                 </button>
@@ -425,7 +431,7 @@ export function ProjectOverview({
     const handleScroll = () => {
       const rect = langSelector.getBoundingClientRect();
       const containerRect = scrollContainer.getBoundingClientRect();
-      
+
       // If selector top is above container top + header height, show sticky
       const isHidden = rect.top < containerRect.top + 10;
       setIsLangSelectorSticky(isHidden);
@@ -627,7 +633,9 @@ export function ProjectOverview({
 
               <div
                 className={`flex flex-col items-end shrink-0 relative transition-all duration-300 ease-out ${
-                  isLangSelectorSticky ? "opacity-0 pointer-events-none" : "opacity-100"
+                  isLangSelectorSticky
+                    ? "opacity-0 pointer-events-none"
+                    : "opacity-100"
                 }`}
                 ref={langSelectorRef}
               >

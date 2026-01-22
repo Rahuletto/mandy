@@ -294,28 +294,25 @@ export function BodyEditor({
         {activeTab === "binary" && (
           <div className="h-full flex flex-col items-center justify-center p-8">
             {body !== "None" && "Binary" in body && body.Binary.filename ? (
-              <div className="flex flex-col items-center gap-4 bg-inset border border-white/10 p-8 rounded-2xl shadow-2xl max-w-sm w-full">
-                <div className="w-16 h-16 bg-accent/20 rounded-2xl flex items-center justify-center text-accent shadow-inner">
-                  <BiFile size={32} />
-                </div>
-                <div className="text-center">
-                  <div className="text-sm font-semibold text-white truncate max-w-[200px]">
+              <div className="flex bg-inset p-2 rounded-xl flex-col items-start max-w-sm w-full">
+                <div className="text-left p-4 pb-2">
+                  <div className="text-sm font-semibold text-white truncate">
                     {body.Binary.filename}
                   </div>
-                  <div className="text-[10px] text-white/40 mt-1 font-mono uppercase tracking-wider">
+                  <div className="text-[12px] text-accent mt-1 font-mono">
                     {(body.Binary.data.length / 1024).toFixed(2)} KB
                   </div>
                 </div>
                 <div className="flex gap-2 w-full mt-4">
                   <button
                     onClick={handleFileSelect}
-                    className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-semibold text-white/80 transition-all border border-white/5 active:scale-95"
+                    className="flex-1 cursor-pointer px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-semibold text-white/80 transition-all border border-white/5 active:scale-95"
                   >
                     Change File
                   </button>
                   <button
                     onClick={clearFile}
-                    className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-semibold transition-all border border-red-500/10 flex items-center gap-1 active:scale-95"
+                    className="px-4 py-2 bg-red-500 hover:bg-red-500/90 cursor-pointer text-background rounded-full text-xs font-semibold transition-all border border-red-500/10 flex items-center gap-1 active:scale-95"
                   >
                     <BiX size={16} /> Remove
                   </button>
@@ -323,9 +320,6 @@ export function BodyEditor({
               </div>
             ) : (
               <div className="flex flex-col items-center gap-5">
-                <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center text-white/10 border border-white/5 shadow-inner">
-                  <BiFile size={40} />
-                </div>
                 <div className="text-center">
                   <div className="text-base font-semibold text-white/80">
                     Binary Data
@@ -336,7 +330,7 @@ export function BodyEditor({
                 </div>
                 <button
                   onClick={handleFileSelect}
-                  className="mt-3 px-8 py-2.5 bg-accent hover:bg-accent/90 text-background rounded-full text-xs font-bold transition-all shadow-lg shadow-accent/20 active:scale-95 uppercase tracking-wide"
+                  className="mt-3 px-6 cursor-pointer py-2 bg-accent hover:bg-accent/90 text-background rounded-full text-sm font-semibold transition-all active:scale-95"
                 >
                   Select File
                 </button>

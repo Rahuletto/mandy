@@ -503,7 +503,7 @@ export function UrlInput({
             open={showWarningTooltip}
             onMouseEnter={handleWarningEnter}
             onMouseLeave={handleWarningLeave}
-            className="!px-2 !py-1 text-xs bg-[#1e1e1e] !rounded-lg text-white"
+            className="!px-2 !py-1 text-xs bg-card !rounded-lg text-white"
           >
             Invalid environment variable found
           </HoverPopover>
@@ -512,7 +512,7 @@ export function UrlInput({
           {showInvalidPopover && (
             <div
               ref={invalidSpanRef}
-              className="fixed z-50 bg-[#1e1e1e] border border-white/10 rounded-xl shadow-2xl p-3 animate-blur-in min-w-[200px] max-w-[280px]"
+              className="fixed z-50 bg-card border border-border rounded-xl shadow-2xl p-3 animate-blur-in min-w-[200px] max-w-[280px]"
               style={{ top: popoverPosition.top, left: popoverPosition.left }}
               onMouseEnter={handlePopoverEnter}
               onMouseLeave={handlePopoverLeave}

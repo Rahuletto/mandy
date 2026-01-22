@@ -280,7 +280,7 @@ const DragOverlayItem = memo(function DragOverlayItem({
   depth: number;
 }) {
   return (
-    <div className="flex items-center gap-1.5 pl-3 pr-2 py-1.5 text-xs bg-inset border-2 border-dashed rounded-lg border-accent/50 rounded shadow-2xl backdrop-blur-md opacity-90">
+    <div className="flex items-center gap-1.5 pl-3 pr-2 py-1.5 text-xs bg-inset border-2 border-dashed rounded-lg border-accent/50 shadow-2xl backdrop-blur-md opacity-90">
       <div className="absolute left-0 top-0 bottom-0 flex pointer-events-none">
         {Array.from({ length: depth }).map((_, i) => (
           <div
@@ -293,7 +293,11 @@ const DragOverlayItem = memo(function DragOverlayItem({
       <div style={{ width: depth * 12 }} className="shrink-0" />
       {item.type === "folder" ? (
         <>
-          <FaFolder size={16} className="text-white/60 shrink-0" />
+          <FaFolder
+            size={16}
+            className="shrink-0"
+            style={{ color: "var(--text-secondary)" }}
+          />
           <span className="truncate text-white/90 font-medium">
             {item.name}
           </span>

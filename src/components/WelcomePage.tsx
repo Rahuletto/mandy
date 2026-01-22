@@ -57,7 +57,6 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
       <div className="flex flex-col items-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
         <div className="relative mb-2">
           <Logo className="w-16 h-16 opacity-[0.3]" />
-
         </div>
 
         <div className="relative mt-4">
@@ -80,7 +79,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
                 className="fixed inset-0 z-40"
                 onClick={() => setShowProjectSelector(false)}
               />
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-200">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-card border border-border rounded-xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-200">
                 {projects.map((p) => (
                   <button
                     key={p.id}
@@ -88,10 +87,11 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
                       onSelectProject(p.id);
                       setShowProjectSelector(false);
                     }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] text-left transition-colors ${p.id === activeProjectId
-                      ? "text-accent bg-accent/10"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                      }`}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] text-left transition-colors ${
+                      p.id === activeProjectId
+                        ? "text-accent bg-accent/10"
+                        : "text-white/60 hover:text-white hover:bg-white/5"
+                    }`}
                   >
                     <span className="truncate">{p.name}</span>
                   </button>

@@ -9,11 +9,205 @@
 }
 
 :root {
-    --background: #171313;
-    --inset: #1d1919;
-    --card: #231f1f;
-    --inputbox: #2d2929;
-    --accent: #ff6141;
+    color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --glass: transparent;
+        --background: #171313;
+        --inset: #1d1919;
+        --card: #231f1f;
+        --inputbox: #2d2929;
+        --accent: #ff6141;
+        --text: #f2f2f2;
+        --text-secondary: #a0a0a0;
+        --text-muted: #6e6a6a;
+        --text-subtle: #4a4646;
+        --border: rgba(255, 255, 255, 0.1);
+    }
+
+    .bg-card {
+        background-color: #231f1f !important;
+    }
+
+    .bg-inset {
+        background-color: #1d1919 !important;
+    }
+
+    .border-border {
+        border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .border-border\/50 {
+        border-color: rgba(255, 255, 255, 0.05) !important;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --glass: transparent;
+        --background: #fafafa;
+        --inset: #ececec;
+        --card: #ffffff;
+        --inputbox: #efefef;
+        --accent: #ff6141;
+        --text: #1f1f1f;
+        --text-secondary: #3a3a3a;
+        --text-muted: #5a5a5a;
+        --text-subtle: #999999;
+        --border: rgba(0, 0, 0, 0.18);
+    }
+
+    /* Override hardcoded white colors for light mode */
+    .text-white {
+        color: #1f1f1f;
+    }
+
+    .text-white\/10 {
+        color: rgba(31, 31, 31, 0.1);
+    }
+
+    .text-white\/20 {
+        color: rgba(31, 31, 31, 0.2);
+    }
+
+    .text-white\/30 {
+        color: rgba(31, 31, 31, 0.3);
+    }
+
+    .text-white\/40 {
+        color: rgba(31, 31, 31, 0.4);
+    }
+
+    .text-white\/50 {
+        color: rgba(31, 31, 31, 0.5);
+    }
+
+    .text-white\/60 {
+        color: rgba(31, 31, 31, 0.6);
+    }
+
+    .text-white\/70 {
+        color: rgba(31, 31, 31, 0.7);
+    }
+
+    .text-white\/80 {
+        color: rgba(31, 31, 31, 0.8);
+    }
+
+    .text-white\/90 {
+        color: rgba(31, 31, 31, 0.9);
+    }
+
+    .bg-white {
+        background-color: #ffffff;
+    }
+
+    .bg-white\/1 {
+        background-color: rgba(31, 31, 31, 0.01);
+    }
+
+    .bg-white\/2 {
+        background-color: rgba(31, 31, 31, 0.02);
+    }
+
+    .bg-white\/5 {
+        background-color: rgba(31, 31, 31, 0.05);
+    }
+
+    .bg-white\/10 {
+        background-color: rgba(31, 31, 31, 0.1);
+    }
+
+    .bg-white\/20 {
+        background-color: rgba(31, 31, 31, 0.2);
+    }
+
+    .bg-white\/\[0\.02\] {
+        background-color: rgba(31, 31, 31, 0.02);
+    }
+
+    .bg-white\/\[0\.01\] {
+        background-color: rgba(31, 31, 31, 0.01);
+    }
+
+    .bg-white\/\[0\.04\] {
+        background-color: rgba(31, 31, 31, 0.04);
+    }
+
+    .border-white {
+        border-color: rgba(31, 31, 31, 0.1);
+    }
+
+    .border-white\/5 {
+        border-color: rgba(31, 31, 31, 0.05);
+    }
+
+    .border-white\/10 {
+        border-color: rgba(31, 31, 31, 0.1);
+    }
+
+    .placeholder\:text-white\/20::placeholder {
+        color: rgba(31, 31, 31, 0.2);
+    }
+
+    .placeholder\:text-white\/10::placeholder {
+        color: rgba(31, 31, 31, 0.1);
+    }
+
+    .hover\:bg-white\/10:hover {
+        background-color: rgba(31, 31, 31, 0.1);
+    }
+
+    .hover\:bg-white\/5:hover {
+        background-color: rgba(31, 31, 31, 0.05);
+    }
+
+    .hover\:bg-white\/20:hover {
+        background-color: rgba(31, 31, 31, 0.2);
+    }
+
+    .hover\:text-white:hover {
+        color: #1f1f1f;
+    }
+
+    .hover\:text-white\/50:hover {
+        color: rgba(31, 31, 31, 0.5);
+    }
+
+    .hover\:text-white\/60:hover {
+        color: rgba(31, 31, 31, 0.6);
+    }
+
+    .hover\:text-white\/80:hover {
+        color: rgba(31, 31, 31, 0.8);
+    }
+
+    .focus-within\:border-white\/10:focus-within {
+        border-color: rgba(31, 31, 31, 0.1);
+    }
+
+    /* Light mode color variable overrides */
+    .bg-card {
+        background-color: #ffffff !important;
+    }
+
+    .bg-inset {
+        background-color: #ececec !important;
+    }
+
+    .border-border {
+        border-color: rgba(31, 31, 31, 0.12) !important;
+    }
+
+    .border-border\/50 {
+        border-color: rgba(31, 31, 31, 0.06) !important;
+    }
+
+    .shadow-black\/50 {
+        box-shadow: 0 0 0 999px rgba(31, 31, 31, 0.03);
+    }
 }
 
 @theme {
@@ -22,7 +216,8 @@
     --color-card: var(--card);
     --color-inputbox: var(--inputbox);
     --color-accent: var(--accent);
-    --color-text: #f2f2f2;
+    --color-text: var(--text);
+    --color-glass: var(--glass);
 }
 
 .env-var {
@@ -51,17 +246,29 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--border);
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(var(--border-rgb), 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.2);
+    }
 }
 
 select option {
-    background: var(--inset);
-    color: white;
+    background: var(--card);
+    color: var(--text);
 }
 
 input,
@@ -70,11 +277,22 @@ textarea,
     -webkit-text-size-adjust: none;
 }
 
-[contenteditable]:empty::before {
-    content: attr(data-placeholder);
-    color: rgba(255, 255, 255, 0.3);
-    pointer-events: none;
-    display: inline-block;
+@media (prefers-color-scheme: dark) {
+    [contenteditable]:empty::before {
+        content: attr(data-placeholder);
+        color: rgba(255, 255, 255, 0.3);
+        pointer-events: none;
+        display: inline-block;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    [contenteditable]:empty::before {
+        content: attr(data-placeholder);
+        color: rgba(0, 0, 0, 0.3);
+        pointer-events: none;
+        display: inline-block;
+    }
 }
 
 @keyframes blur-in {
@@ -172,8 +390,16 @@ textarea,
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(74, 222, 128, 0.12) 40%, rgba(74, 222, 128, 0.18) 50%, rgba(74, 222, 128, 0.12) 60%, transparent 100%);
-    animation: completed-sweep 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(74, 222, 128, 0.12) 40%,
+        rgba(74, 222, 128, 0.18) 50%,
+        rgba(74, 222, 128, 0.12) 60%,
+        transparent 100%
+    );
+    animation: completed-sweep 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)
+        forwards;
     pointer-events: none;
 }
 

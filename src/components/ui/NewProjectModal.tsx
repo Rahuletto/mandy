@@ -134,7 +134,7 @@ export function NewProjectModal({
 
       <div
         ref={modalRef}
-        className="relative w-full max-w-[320px] bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl animate-in zoom-in-95 fade-in duration-300"
+        className="relative w-full max-w-[320px] bg-card border border-border rounded-xl shadow-2xl animate-in zoom-in-95 fade-in duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
@@ -209,7 +209,7 @@ export function NewProjectModal({
                     if (e.key === "Enter" && projectName.trim()) handleCreate();
                   }}
                   placeholder="My awesome project"
-                  className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 transition-all"
+                  className="w-full bg-inset border border-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 transition-all"
                 />
               </div>
             ) : (
@@ -270,7 +270,7 @@ export function NewProjectModal({
                   ? !projectName.trim()
                   : !fileContent)
               }
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-white text-black hover:bg-white/90 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-black/20"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-white text-black hover:bg-white/90 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />

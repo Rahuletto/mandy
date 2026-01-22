@@ -52,7 +52,6 @@ import {
   parseInsomniaExport,
 } from "./utils/migration";
 import { useProjectStore } from "./stores/projectStore";
-import type { Folder, TreeItem, RequestFile } from "./types/project";
 import { useToastStore } from "./stores/toastStore";
 
 import "./App.css";
@@ -1006,7 +1005,7 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-transparent text-text select-none">
+    <div className="h-screen flex flex-col bg-glass text-text select-none">
       <header
         className="h-10 flex items-center px-4 bg-transparent shrink-0 group"
         data-tauri-drag-region
@@ -1182,7 +1181,7 @@ function App() {
         </div>
 
         <div
-          className={`absolute left-2 top-2 bottom-2 z-40 rounded-xl bg-[#1a1a1a]/98 backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          className={`absolute left-2 top-2 bottom-2 z-40 rounded-xl bg-card/90 backdrop-blur-2xl border border-border shadow-2xl transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] ${
             isPeeking && isSidebarCollapsed
               ? "opacity-100 translate-x-0 scale-100"
               : "opacity-0 -translate-x-4 scale-[0.98] pointer-events-none"
@@ -1934,13 +1933,13 @@ function App() {
 
       {showCurlImport && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#1a1a1a] rounded-xl p-5 w-full max-w-xl border border-white/10">
+          <div className="bg-card rounded-xl p-5 w-full max-w-xl border border-border">
             <div className="text-sm font-medium mb-4">Import cURL Command</div>
             <textarea
               value={curlInput}
               onChange={(e) => setCurlInput(e.target.value)}
               placeholder="curl https://api.example.com -H 'Content-Type: application/json'"
-              className="w-full h-40 bg-[#0d0d0d] border border-white/10 rounded-lg p-3 text-sm font-mono resize-none focus:outline-none focus:border-accent/50"
+              className="w-full h-40 bg-inset border border-border rounded-lg p-3 text-sm font-mono resize-none focus:outline-none focus:border-accent/50"
             />
             <div className="flex justify-end gap-3 mt-4">
               <button

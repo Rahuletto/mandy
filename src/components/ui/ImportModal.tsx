@@ -178,7 +178,7 @@ export function ImportModal({
 
       <div
         ref={modalRef}
-        className="relative w-full max-w-[320px] bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl animate-in zoom-in-95 fade-in duration-300"
+        className="relative w-full max-w-[320px] bg-card border border-border rounded-xl shadow-2xl animate-in zoom-in-95 fade-in duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
@@ -237,7 +237,7 @@ export function ImportModal({
 
                     {showOpenAPIMenu && (
                       <div className="absolute right-0 top-0 translate-x-full pl-2 z-[60]">
-                        <div className="min-w-[160px] bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200 p-2 space-y-1">
+                        <div className="min-w-[160px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200 p-2 space-y-1">
                           <button
                             onClick={() => setSelectedSource("openapi-file")}
                             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors text-left group/item"
@@ -321,7 +321,7 @@ export function ImportModal({
                       if (e.key === "Enter" && urlInput) handleImport();
                     }}
                     placeholder="https://api.example.com/openapi.json"
-                    className="w-full bg-black/20 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 transition-all font-mono"
+                    className="w-full bg-inset border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 transition-all font-mono"
                   />
                 </div>
               </div>

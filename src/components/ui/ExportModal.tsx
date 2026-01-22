@@ -76,10 +76,10 @@ export function ExportModal({
 
       <div
         ref={modalRef}
-        className="relative w-full max-w-[320px] bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300"
+        className="relative w-full max-w-[320px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
           <div className="flex-1 text-center">
             <h2 className="text-sm font-semibold text-white">Export</h2>
           </div>
