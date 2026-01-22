@@ -8,6 +8,7 @@ import {
   TbChevronRight,
 } from "react-icons/tb";
 import { SiSwagger, SiPostman, SiInsomnia } from "react-icons/si";
+import { Logo } from "./Logo";
 
 type ImportSource =
   | "mandy"
@@ -23,7 +24,7 @@ type ImportSource =
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImportMatchstick: (json: string) => void;
+  onImportMandy: (json: string) => void;
   onImportOpenAPI: (spec: object) => void;
   onImportPostman: (json: object) => void;
   onImportInsomnia: (json: object) => void;
@@ -33,7 +34,7 @@ interface ImportModalProps {
 export function ImportModal({
   isOpen,
   onClose,
-  onImportMatchstick,
+  onImportMandy,
   onImportOpenAPI,
   onImportPostman,
   onImportInsomnia,
@@ -99,7 +100,7 @@ export function ImportModal({
     try {
       if (selectedSource === "mandy") {
         JSON.parse(fileContent); // Validate JSON
-        onImportMatchstick(fileContent);
+        onImportMandy(fileContent);
         handleClose();
       } else if (selectedSource === "openapi-file") {
         const spec = JSON.parse(fileContent);
@@ -140,8 +141,8 @@ export function ImportModal({
   const importSources = [
     {
       id: "mandy" as ImportSource,
-      label: "Import from Mandy",
-      icon: TbFileDescription,
+      label: "Import Mandy Project",
+      isLogo: true,
       color: "text-accent",
       available: true,
     },
@@ -210,8 +211,6 @@ export function ImportModal({
         {!selectedSource ? (
           <div className="p-2 space-y-1">
             {importSources.map((source) => {
-              const Icon = source.icon;
-
               if (source.id === "openapi") {
                 return (
                   <div
@@ -223,7 +222,7 @@ export function ImportModal({
                     <div
                       className={`w-full flex items-center gap-3 p-2.5 px-3 rounded-lg transition-colors text-left group-hover:bg-white/5 cursor-pointer ${showOpenAPIMenu ? "bg-white/5" : ""}`}
                     >
-                      <Icon
+                      <SiSwagger
                         size={16}
                         className="text-white/40 group-hover:text-white/80 transition-colors"
                       />
@@ -277,15 +276,21 @@ export function ImportModal({
                     source.available && setSelectedSource(source.id)
                   }
                   disabled={!source.available}
-                  className={`w-full flex items-center gap-3 p-2.5 px-3 rounded-lg transition-colors text-left group ${source.available
-                    ? "hover:bg-white/5 cursor-pointer"
-                    : "opacity-40 cursor-not-allowed"
-                    }`}
+                  className={`w-full flex items-center gap-3 p-2.5 px-3 rounded-lg transition-colors text-left group ${
+                    source.available
+                      ? "hover:bg-white/5 cursor-pointer"
+                      : "opacity-40 cursor-not-allowed"
+                  }`}
                 >
-                  <Icon
-                    size={16}
-                    className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`}
-                  />
+                  {source.isLogo ? (
+                    <Logo width={16} height={16} className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`} />
+                  ) : (
+                    <>
+                      {source.id === "openapi" && <SiSwagger size={16} className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`} />}
+                      {source.id === "postman" && <SiPostman size={16} className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`} />}
+                      {source.id === "insomnia" && <SiInsomnia size={16} className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`} />}
+                    </>
+                  )}
                   <span
                     className={`flex-1 text-sm ${source.available ? "text-white/70 group-hover:text-white" : "text-white/30"} transition-colors`}
                   >
@@ -331,16 +336,18 @@ export function ImportModal({
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className={`w-full flex flex-col items-center gap-2 p-6 border border-dashed transition-all rounded-lg group ${fileContent
-                    ? "border-accent/40 bg-accent/5"
-                    : "border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]"
-                    }`}
+                  className={`w-full flex flex-col items-center gap-2 p-6 border border-dashed transition-all rounded-lg group ${
+                    fileContent
+                      ? "border-accent/40 bg-accent/5"
+                      : "border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]"
+                  }`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${fileContent
-                      ? "bg-accent/20"
-                      : "bg-white/5 group-hover:bg-white/10"
-                      }`}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                      fileContent
+                        ? "bg-accent/20"
+                        : "bg-white/5 group-hover:bg-white/10"
+                    }`}
                   >
                     <TbUpload
                       size={16}

@@ -78,7 +78,7 @@ const COLOR_OPTIONS = [
   { name: "Violet", value: "#a78bfa" },
   { name: "Pink", value: "#f472b6" },
   { name: "Rose", value: "#fb7185" },
-  { name: "Accent", value: "#ff502b" }, // Matchstick accent
+  { name: "Accent", value: "#ff502b" },
 ];
 
 interface IconPickerProps {

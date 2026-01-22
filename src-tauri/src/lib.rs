@@ -1,6 +1,7 @@
 
 use specta_typescript::Typescript;
 use tauri_specta::{collect_commands, Builder};
+use tauri::Manager;
 
 mod window;
 mod types;

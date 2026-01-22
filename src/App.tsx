@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Methods, ResponseRenderer, HttpProtocol } from "./bindings";
 import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
+import { listen } from "@tauri-apps/api/event";
 import { TbLayoutSidebar } from "react-icons/tb";
 import { GiTeapot } from "react-icons/gi";
 import { isMac } from "./utils/platform";
@@ -293,6 +294,30 @@ function App() {
 
     return computed;
   }, [activeRequest, disabledItems]);
+
+  // Handle opening .mandy.json files
+  useEffect(() => {
+    const unlistenPromise = listen<string>("open-mandy-file", async (event) => {
+      try {
+        const filePath = event.payload;
+        const content = await readTextFile(filePath);
+        const imported = parseMandyJSON(content);
+        if (imported) {
+          createProjectFromImport(imported);
+          addToast(`Opened project: ${imported.name}`, "success");
+        } else {
+          addToast("Invalid Mandy project file", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        addToast("Failed to open project", "error");
+      }
+    });
+
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, [createProjectFromImport, addToast]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -1982,7 +2007,7 @@ function App() {
             }
           }
         }}
-        onExportMatchstick={async () => {
+        onExportMandy={async () => {
           if (activeProject) {
             try {
               const json = exportToMandyJSON(activeProject);
@@ -1990,20 +2015,20 @@ function App() {
               const filePath = await save({
                 filters: [
                   {
-                    name: "Matchstick JSON",
-                    extensions: ["json"],
+                    name: "Mandy Project",
+                    extensions: ["mandy.json"],
                   },
                 ],
-                defaultPath: `${activeProject.name}.matchstick.json`,
+                defaultPath: `${activeProject.name}.mandy.json`,
               });
 
               if (filePath) {
                 await writeTextFile(filePath, json);
-                addToast("Exported as Matchstick JSON", "success");
+                addToast("Exported project", "success");
               }
             } catch (err) {
               console.error(err);
-              addToast("Failed to export Matchstick JSON", "error");
+              addToast("Failed to export project", "error");
             }
           }
         }}
@@ -2065,7 +2090,7 @@ function App() {
       <ImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        onImportMatchstick={(json) => {
+        onImportMandy={(json) => {
           const project = parseMandyJSON(json);
           if (project && project.root) {
             const results = processItemForSecrets(project.root);
@@ -2087,7 +2112,7 @@ function App() {
               );
             }
           } else {
-            addToast("Failed to parse Matchstick JSON", "error");
+            addToast("Failed to parse Mandy JSON", "error");
           }
         }}
         onImportOpenAPI={(spec) => {

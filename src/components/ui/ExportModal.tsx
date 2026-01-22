@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import { HiX } from "react-icons/hi";
-import { TbArchive } from "react-icons/tb";
 import { SiSwagger, SiPostman, SiInsomnia } from "react-icons/si";
+import { Logo } from "./Logo";
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onExportOpenAPI: () => void;
-  onExportMatchstick: () => void;
+  onExportMandy: () => void;
   onExportPostman: () => void;
   onExportInsomnia: () => void;
 }
@@ -16,7 +16,7 @@ export function ExportModal({
   isOpen,
   onClose,
   onExportOpenAPI,
-  onExportMatchstick,
+  onExportMandy,
   onExportPostman,
   onExportInsomnia,
 }: ExportModalProps) {
@@ -43,9 +43,9 @@ export function ExportModal({
   const exportOptions = [
     {
       id: "mandy",
-      label: "Mandy",
-      icon: TbArchive,
-      onClick: onExportMatchstick,
+      label: "Mandy Project",
+      isLogo: true,
+      onClick: onExportMandy,
     },
     {
       id: "openapi",
@@ -92,28 +92,32 @@ export function ExportModal({
         </div>
 
         <div className="p-2 space-y-1">
-          {exportOptions.map((option) => {
-            const Icon = option.icon;
-            return (
-              <button
-                key={option.id}
-                onClick={() => {
-                  option.onClick();
-                  onClose();
-                }}
-                className="w-full flex items-center gap-3 p-2.5 px-3 hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left group"
-              >
-                <Icon
-                  size={16}
-                  className="text-white/40 group-hover:text-white/80 transition-colors"
-                />
-                <span className="flex-1 text-sm text-white/70 group-hover:text-white transition-colors">
-                  {option.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+           {exportOptions.map((option) => {
+             return (
+               <button
+                 key={option.id}
+                 onClick={() => {
+                   option.onClick();
+                   onClose();
+                 }}
+                 className="w-full flex items-center gap-3 p-2.5 px-3 hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left group"
+               >
+                 {option.isLogo ? (
+                   <Logo width={16} height={16} className="text-white/40 group-hover:text-white/80 transition-colors" />
+                 ) : (
+                   <>
+                     {option.id === "openapi" && <SiSwagger size={16} className="text-white/40 group-hover:text-white/80 transition-colors" />}
+                     {option.id === "postman" && <SiPostman size={16} className="text-white/40 group-hover:text-white/80 transition-colors" />}
+                     {option.id === "insomnia" && <SiInsomnia size={16} className="text-white/40 group-hover:text-white/80 transition-colors" />}
+                   </>
+                 )}
+                 <span className="flex-1 text-sm text-white/70 group-hover:text-white transition-colors">
+                   {option.label}
+                 </span>
+               </button>
+             );
+           })}
+         </div>
       </div>
     </div>
   );

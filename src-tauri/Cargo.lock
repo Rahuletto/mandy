@@ -9,6 +9,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
 
 [[package]]
+name = "Mandy"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "curl",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-macos-haptics",
+ "tauri-plugin-opener",
+ "tauri-specta",
+ "tokio",
+ "url",
+ "window-vibrancy 0.7.1",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1972,28 +1994,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62bb907fe88d54d8d9ce32a3cceab4218ed2f6b7d35617cafe9adf84e43919cb"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "mandy"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "curl",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-macos-haptics",
- "tauri-plugin-opener",
- "tauri-specta",
- "tokio",
- "url",
- "window-vibrancy 0.7.1",
 ]
 
 [[package]]
