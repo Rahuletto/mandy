@@ -406,7 +406,7 @@ function App() {
     if (activeRequest && activeTab === "body") {
       const method = activeRequest.request.method;
       if (method === "GET" || method === "HEAD") {
-        setActiveTab("overview");
+        setActiveTab("params");
       }
     }
   }, [activeRequest?.id, activeTab]);
@@ -737,9 +737,8 @@ function App() {
       request: { ...r.request, method },
     }));
 
-    // GET and HEAD don't have a body, switch to overview if currently on body tab
     if ((method === "GET" || method === "HEAD") && activeTab === "body") {
-      setActiveTab("overview");
+      setActiveTab("params");
     }
   }
 
