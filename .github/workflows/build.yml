@@ -1,4 +1,4 @@
-name: Build & Release
+name: Build
 
 on:
   push:
@@ -13,12 +13,16 @@ jobs:
         include:
           - platform: macos-latest
             args: --target aarch64-apple-darwin
-          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-13
             args: --target x86_64-apple-darwin
+            target: x86_64-apple-darwin
           - platform: ubuntu-22.04
             args: ""
+            target: x86_64-unknown-linux-gnu
           - platform: windows-latest
             args: ""
+            target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.platform }}
 
@@ -30,8 +34,13 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          workspaces: src-tauri
+          cache-on-failure: true
+          shared-key: ${{ matrix.target }}
 
       - name: Install dependencies (Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
@@ -52,7 +61,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: binaries-${{ matrix.platform }}-${{ matrix.args }}
+          name: binaries-${{ matrix.target }}
           path: |
             src-tauri/target/release/bundle/**/*.dmg
             src-tauri/target/release/bundle/**/*.app

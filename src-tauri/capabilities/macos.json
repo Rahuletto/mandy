@@ -1,11 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Capability for the main window",
+  "identifier": "macos",
+  "description": "Capability for the main window on macOS",
   "windows": [
     "main"
   ],
-  "platforms": ["linux", "windows"],
+  "platforms": ["macOS"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -13,6 +13,7 @@
     "fs:default",
     "core:window:default",
     "core:window:allow-start-dragging",
-    "fs:allow-write-text-file"
+    "fs:allow-write-text-file",
+    "macos-haptics:default"
   ]
 }
