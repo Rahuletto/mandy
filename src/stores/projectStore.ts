@@ -10,10 +10,12 @@ import type {
   EnvironmentVariable,
   RecentRequest,
 } from "../types/project";
+import type { WorkflowFile } from "../types/workflow";
 import type { ApiResponse } from "../bindings";
 import { createDefaultRequest } from "../reqhelpers/rest";
 import { findSecrets } from "../utils/secretDetection";
 import type { AuthType } from "../bindings";
+import type { Node, Edge } from "@xyflow/react";
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -101,6 +103,15 @@ function cloneTreeItem(item: TreeItem): TreeItem {
       response: null,
     };
   }
+  if (item.type === "workflow") {
+    return {
+      ...item,
+      id: generateId(),
+      name: `${item.name} (copy)`,
+      nodes: item.nodes.map((node) => ({ ...node, id: generateId() })),
+      edges: item.edges.map((edge) => ({ ...edge, id: generateId() })),
+    };
+  }
   return {
     ...item,
     id: generateId(),
@@ -148,6 +159,7 @@ interface ProjectState {
   projects: Project[];
   activeProjectId: string | null;
   activeRequestId: string | null;
+  activeWorkflowId: string | null;
   selectedItemId: string | null;
   unsavedChanges: Set<string>;
 
@@ -191,8 +203,10 @@ interface ProjectState {
   resolveVariables: (text: string, projectId?: string) => string;
 
   setActiveRequestId: (id: string | null) => void;
+  setActiveWorkflowId: (id: string | null) => void;
   setSelectedItem: (id: string | null) => void;
   addRequest: (parentFolderId: string, name?: string) => string;
+  addWorkflow: (parentFolderId: string, name?: string) => string;
   addFolder: (parentFolderId: string, name?: string) => string;
   renameItem: (itemId: string, newName: string) => void;
   deleteItem: (itemId: string) => void;
@@ -210,8 +224,13 @@ interface ProjectState {
     requestId: string,
     updater: (r: RequestFile) => RequestFile,
   ) => void;
+  updateWorkflow: (
+    workflowId: string,
+    updater: (w: WorkflowFile) => WorkflowFile,
+  ) => void;
   setRequestResponse: (requestId: string, response: ApiResponse) => void;
   getActiveRequest: () => RequestFile | null;
+  getActiveWorkflow: () => WorkflowFile | null;
   markSaved: (requestId: string) => void;
   markUnsaved: (requestId: string) => void;
   isUnsaved: (requestId: string) => boolean;
@@ -242,6 +261,7 @@ export const useProjectStore = create<ProjectState>()(
       projects: [initialProject],
       activeProjectId: initialProject.id,
       activeRequestId: null,
+      activeWorkflowId: null,
       selectedItemId: null,
       unsavedChanges: new Set(),
       clipboard: null,
@@ -479,10 +499,13 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       setActiveRequestId: (id) => {
-        set({ activeRequestId: id });
+        set({ activeRequestId: id, activeWorkflowId: null });
         if (id) {
           get().addToRecentRequests(id);
         }
+      },
+      setActiveWorkflowId: (id) => {
+        set({ activeWorkflowId: id, activeRequestId: null });
       },
       setSelectedItem: (id) => set({ selectedItemId: id }),
 
@@ -519,6 +542,64 @@ export const useProjectStore = create<ProjectState>()(
           activeRequestId: newId,
         }));
         get().addToRecentRequests(newId);
+        return newId;
+      },
+
+      addWorkflow: (parentFolderId, name = "New Workflow") => {
+        const newId = generateId();
+        const startNodeId = generateId();
+        const endNodeId = generateId();
+
+        const startNode: Node = {
+          id: startNodeId,
+          type: "start",
+          position: { x: 250, y: 100 },
+          data: { label: "Start", status: "idle", type: "start" },
+        };
+
+        const endNode: Node = {
+          id: endNodeId,
+          type: "end",
+          position: { x: 250, y: 400 },
+          data: { label: "End", status: "idle", type: "end" },
+        };
+
+        const defaultEdge: Edge = {
+          id: `${startNodeId}-${endNodeId}`,
+          source: startNodeId,
+          target: endNodeId,
+        };
+
+        const workflow: WorkflowFile = {
+          id: newId,
+          type: "workflow",
+          name,
+          nodes: [startNode, endNode],
+          edges: [defaultEdge],
+        };
+
+        set((state) => ({
+          ...state,
+          projects: state.projects.map((p) => {
+            if (p.id !== state.activeProjectId) return p;
+
+            const addChildToFolder = (folder: Folder): Folder => {
+              if (folder.id === parentFolderId) {
+                return { ...folder, children: [...folder.children, workflow] };
+              }
+              return {
+                ...folder,
+                children: folder.children.map((child) =>
+                  child.type === "folder" ? addChildToFolder(child) : child
+                ),
+              };
+            };
+
+            return { ...p, root: addChildToFolder(p.root) };
+          }),
+          activeWorkflowId: newId,
+          activeRequestId: null,
+        }));
         return newId;
       },
 
@@ -708,9 +789,11 @@ export const useProjectStore = create<ProjectState>()(
         const processNode = (node: TreeItem) => {
           if (node.type === "request") {
             processRequest(node);
-          } else {
+          } else if (node.type === "folder") {
             node.name = processString(node.name);
             node.children.forEach(processNode);
+          } else if (node.type === "workflow") {
+            node.name = processString(node.name);
           }
         };
 
@@ -884,6 +967,27 @@ export const useProjectStore = create<ProjectState>()(
         });
       },
 
+      updateWorkflow: (workflowId, updater) => {
+        set((state) => {
+          const project = state.projects.find(
+            (p) => p.id === state.activeProjectId,
+          );
+          if (!project) return state;
+          const item = findItem(project.root, workflowId);
+          if (item && item.type === "workflow") {
+            const updated = updater(item);
+            Object.assign(item, updated);
+            const newUnsaved = new Set(state.unsavedChanges);
+            newUnsaved.add(workflowId);
+            return {
+              projects: [...state.projects],
+              unsavedChanges: newUnsaved,
+            };
+          }
+          return state;
+        });
+      },
+
       setRequestResponse: (requestId, response) => {
         set((state) => {
           const project = state.projects.find(
@@ -906,6 +1010,16 @@ export const useProjectStore = create<ProjectState>()(
         if (!project || !state.activeRequestId) return null;
         const item = findItem(project.root, state.activeRequestId);
         return item?.type === "request" ? item : null;
+      },
+
+      getActiveWorkflow: () => {
+        const state = get();
+        const project = state.projects.find(
+          (p) => p.id === state.activeProjectId,
+        );
+        if (!project || !state.activeWorkflowId) return null;
+        const item = findItem(project.root, state.activeWorkflowId);
+        return item?.type === "workflow" ? item : null;
       },
 
       markSaved: (requestId) => {
@@ -1051,6 +1165,7 @@ export const useProjectStore = create<ProjectState>()(
         projects: state.projects,
         activeProjectId: state.activeProjectId,
         activeRequestId: state.activeRequestId,
+        activeWorkflowId: state.activeWorkflowId,
         selectedItemId: state.selectedItemId,
         selectedLanguage: state.selectedLanguage,
       }),

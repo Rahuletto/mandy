@@ -24,15 +24,15 @@ interface WelcomePageProps {
 const getMethodColorTw = (method: string) => {
   switch (method.toUpperCase()) {
     case "GET":
-      return "text-green-500/60";
+      return "text-green/60";
     case "POST":
-      return "text-yellow-500/60";
+      return "text-yellow/60";
     case "PUT":
       return "text-blue-500/60";
     case "PATCH":
       return "text-purple-500/60";
     case "DELETE":
-      return "text-red-500/60";
+      return "text-red/60";
     default:
       return "text-white/20";
   }

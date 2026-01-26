@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { FaPython } from "react-icons/fa";
 import type { RequestFile } from "../types/project";
 import {
   generateCurl,
@@ -75,7 +76,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
       case "Python Requests":
         return {
           code: generatePythonRequests(activeRequest.request),
-          lang: "python" as const,
+          lang: "text" as const,
         };
       case "Go Native":
         return { code: generateGo(activeRequest.request), lang: "go" as const };
@@ -392,13 +393,13 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
                     activeRequest.request.method === "GET"
-                      ? "bg-green-500/20 text-green-400"
+                      ? "bg-green/20 text-green"
                       : activeRequest.request.method === "POST"
                         ? "bg-blue-500/20 text-blue-400"
                         : activeRequest.request.method === "PUT"
-                          ? "bg-yellow-500/20 text-yellow-400"
+                          ? "bg-yellow/20 text-yellow"
                           : activeRequest.request.method === "DELETE"
-                            ? "bg-red-500/20 text-red-400"
+                            ? "bg-red/20 text-red"
                             : "bg-gray-500/20 text-gray-400"
                   }`}
                 >
@@ -447,6 +448,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
                       },
                       {
                         label: "Python Requests",
+                        icon: <FaPython size={12} />,
                         onClick: () => {
                           setSnippetLang("Python Requests");
                           setShowSnippetDropdown(false);

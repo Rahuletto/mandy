@@ -150,7 +150,7 @@ export function ImportModal({
       id: "openapi" as ImportSource,
       label: "Import from OpenAPI",
       icon: SiSwagger,
-      color: "text-green-400",
+      color: "text-green",
       available: true,
     },
     {
@@ -367,9 +367,9 @@ export function ImportModal({
             )}
 
             {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/10 rounded-lg">
-                <p className="text-xs text-red-400 flex items-center gap-2">
-                  <span className="w-1 h-1 bg-red-400 rounded-full" />
+              <div className="p-3 bg-red/10 border border-red/10 rounded-lg">
+                <p className="text-xs text-red flex items-center gap-2">
+                  <span className="w-1 h-1 bg-red rounded-full" />
                   {error}
                 </p>
               </div>

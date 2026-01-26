@@ -108,7 +108,7 @@ export function Dropdown({
               disabled={item.header}
               className={`flex-1 text-left px-4 py-2 text-xs flex items-center gap-2.5 ${
                 item.danger
-                  ? "text-red-400"
+                  ? "text-red"
                   : item.active
                     ? "text-accent font-semibold"
                     : "text-white/80"

@@ -1,4 +1,4 @@
-export { CodeEditor } from "./CodeEditor";
+export { CodeEditor, type CompletionItem } from "./CodeEditor";
 export { CodeViewer } from "./CodeViewer";
 export {
   getMandyExtension,
