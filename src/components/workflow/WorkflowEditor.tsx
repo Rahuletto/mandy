@@ -514,6 +514,81 @@ function WorkflowEditorInner({
     haptic("levelChange");
   }, [onRunWorkflow, resetNodeStatuses, addToast]);
 
+  const inferLoopBodyEdgeIds = useCallback(
+    (allEdges: Edge[], allNodes: Node<WorkflowNodeData>[]): Set<string> => {
+      const loopBodyEdgeIds = new Set<string>();
+      const loopNodes = allNodes.filter(
+        (n) => (n.data as WorkflowNodeData).type === "loop",
+      );
+
+      for (const loopNode of loopNodes) {
+        const outgoing = allEdges.filter((e) => e.source === loopNode.id);
+        if (outgoing.length === 0) continue;
+        if (outgoing.length === 1) {
+          loopBodyEdgeIds.add(outgoing[0].id);
+          continue;
+        }
+
+        const getTargetNode = (edge: Edge) =>
+          allNodes.find((n) => n.id === edge.target);
+        const bodyScore = (edge: Edge): number => {
+          const target = getTargetNode(edge);
+          let score = 0;
+          if (edge.sourceHandle === "loop") score += 400;
+          if ((target?.data as WorkflowNodeData)?.type !== "end") score += 120;
+          if (target) {
+            const dy = target.position.y - loopNode.position.y;
+            const dxAbs = Math.abs(target.position.x - loopNode.position.x);
+            if (dy > 0) score += 100 + Math.min(dy, 300) / 8;
+            else score -= Math.min(Math.abs(dy), 300) / 5;
+            score -= Math.min(dxAbs, 400) / 20;
+          }
+          return score;
+        };
+        const exitScore = (edge: Edge): number => {
+          const target = getTargetNode(edge);
+          let score = 0;
+          if (edge.sourceHandle === "exit") score += 400;
+          if ((target?.data as WorkflowNodeData)?.type === "end") score += 250;
+          if (target) {
+            const dx = target.position.x - loopNode.position.x;
+            const dyAbs = Math.abs(target.position.y - loopNode.position.y);
+            if (dx > 0) score += 90 + Math.min(dx, 300) / 20;
+            score += Math.max(0, 100 - dyAbs) / 4;
+          }
+          return score;
+        };
+
+        let bestBody: Edge | undefined;
+        let bestExit: Edge | undefined;
+        let bestPairScore = Number.NEGATIVE_INFINITY;
+
+        for (const body of outgoing) {
+          for (const exit of outgoing) {
+            if (body.id === exit.id) continue;
+            const pairScore = bodyScore(body) + exitScore(exit);
+            if (pairScore > bestPairScore) {
+              bestPairScore = pairScore;
+              bestBody = body;
+              bestExit = exit;
+            }
+          }
+        }
+
+        const loopBody =
+          bestBody ||
+          [...outgoing].sort((a, b) => bodyScore(b) - bodyScore(a))[0];
+
+        if (loopBody) {
+          loopBodyEdgeIds.add(loopBody.id);
+        }
+      }
+
+      return loopBodyEdgeIds;
+    },
+    [],
+  );
+
   const handleRunWorkflow = useCallback(async () => {
     if (isRunning) {
       if (isStopping) {
@@ -593,15 +668,7 @@ function WorkflowEditorInner({
     onRunWorkflow();
     haptic("levelChange");
 
-    // Identify loop body edges (edges from loop nodes with "loop" handle)
-    const loopEdges = edges.filter((e) => {
-      const sourceNode = nodes.find((n) => n.id === e.source);
-      return (
-        (sourceNode?.data as WorkflowNodeData)?.type === "loop" &&
-        e.sourceHandle === "loop"
-      );
-    });
-    setLoopBodyEdges(new Set(loopEdges.map((e) => e.id)));
+    setLoopBodyEdges(inferLoopBodyEdgeIds(edges, nodes));
 
     const engine = new WorkflowEngine(
       nodes,
@@ -842,6 +909,7 @@ function WorkflowEditorInner({
     addToast,
     updateNodeData,
     forceKillWorkflow,
+    inferLoopBodyEdgeIds,
   ]);
 
   useEffect(() => {

@@ -468,13 +468,35 @@ export class WorkflowEngine {
             `[WorkflowEngine] Condition result for node ${nodeId}:`,
             result,
           );
+
+          // For true conditions, pass through the incoming payload so downstream nodes
+          // can consume the same data the condition evaluated.
+          if (result) {
+            let passthrough: NodeOutput;
+            try {
+              passthrough = JSON.parse(
+                JSON.stringify(
+                  context.lastResponse ?? {
+                    status: 200,
+                    body: null,
+                  },
+                ),
+              );
+            } catch {
+              passthrough = context.lastResponse ?? { status: 200, body: null };
+            }
+            context.nodeOutputs[nodeId] = passthrough;
+            this.onNodeOutput?.(nodeId, passthrough);
+          }
+
           this.onNodeStatusChange(nodeId, "completed");
 
           const outgoingEdges = this.getOutgoingEdges(nodeId);
-          const targetEdge = outgoingEdges.find((edge) => {
-            const handle = edge.sourceHandle;
-            return result ? handle === "true" : handle === "false";
-          });
+          const targetEdge = this.resolveConditionEdge(
+            nodeId,
+            outgoingEdges,
+            result,
+          );
 
           if (!targetEdge) {
             console.warn(
@@ -510,6 +532,10 @@ export class WorkflowEngine {
           const delayMs = loopData.delayMs || 0;
 
           const outgoingEdges = this.getOutgoingEdges(nodeId);
+          const { loopBodyEdge, exitEdge } = this.resolveLoopEdges(
+            nodeId,
+            outgoingEdges,
+          );
           console.debug(
             `[WorkflowEngine] Loop node ${nodeId} has outgoing edges:`,
             outgoingEdges.map((e) => ({
@@ -518,10 +544,6 @@ export class WorkflowEngine {
               target: e.target,
             })),
           );
-          const loopBodyEdge = outgoingEdges.find(
-            (e) => e.sourceHandle === "loop",
-          );
-          const exitEdge = outgoingEdges.find((e) => e.sourceHandle === "exit");
 
           const collect = !!(loopData as any).collectResults;
           const resultsBodies: unknown[] = [];
@@ -893,6 +915,147 @@ export class WorkflowEngine {
 
   private getOutgoingEdges(nodeId: string): Edge[] {
     return this.edges.filter((edge) => edge.source === nodeId);
+  }
+
+  private resolveConditionEdge(
+    conditionNodeId: string,
+    outgoingEdges: Edge[],
+    result: boolean,
+  ): Edge | undefined {
+    if (outgoingEdges.length === 0) return undefined;
+    if (outgoingEdges.length === 1) return outgoingEdges[0];
+
+    const conditionNode = this.nodes.find((n) => n.id === conditionNodeId);
+    const getTargetNode = (edge: Edge) =>
+      this.nodes.find((n) => n.id === edge.target);
+
+    const scoreEdge = (edge: Edge): number => {
+      const target = getTargetNode(edge);
+      const handle = edge.sourceHandle;
+      let score = 0;
+
+      if (result) {
+        if (handle === "true") score += 500;
+        if (handle === "false") score -= 500;
+      } else {
+        if (handle === "false") score += 500;
+        if (handle === "true") score -= 500;
+      }
+
+      if (conditionNode && target) {
+        const dx = target.position.x - conditionNode.position.x;
+        const dy = target.position.y - conditionNode.position.y;
+        const dyAbs = Math.abs(dy);
+
+        if (dx > 0) score += 40 + Math.min(dx, 300) / 15;
+
+        if (result) {
+          // True handle is placed higher on the node, so prefer upper branch targets.
+          if (dy < 0) score += 120 + Math.min(Math.abs(dy), 300) / 8;
+          else score -= Math.min(dy, 300) / 6;
+        } else {
+          // False handle is placed lower on the node, so prefer lower branch targets.
+          if (dy > 0) score += 120 + Math.min(dy, 300) / 8;
+          else score -= Math.min(Math.abs(dy), 300) / 6;
+        }
+
+        // Prefer cleaner vertical separation between true/false branches when unlabeled.
+        score += Math.min(dyAbs, 250) / 20;
+      }
+
+      const targetType = (target?.data as WorkflowNodeData | undefined)?.type;
+      if (result && targetType !== "end") score += 20;
+      if (!result && targetType === "end") score += 20;
+
+      return score;
+    };
+
+    const sorted = [...outgoingEdges].sort((a, b) => scoreEdge(b) - scoreEdge(a));
+    const chosen = sorted[0];
+
+    console.debug(
+      `[WorkflowEngine] Resolved condition edge for ${conditionNodeId} result=${result}: ${chosen?.id ?? "none"}`,
+      sorted.map((e) => ({
+        id: e.id,
+        sourceHandle: e.sourceHandle,
+        target: e.target,
+      })),
+    );
+
+    return chosen;
+  }
+
+  private resolveLoopEdges(
+    loopNodeId: string,
+    outgoingEdges: Edge[],
+  ): { loopBodyEdge?: Edge; exitEdge?: Edge } {
+    const loopNode = this.nodes.find((n) => n.id === loopNodeId);
+    const getTargetNode = (edge: Edge) =>
+      this.nodes.find((n) => n.id === edge.target);
+    const bodyScore = (edge: Edge): number => {
+      const target = getTargetNode(edge);
+      let score = 0;
+      if (edge.sourceHandle === "loop") score += 400;
+      if ((target?.data as WorkflowNodeData)?.type !== "end") score += 120;
+      if (loopNode && target) {
+        const dy = target.position.y - loopNode.position.y;
+        const dxAbs = Math.abs(target.position.x - loopNode.position.x);
+        if (dy > 0) score += 100 + Math.min(dy, 300) / 8;
+        else score -= Math.min(Math.abs(dy), 300) / 5;
+        score -= Math.min(dxAbs, 400) / 20;
+      }
+      return score;
+    };
+    const exitScore = (edge: Edge): number => {
+      const target = getTargetNode(edge);
+      let score = 0;
+      if (edge.sourceHandle === "exit") score += 400;
+      if ((target?.data as WorkflowNodeData)?.type === "end") score += 250;
+      if (loopNode && target) {
+        const dx = target.position.x - loopNode.position.x;
+        const dyAbs = Math.abs(target.position.y - loopNode.position.y);
+        if (dx > 0) score += 90 + Math.min(dx, 300) / 20;
+        score += Math.max(0, 100 - dyAbs) / 4;
+      }
+      return score;
+    };
+    if (outgoingEdges.length === 0) return {};
+    if (outgoingEdges.length === 1) {
+      return { loopBodyEdge: outgoingEdges[0], exitEdge: undefined };
+    }
+
+    let bestBody: Edge | undefined;
+    let bestExit: Edge | undefined;
+    let bestPairScore = Number.NEGATIVE_INFINITY;
+
+    for (const body of outgoingEdges) {
+      for (const exit of outgoingEdges) {
+        if (body.id === exit.id) continue;
+        const pairScore = bodyScore(body) + exitScore(exit);
+        if (pairScore > bestPairScore) {
+          bestPairScore = pairScore;
+          bestBody = body;
+          bestExit = exit;
+        }
+      }
+    }
+
+    const sortedByBody = [...outgoingEdges].sort(
+      (a, b) => bodyScore(b) - bodyScore(a),
+    );
+    const sortedByExit = [...outgoingEdges].sort(
+      (a, b) => exitScore(b) - exitScore(a),
+    );
+
+    const loopBodyEdge = bestBody || sortedByBody[0];
+    const exitEdge =
+      bestExit || sortedByExit.find((e) => e.id !== loopBodyEdge?.id);
+
+    console.debug(
+      `[WorkflowEngine] Resolved loop edges for ${loopNodeId}: body=${loopBodyEdge?.id ?? "none"} exit=${exitEdge?.id ?? "none"}`,
+    );
+
+    return { loopBodyEdge, exitEdge };
   }
 
   private delay(ms: number): Promise<void> {
