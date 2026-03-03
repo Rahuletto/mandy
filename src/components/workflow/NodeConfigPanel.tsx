@@ -106,12 +106,17 @@ const OutputViewer = memo(function OutputViewer({
   output,
   height,
   onHeightChange,
+  resizable = true,
 }: {
   output: NodeOutput;
   height: number;
   onHeightChange: (h: number) => void;
+  resizable?: boolean;
 }) {
   const [isResizing, setIsResizing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"raw" | "headers" | "cookies">(
+    "raw",
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
   const formatBody = (body: unknown): string => {
@@ -133,8 +138,23 @@ const OutputViewer = memo(function OutputViewer({
     return "text";
   };
 
+  const headers = output.headers || {};
+  const cookies = output.cookies || {};
+  const hasHeaders = Object.keys(headers).length > 0;
+  const hasCookies = Object.keys(cookies).length > 0;
+  const bodyString =
+    output.body !== undefined ? formatBody(output.body) : undefined;
+  const responseBytes = bodyString
+    ? new TextEncoder().encode(bodyString).length
+    : undefined;
+  const formatBytes = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
   useEffect(() => {
-    if (!isResizing) return;
+    if (!resizable || !isResizing) return;
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
@@ -148,7 +168,7 @@ const OutputViewer = memo(function OutputViewer({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isResizing, onHeightChange]);
+  }, [isResizing, onHeightChange, resizable]);
 
   return (
     <div
@@ -156,13 +176,23 @@ const OutputViewer = memo(function OutputViewer({
       className="flex flex-col border-t border-white/10 bg-inset"
       style={{ height }}
     >
-      <div
-        className="h-[3px] cursor-row-resize hover:bg-accent/50 transition-colors shrink-0"
-        onMouseDown={() => setIsResizing(true)}
-      />
+      {resizable ? (
+        <div
+          className="h-[3px] cursor-row-resize hover:bg-accent/50 transition-colors shrink-0"
+          onMouseDown={() => setIsResizing(true)}
+        />
+      ) : null}
 
       <div className="flex items-center justify-between px-2 py-1.5 shrink-0 border-b border-white/5">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
+          {output.status !== undefined ? (
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded border border-white/10 ${getStatusColor(output.status)}`}
+            >
+              {output.status}
+              {output.statusText ? ` ${output.statusText}` : ""}
+            </span>
+          ) : null}
           {output.duration && (
             <span className="text-[10px] text-white/40 px-1">
               {output.duration >= 1000
@@ -170,6 +200,11 @@ const OutputViewer = memo(function OutputViewer({
                 : `${output.duration.toFixed(0)}ms`}
             </span>
           )}
+          {responseBytes !== undefined ? (
+            <span className="text-[10px] text-white/40 px-1">
+              {formatBytes(responseBytes)}
+            </span>
+          ) : null}
           {output.error && (
             <span className="text-[10px] text-red truncate max-w-[100px] px-1">
               {output.error}
@@ -178,15 +213,81 @@ const OutputViewer = memo(function OutputViewer({
         </div>
       </div>
 
+      <div className="px-2 py-1.5 border-b border-white/5 shrink-0 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("raw")}
+          className={`text-[10px] px-2 py-0.5 rounded transition-colors ${activeTab === "raw" ? "bg-accent/20 text-accent" : "text-white/50 hover:text-white/70"}`}
+        >
+          Raw
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("headers")}
+          className={`text-[10px] px-2 py-0.5 rounded transition-colors ${activeTab === "headers" ? "bg-accent/20 text-accent" : "text-white/50 hover:text-white/70"}`}
+        >
+          Headers
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("cookies")}
+          className={`text-[10px] px-2 py-0.5 rounded transition-colors ${activeTab === "cookies" ? "bg-accent/20 text-accent" : "text-white/50 hover:text-white/70"}`}
+        >
+          Cookies
+        </button>
+      </div>
+
       <div className="flex-1 overflow-auto">
-        {output.body !== undefined ? (
-          <CodeViewer
-            code={formatBody(output.body)}
-            language={detectLanguage(output.body)}
-          />
+        {activeTab === "raw" ? (
+          output.body !== undefined ? (
+            <CodeViewer
+              code={formatBody(output.body)}
+              language={detectLanguage(output.body)}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-xs text-white/30">
+              No body
+            </div>
+          )
+        ) : activeTab === "headers" ? (
+          hasHeaders ? (
+            <table className="w-full text-xs">
+              <tbody>
+                {Object.entries(headers).map(([key, value]) => (
+                  <tr key={key} className="border-b border-white/5">
+                    <td className="px-3 py-2 text-white/45 font-mono align-top w-1/3">
+                      {key}
+                    </td>
+                    <td className="px-3 py-2 text-white/75 font-mono break-all">
+                      {String(value)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="h-full flex items-center justify-center text-xs text-white/30">
+              No headers
+            </div>
+          )
+        ) : hasCookies ? (
+          <table className="w-full text-xs">
+            <tbody>
+              {Object.entries(cookies).map(([key, value]) => (
+                <tr key={key} className="border-b border-white/5">
+                  <td className="px-3 py-2 text-white/45 font-mono align-top w-1/3">
+                    {key}
+                  </td>
+                  <td className="px-3 py-2 text-white/75 font-mono break-all">
+                    {String(value)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : (
           <div className="h-full flex items-center justify-center text-xs text-white/30">
-            No body
+            No cookies
           </div>
         )}
       </div>
@@ -1077,16 +1178,49 @@ export function NodeConfigPanel({
             </div>
           </div>
         );
-      case "end":
+      case "end": {
+        const inputsWithOutput = availableOutputs.filter((i) => !!i.output);
+        const finalOutputSource =
+          inputsWithOutput.length > 0
+            ? inputsWithOutput[inputsWithOutput.length - 1]
+            : null;
+        const finalOutput = finalOutputSource?.output;
+
         return (
           <div className="flex flex-col h-full">
-            <div className="p-3 border-b border-white/10 shrink-0">
+            <div className="p-3 border-b border-white/10 shrink-0 space-y-1">
               <div className="text-[10px] text-white/40">Workflow Outputs</div>
               <div className="text-[9px] text-white/30">
                 Outputs from connected nodes
               </div>
+              {finalOutputSource ? (
+                <div className="text-[10px] text-white/60">
+                  Output at End Node:{" "}
+                  <span className="text-white/80">{finalOutputSource.nodeName}</span>
+                </div>
+              ) : null}
             </div>
+
             <div className="flex-1 overflow-auto">
+              {finalOutput ? (
+                <div className="px-2 pt-2">
+                  <div className="text-[10px] text-white/35 px-1 pb-1">
+                    Final Output
+                  </div>
+                  <div className="border border-white/10 rounded-lg overflow-hidden bg-white/[0.02]">
+                    <OutputViewer
+                      output={finalOutput}
+                      height={Math.max(170, Math.min(340, outputHeight))}
+                      onHeightChange={setOutputHeight}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="px-3 pt-3 pb-1 border-b border-white/5">
+                <div className="text-[10px] text-white/35">Node Outputs</div>
+              </div>
+
               {availableOutputs.length === 0 ? (
                 <div className="h-full flex items-center justify-center p-4 text-center">
                   <div className="text-sm text-white/40">
@@ -1095,78 +1229,91 @@ export function NodeConfigPanel({
                 </div>
               ) : (
                 <div className="space-y-1 p-2">
-                  {availableOutputs.map((input) => (
-                    <div
-                      key={input.nodeId}
-                      className="border border-white/10 rounded-lg overflow-hidden bg-white/[0.02]"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setExpandedOutputs((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(input.nodeId)) {
-                              next.delete(input.nodeId);
-                            } else {
-                              next.add(input.nodeId);
-                            }
-                            return next;
-                          });
-                        }}
-                        className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/[0.05] transition-colors"
+                  {availableOutputs.map((input) => {
+                    const output = input.output;
+
+                    return (
+                      <div
+                        key={input.nodeId}
+                        className="border border-white/10 rounded-lg overflow-hidden bg-white/[0.02]"
                       >
-                        <div className="flex items-center gap-2 min-w-0 text-left">
-                          <span className="text-[10px] font-mono font-bold text-white/60">
-                            {input.method || "—"}
-                          </span>
-                          <span className="text-xs text-white/80 truncate">
-                            {input.nodeName}
-                          </span>
-                        </div>
-                        <svg
-                          className={`w-3 h-3 shrink-0 text-white/40 transition-transform ${expandedOutputs.has(input.nodeId) ? "rotate-180" : ""}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedOutputs((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(input.nodeId)) {
+                                next.delete(input.nodeId);
+                              } else {
+                                next.add(input.nodeId);
+                              }
+                              return next;
+                            });
+                          }}
+                          className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/[0.05] transition-colors"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                          />
-                        </svg>
-                      </button>
-                      {expandedOutputs.has(input.nodeId) && input.output ? (
-                        <div className="border-t border-white/5 p-3 bg-black/20">
-                          {input.output.body ? (
-                            <CodeViewer
-                              code={
-                                typeof input.output.body === "string"
-                                  ? input.output.body
-                                  : JSON.stringify(input.output.body, null, 2)
-                              }
-                              language={
-                                typeof input.output.body === "string" &&
-                                input.output.body.startsWith("<")
-                                  ? "html"
-                                  : "json"
-                              }
+                          <div className="flex items-center gap-2 min-w-0 text-left">
+                            <span className="text-[10px] font-mono font-bold text-white/60">
+                              {input.method || input.type.toUpperCase()}
+                            </span>
+                            <span className="text-xs text-white/80 truncate">
+                              {input.nodeName}
+                            </span>
+                            {!output ? (
+                              <span className="text-[10px] text-white/35">
+                                no output
+                              </span>
+                            ) : null}
+                            {output?.status !== undefined ? (
+                              <span
+                                className={`text-[10px] px-1 rounded ${getStatusColor(output.status)}`}
+                              >
+                                {output.status}
+                              </span>
+                            ) : null}
+                          </div>
+                          <svg
+                            className={`w-3 h-3 shrink-0 text-white/40 transition-transform ${expandedOutputs.has(input.nodeId) ? "rotate-180" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 14l-7 7m0 0l-7-7m7 7V3"
                             />
-                          ) : (
-                            <div className="text-xs text-white/40">
-                              No output
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
+                          </svg>
+                        </button>
+
+                        {expandedOutputs.has(input.nodeId) ? (
+                          <div className="border-t border-white/5 p-3 bg-black/20 space-y-2">
+                            {output ? (
+                              <>
+                                <OutputViewer
+                                  output={output}
+                                  height={220}
+                                  onHeightChange={() => {}}
+                                  resizable={false}
+                                />
+                              </>
+                            ) : (
+                              <div className="text-xs text-white/40">
+                                Run the workflow to see this node output
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
         );
+      }
       default:
         return null;
     }

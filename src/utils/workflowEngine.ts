@@ -530,6 +530,7 @@ export class WorkflowEngine {
           const loopData = nodeData as LoopNodeData;
           const loopType = loopData.loopType || "count";
           const delayMs = loopData.delayMs || 0;
+          let lastIterationOutput: NodeOutput | undefined;
 
           const outgoingEdges = this.getOutgoingEdges(nodeId);
           const { loopBodyEdge, exitEdge } = this.resolveLoopEdges(
@@ -574,6 +575,15 @@ export class WorkflowEngine {
                   context,
                   callStack,
                 );
+                if (context.lastResponse) {
+                  try {
+                    lastIterationOutput = JSON.parse(
+                      JSON.stringify(context.lastResponse),
+                    );
+                  } catch {
+                    lastIterationOutput = context.lastResponse;
+                  }
+                }
                 this.onLoopPathChange?.(loopBodyEdge.target, false);
 
                 if (collect) {
@@ -626,6 +636,10 @@ export class WorkflowEngine {
               context.nodeOutputs[nodeId] = aggregatedOutput;
               context.lastResponse = aggregatedOutput;
               this.onNodeOutput?.(nodeId, aggregatedOutput);
+            } else if (lastIterationOutput) {
+              context.nodeOutputs[nodeId] = lastIterationOutput;
+              context.lastResponse = lastIterationOutput;
+              this.onNodeOutput?.(nodeId, lastIterationOutput);
             }
           } else if (loopType === "forEach" && loopData.forEachPath) {
             // Strip {{ and }} if present, also handle old [ ] syntax
@@ -653,6 +667,15 @@ export class WorkflowEngine {
                     context,
                     callStack,
                   );
+                  if (context.lastResponse) {
+                    try {
+                      lastIterationOutput = JSON.parse(
+                        JSON.stringify(context.lastResponse),
+                      );
+                    } catch {
+                      lastIterationOutput = context.lastResponse;
+                    }
+                  }
                   this.onLoopPathChange?.(loopBodyEdge.target, false);
                   if (collect) {
                     try {
@@ -708,6 +731,10 @@ export class WorkflowEngine {
               context.nodeOutputs[nodeId] = aggregatedOutput;
               context.lastResponse = aggregatedOutput;
               this.onNodeOutput?.(nodeId, aggregatedOutput);
+            } else if (lastIterationOutput) {
+              context.nodeOutputs[nodeId] = lastIterationOutput;
+              context.lastResponse = lastIterationOutput;
+              this.onNodeOutput?.(nodeId, lastIterationOutput);
             }
           } else if (loopType === "while" && loopData.whileCondition) {
             let maxIterations = 1000;
@@ -750,6 +777,15 @@ export class WorkflowEngine {
                   context,
                   callStack,
                 );
+                if (context.lastResponse) {
+                  try {
+                    lastIterationOutput = JSON.parse(
+                      JSON.stringify(context.lastResponse),
+                    );
+                  } catch {
+                    lastIterationOutput = context.lastResponse;
+                  }
+                }
                 this.onLoopPathChange?.(loopBodyEdge.target, false);
                 if (collect) {
                   try {
@@ -810,6 +846,10 @@ export class WorkflowEngine {
               context.nodeOutputs[nodeId] = aggregatedOutput;
               context.lastResponse = aggregatedOutput;
               this.onNodeOutput?.(nodeId, aggregatedOutput);
+            } else if (lastIterationOutput) {
+              context.nodeOutputs[nodeId] = lastIterationOutput;
+              context.lastResponse = lastIterationOutput;
+              this.onNodeOutput?.(nodeId, lastIterationOutput);
             }
           }
 
