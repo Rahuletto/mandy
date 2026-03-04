@@ -312,7 +312,7 @@ export function BodyEditor({
                   </button>
                   <button
                     onClick={clearFile}
-                    className="px-4 py-2 bg-red-500 hover:bg-red-500/90 cursor-pointer text-background rounded-full text-xs font-semibold transition-all border border-red-500/10 flex items-center gap-1 active:scale-95"
+                    className="px-4 py-2 bg-red hover:bg-red/90 cursor-pointer text-background rounded-full text-xs font-semibold transition-all border border-red/10 flex items-center gap-1 active:scale-95"
                   >
                     <BiX size={16} /> Remove
                   </button>

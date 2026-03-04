@@ -9,6 +9,7 @@ With Mandy you can:
 - Use variable-powered environments for dynamic testing
 - Import from any format in a single click
 - Auto-create variables from secrets that you paste.
+- Create workflows to chain your requests
 
 ![Response View](assets/screenshot.png)
 
@@ -33,6 +34,11 @@ With Mandy you can:
 - JSON auto-formatting and exploration
 - Accurate in-depth response timing analysis
 - Cookie management
+
+### Workflows
+- First of its kind
+- Chain your requests and make a workflow
+- Conditions and Loops
 
 ## Screenshots
 
@@ -68,7 +74,7 @@ Mandy supports importing from popular API tools:
 ## Roadmap
 
 - [x] REST API Testing
+- [x] Workflows
 - [ ] GraphQL Support
 - [ ] WebSockets
-- [ ] Workflows
 - [ ] SocketIO

@@ -10,9 +10,9 @@ export const METHOD_COLORS: Record<string, string> = {
 
 export const METHOD_COLORS_TAILWIND: Record<string, { bg: string; text: string; bgHover: string }> = {
   GET: {
-    bg: "bg-green-500/10",
-    text: "text-green-400",
-    bgHover: "hover:bg-green-500/20",
+    bg: "bg-green/10",
+    text: "text-green",
+    bgHover: "hover:bg-green/20",
   },
   POST: {
     bg: "bg-blue-500/10",
@@ -20,9 +20,9 @@ export const METHOD_COLORS_TAILWIND: Record<string, { bg: string; text: string; 
     bgHover: "hover:bg-blue-500/20",
   },
   PUT: {
-    bg: "bg-yellow-500/10",
-    text: "text-yellow-400",
-    bgHover: "hover:bg-yellow-500/20",
+    bg: "bg-yellow/10",
+    text: "text-yellow",
+    bgHover: "hover:bg-yellow/20",
   },
   PATCH: {
     bg: "bg-purple-500/10",
@@ -30,9 +30,9 @@ export const METHOD_COLORS_TAILWIND: Record<string, { bg: string; text: string; 
     bgHover: "hover:bg-purple-500/20",
   },
   DELETE: {
-    bg: "bg-red-500/10",
-    text: "text-red-400",
-    bgHover: "hover:bg-red-500/20",
+    bg: "bg-red/10",
+    text: "text-red",
+    bgHover: "hover:bg-red/20",
   },
   HEAD: {
     bg: "bg-gray-500/10",

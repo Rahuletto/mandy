@@ -40,6 +40,7 @@ import { ProtocolToggle } from "./components/ProtocolToggle";
 import { RequestOverview } from "./components/RequestOverview";
 import { ProjectOverview } from "./components/ProjectOverview";
 import { WelcomePage } from "./components/WelcomePage";
+import { WorkflowEditor } from "./components/workflow/WorkflowEditor";
 
 import {
   parseOpenAPISpec,
@@ -82,6 +83,7 @@ function App() {
     resolveVariables,
     getActiveEnvironmentVariables,
     addRequest,
+    addWorkflow,
     addFolder,
     renameItem,
     deleteItem,
@@ -90,8 +92,11 @@ function App() {
     sortFolder,
     moveItem,
     updateRequest,
+    updateWorkflow,
     setRequestResponse,
     markSaved,
+    activeWorkflowId,
+    setActiveWorkflowId,
     clipboard,
     copyToClipboard,
     cutToClipboard,
@@ -106,10 +111,13 @@ function App() {
       state.projects.find((p) => p.id === state.activeProjectId) || null,
   );
 
-  const activeRequest = useProjectStore((state) => {
-    if (!state.activeProjectId || !state.activeRequestId) return null;
+  const activeItem = useProjectStore((state) => {
     const project = state.projects.find((p) => p.id === state.activeProjectId);
     if (!project) return null;
+    
+    const activeId = state.activeRequestId || state.activeWorkflowId;
+    if (!activeId) return null;
+
     const findItem = (root: any, itemId: string): any => {
       if (root.id === itemId) return root;
       for (const child of root.children) {
@@ -122,9 +130,11 @@ function App() {
       return null;
     };
 
-    const item = findItem(project.root, state.activeRequestId);
-    return item?.type === "request" ? item : null;
+    return findItem(project.root, activeId);
   });
+
+  const activeRequest = activeItem?.type === "request" ? activeItem : null;
+  const activeWorkflow = activeItem?.type === "workflow" ? activeItem : null;
 
   const { addToast } = useToastStore();
 
@@ -166,6 +176,7 @@ function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
 
   const [disabledItems, setDisabledItems] = useState<Set<string>>(new Set());
 
@@ -1015,9 +1026,6 @@ function App() {
             type="button"
             onClick={() => {
               setIsSidebarCollapsed(!isSidebarCollapsed);
-              if (!isSidebarCollapsed) {
-                setActiveRequestId(null);
-              }
             }}
             className="h-6 flex items-center justify-center rounded-md text-white hover:bg-white/20 cursor-pointer transition-all duration-200 ease-out w-0 opacity-0 overflow-hidden group-hover:w-6 group-hover:opacity-50 group-hover:mr-2"
             title={isSidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}
@@ -1139,16 +1147,20 @@ function App() {
           <Sidebar
             activeProject={activeProject}
             unsavedIds={unsavedChanges}
-            onSelect={(id, isFolder) => {
+            onSelect={(id, type) => {
               setSelectedItem(id);
-              if (!isFolder) {
+              if (type === "request") {
                 setActiveRequestId(id);
+                setShowProjectOverview(false);
+              } else if (type === "workflow") {
+                setActiveWorkflowId(id);
                 setShowProjectOverview(false);
               }
             }}
-            selectedItemId={showProjectOverview ? null : activeRequestId}
+            selectedItemId={showProjectOverview ? null : (activeRequestId || activeWorkflowId)}
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
+            onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
             onDelete={setItemToDelete}
@@ -1192,16 +1204,20 @@ function App() {
           <Sidebar
             activeProject={activeProject}
             unsavedIds={unsavedChanges}
-            onSelect={(id, isFolder) => {
+            onSelect={(id, type) => {
               setSelectedItem(id);
-              if (!isFolder) {
+              if (type === "request") {
                 setActiveRequestId(id);
+                setShowProjectOverview(false);
+              } else if (type === "workflow") {
+                setActiveWorkflowId(id);
                 setShowProjectOverview(false);
               }
             }}
-            selectedItemId={showProjectOverview ? null : activeRequestId}
+            selectedItemId={showProjectOverview ? null : (activeRequestId || activeWorkflowId)}
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
+            onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
             onDelete={setItemToDelete}
@@ -1286,7 +1302,191 @@ function App() {
                 setShowProjectOverview(false);
               }}
             />
-          ) : !activeRequest && !showProjectOverview ? (
+          ) : activeWorkflow && !showProjectOverview ? (
+            <WorkflowEditor
+              workflow={activeWorkflow}
+              onWorkflowChange={(updated) => {
+                updateWorkflow(updated.id, () => updated);
+              }}
+              onRunWorkflow={() => {
+                setIsWorkflowRunning((prev) => !prev);
+              }}
+              isRunning={isWorkflowRunning}
+              projectRoot={activeProject?.root}
+              onExecuteRequest={async (requestId: string, workflowContext?: any, overrides?: any) => {
+                const findRequest = (folder: any): any => {
+                  for (const item of folder.children) {
+                    if (item.id === requestId && item.type === "request") {
+                      return item;
+                    }
+                    if (item.type === "folder") {
+                      const found = findRequest(item);
+                      if (found) return found;
+                    }
+                  }
+                  return null;
+                };
+
+                if (!activeProject) return { status: 0, error: "No active project" };
+                const request = findRequest(activeProject.root);
+                if (!request) return { status: 0, error: "Request not found" };
+
+                const resolveWorkflowVar = (text: string): string => {
+                  if (!text || !workflowContext) return text;
+                  return text.replace(/\{\{([^}]+)\}\}/g, (match, path: string) => {
+                    const parts = path.split(".");
+                    const root = parts[0];
+                    let value: any;
+                    
+                    if (root === "status") value = workflowContext.lastResponse?.status;
+                    else if (root === "body") {
+                      value = workflowContext.lastResponse?.body;
+                      for (let i = 1; i < parts.length && value; i++) {
+                        value = value[parts[i]];
+                      }
+                    }
+                    else if (root === "headers") {
+                      value = parts.length > 1 
+                        ? workflowContext.lastResponse?.headers?.[parts[1]]
+                        : workflowContext.lastResponse?.headers;
+                    }
+                    else if (root === "cookies") {
+                      value = parts.length > 1
+                        ? workflowContext.lastResponse?.cookies?.[parts[1]]
+                        : workflowContext.lastResponse?.cookies;
+                    }
+                    
+                    if (value === undefined) return match;
+                    if (typeof value === "object") return JSON.stringify(value);
+                    return String(value);
+                  });
+                };
+
+                try {
+                   // First, apply URL override if present (only the path part)
+                   let resolvedUrl = request.request.url;
+                   if (overrides?.url) {
+                     const overridePath = resolveWorkflowVar(overrides.url);
+                     try {
+                       const originalUrl = new URL(request.request.url);
+                       originalUrl.pathname = "";
+                       originalUrl.search = "";
+                       resolvedUrl = originalUrl.toString().slice(0, -1) + overridePath;
+                     } catch {
+                       resolvedUrl = overridePath;
+                     }
+                   } else {
+                     resolvedUrl = resolveVariables(resolvedUrl);
+                   }
+                   
+                   const resolvedHeaders: Record<string, string> = {};
+                   const resolvedParams: Record<string, string> = {};
+                  
+                  for (const [key, value] of Object.entries(request.request.headers)) {
+                    resolvedHeaders[key] = resolveVariables(value as string || "");
+                  }
+                  
+                  for (const [key, value] of Object.entries(request.request.query_params || {})) {
+                    resolvedParams[key] = resolveVariables(value as string || "");
+                  }
+
+                  console.log("[Workflow] Request execution:", { requestId, hasOverrides: !!overrides, hasContext: !!workflowContext });
+                  
+                  if (overrides) {
+                    console.log("[Workflow] Overrides received:", JSON.stringify(overrides, null, 2));
+                    console.log("[Workflow] Context:", workflowContext);
+                    console.log("[Workflow] Last response body:", workflowContext?.lastResponse?.body);
+                    
+                    if (overrides.params?.length > 0) {
+                      for (const param of overrides.params) {
+                        console.log(`[Workflow] Processing param: key="${param.key}", value="${param.value}", enabled=${param.enabled}`);
+                        if (param.enabled && param.key) {
+                          const resolved = resolveWorkflowVar(param.value);
+                          console.log(`[Workflow] Param resolved: ${param.key} = "${param.value}" -> "${resolved}"`);
+                          resolvedParams[param.key] = resolved;
+                        }
+                      }
+                    }
+                    
+                    if (overrides.headers?.length > 0) {
+                      for (const header of overrides.headers) {
+                        if (header.enabled && header.key) {
+                          resolvedHeaders[header.key] = resolveWorkflowVar(header.value);
+                        }
+                      }
+                    }
+                    
+                    if (overrides.auth && overrides.auth.type !== "inherit") {
+                      const authValue = resolveWorkflowVar(overrides.auth.value || "");
+                      if (overrides.auth.type === "bearer") {
+                        resolvedHeaders["Authorization"] = `Bearer ${authValue}`;
+                      } else if (overrides.auth.type === "basic") {
+                        resolvedHeaders["Authorization"] = `Basic ${btoa(authValue)}`;
+                      } else if (overrides.auth.type === "apikey") {
+                        const headerName = overrides.auth.headerName || "X-API-Key";
+                        resolvedHeaders[headerName] = authValue;
+                      } else if (overrides.auth.type === "cookie") {
+                        resolvedHeaders["Cookie"] = authValue;
+                      }
+                    }
+                  }
+                  
+                  let finalBody = request.request.body;
+                  if (overrides?.body && overrides.body.type !== "inherit" && overrides.body.type !== "none") {
+                    const bodyValue = resolveWorkflowVar(overrides.body.value || "");
+                    if (overrides.body.type === "json" || overrides.body.type === "variable") {
+                      finalBody = { Raw: { content: bodyValue, content_type: "application/json" } };
+                    }
+                  } else if (overrides?.body?.type === "none") {
+                    finalBody = "None";
+                  }
+                  
+                  console.log("[Workflow] Final params being sent:", resolvedParams);
+                  console.log("[Workflow] Final headers being sent:", resolvedHeaders);
+                  
+                  const resp = await sendRequest({
+                    ...request.request,
+                    url: resolvedUrl,
+                    headers: resolvedHeaders,
+                    query_params: resolvedParams,
+                    body: finalBody,
+                  });
+                  
+                  setRequestResponse(requestId, resp);
+                  
+                  const bodyText = atob(resp.body_base64 || "");
+                  let body: unknown;
+                  try {
+                    body = JSON.parse(bodyText);
+                  } catch {
+                    body = bodyText;
+                  }
+                  
+                  return {
+                    status: resp.status,
+                    statusText: resp.status_text,
+                    headers: resp.headers,
+                    cookies: resp.cookies?.reduce((acc: Record<string, string>, c: any) => {
+                      acc[c.name] = c.value;
+                      return acc;
+                    }, {}),
+                    body,
+                    params: resolvedParams,
+                    duration: resp.timing?.total_ms ?? 0,
+                    timing: resp.timing,
+                    requestSize: resp.request_size,
+                    responseSize: resp.response_size,
+                  };
+                } catch (err: any) {
+                  console.error("Request failed:", err);
+                  return {
+                    status: 0,
+                    error: err?.message || "Request failed",
+                  };
+                }
+              }}
+            />
+          ) : !activeRequest && !activeWorkflow && !showProjectOverview ? (
             <WelcomePage
               onNewRequest={() => {
                 if (activeProject) {

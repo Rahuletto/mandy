@@ -8,9 +8,10 @@ interface SidebarProps {
   activeProject: Project | null;
   selectedItemId: string | null;
   unsavedIds: Set<string>;
-  onSelect: (id: string, isFolder: boolean) => void;
+  onSelect: (id: string, type: "folder" | "request" | "workflow") => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
+  onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
   onDelete: (id: string) => void;
@@ -44,6 +45,7 @@ export function Sidebar({
   onSelect,
   onToggleFolder,
   onAddRequest,
+  onAddWorkflow,
   onAddFolder,
   onRename,
   onDelete,
@@ -117,6 +119,10 @@ export function Sidebar({
         {
           label: "New Request",
           onClick: () => onAddRequest(activeProject.root.id),
+        },
+        {
+          label: "New Workflow",
+          onClick: () => onAddWorkflow(activeProject.root.id),
         },
         { label: "", onClick: () => {}, divider: true },
         {
@@ -201,6 +207,7 @@ export function Sidebar({
             onSelect={onSelect}
             onToggleFolder={onToggleFolder}
             onAddRequest={onAddRequest}
+            onAddWorkflow={onAddWorkflow}
             onAddFolder={onAddFolder}
             onRename={onRename}
             onDelete={onDelete}

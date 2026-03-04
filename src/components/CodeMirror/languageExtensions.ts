@@ -10,7 +10,7 @@ export type Language =
   | "bash"
   | "javascript"
   | "typescript"
-  | "python"
+
   | "go"
   | "rust"
   | "java"
@@ -37,10 +37,7 @@ export const languageExtensions: Record<string, () => Promise<Extension[]>> = {
     const { javascript } = await import("@codemirror/lang-javascript");
     return [javascript({ typescript: true })];
   },
-  python: async () => {
-    const { python } = await import("@codemirror/lang-python");
-    return [python()];
-  },
+
   go: async () => {
     const { go } = await import("@codemirror/lang-go");
     return [go()];

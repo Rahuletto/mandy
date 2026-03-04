@@ -39,11 +39,13 @@ function ToastItem({ toast, onRemove }: { toast: any; onRemove: () => void }) {
   const getIcon = (type: ToastType) => {
     switch (type) {
       case "success":
-        return <BiCheckCircle className="text-green-400" size={18} />;
+        return <BiCheckCircle className="text-green min-w-4.5 " size={18} />;
       case "error":
-        return <BiErrorCircle className="text-red-400" size={18} />;
+        return <BiErrorCircle className="text-red min-w-4.5" size={18} />;
+      case "warning":
+        return <BiErrorCircle className="text-orange-400 min-w-4.5" size={18} />;
       default:
-        return <BiInfoCircle className="text-blue-400" size={18} />;
+        return <BiInfoCircle className="text-blue-400 min-w-4.5" size={18} />;
     }
   };
 
@@ -54,7 +56,7 @@ function ToastItem({ toast, onRemove }: { toast: any; onRemove: () => void }) {
 
   return (
     <div
-      className={`flex items-center gap-3 bg-background px-4 py-3 premium-glass border border-white/10 rounded-xl shadow-2xl pointer-events-auto min-w-[200px] ${isClosing ? "animate-blur-out" : "animate-blur-in"}`}
+      className={`flex items-center gap-3 bg-background px-4 py-3 border border-white/10 rounded-xl shadow-2xl pointer-events-auto min-w-[200px] max-w-[450px] ${isClosing ? "animate-blur-out" : "animate-blur-in"}`}
     >
       {getIcon(toast.type)}
       <span className="text-sm text-white/90 font-medium">{toast.message}</span>

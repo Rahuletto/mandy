@@ -205,7 +205,7 @@ export function KeyValueTable({
                     {item.key !== undefined && !item.locked && (
                       <button
                         onClick={() => deleteItem(item.id)}
-                        className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-all mx-auto"
+                        className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-white/30 hover:text-red hover:bg-red/10 transition-all mx-auto"
                       >
                         <svg
                           width="12"

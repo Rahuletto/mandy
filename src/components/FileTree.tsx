@@ -20,16 +20,19 @@ import { VscChevronRight, VscChevronDown, VscAdd } from "react-icons/vsc";
 import { FaFolder, FaFolderOpen, FaPlus } from "react-icons/fa6";
 import { HiDownload } from "react-icons/hi";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
+import type { WorkflowFile } from "../types/workflow";
 import { ContextMenu, MenuItem } from "./ui";
 import { getSimpleShortcut, getShortcutDisplay } from "../utils/platform";
 import { haptic } from "../utils/haptics";
+import { VscTypeHierarchySub } from "react-icons/vsc";
 
 interface FileTreeProps {
   root: Folder;
   selectedItemId: string | null;
-  onSelect: (id: string, isFolder: boolean) => void;
+  onSelect: (id: string, type: "folder" | "request" | "workflow") => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
+  onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
   onDelete: (id: string) => void;
@@ -210,6 +213,13 @@ function SortableItem({
             )}
           </span>
         </div>
+      ) : item.type === "workflow" ? (
+        <span className="text-accent shrink-0 mr-2 w-10 text-right">
+          <VscTypeHierarchySub
+            size={14}
+            className="inline-block align-[-2px] relative top-[1px]"
+          />
+        </span>
       ) : (
         <span
           className="font-mono text-[11px] font-bold shrink-0 mr-2 w-10 text-right"
@@ -302,6 +312,11 @@ const DragOverlayItem = memo(function DragOverlayItem({
             {item.name}
           </span>
         </>
+      ) : item.type === "workflow" ? (
+        <>
+          <VscTypeHierarchySub size={16} className="shrink-0 text-accent" />
+          <span className="truncate text-white/90">{item.name}</span>
+        </>
       ) : (
         <>
           <span
@@ -326,6 +341,7 @@ export function FileTree({
   onSelect,
   onToggleFolder,
   onAddRequest,
+  onAddWorkflow,
   onAddFolder,
   onRename,
   onDelete,
@@ -673,6 +689,7 @@ export function FileTree({
     if (item.type === "folder") {
       return [
         { label: "New Request", onClick: () => onAddRequest(item.id) },
+        { label: "New Workflow", onClick: () => onAddWorkflow(item.id) },
         { label: "", onClick: () => {}, divider: true },
         { label: "New Folder", onClick: () => onAddFolder(item.id) },
         { label: "", onClick: () => {}, divider: true },
@@ -713,7 +730,7 @@ export function FileTree({
               depth={depth}
               isActive={item.id === selectedItemId}
               isUnsaved={unsavedIds.has(item.id)}
-              onSelect={() => onSelect(item.id, item.type === "folder")}
+              onSelect={() => onSelect(item.id, item.type)}
               onToggle={() => onToggleFolder(item.id)}
               onContextMenu={(e, filterAddOnly) =>
                 handleContextMenu(e, item, filterAddOnly)
@@ -765,7 +782,7 @@ export function FileTree({
           y={contextMenu.y}
           items={
             contextMenu.filterAddOnly
-              ? getContextMenuItems(contextMenu.item).slice(0, 3)
+              ? getContextMenuItems(contextMenu.item).slice(0, 4)
               : getContextMenuItems(contextMenu.item)
           }
           onClose={() => setContextMenu(null)}

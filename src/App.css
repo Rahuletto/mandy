@@ -24,6 +24,9 @@
         --text-secondary: #a0a0a0;
         --text-muted: #6e6a6a;
         --text-subtle: #4a4646;
+        --red: #FF4141;
+        --green: #4CB944;
+        --yellow: #FFCF56;
         --border: rgba(255, 255, 255, 0.1);
     }
 
@@ -56,6 +59,9 @@
         --text-secondary: #3a3a3a;
         --text-muted: #5a5a5a;
         --text-subtle: #999999;
+        --red: #FF4141;
+        --green: #2F4B26;
+        --yellow: #FCBA04;
         --border: rgba(0, 0, 0, 0.18);
     }
 
@@ -218,6 +224,9 @@
     --color-accent: var(--accent);
     --color-text: var(--text);
     --color-glass: var(--glass);
+    --color-red: var(--red);
+    --color-yellow: var(--yellow);
+    --color-green: var(--green);
 }
 
 .env-var {
@@ -454,4 +463,27 @@ textarea,
     background-clip: text;
     -webkit-text-fill-color: transparent;
     animation: rainbow-shift 3s linear infinite;
+}
+
+/* Workflow edge animations */
+@keyframes workflow-flow {
+    0% {
+        stroke-dashoffset: 24;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+.react-flow__edge.workflow-edge-running path {
+    animation: workflow-flow 0.5s linear infinite;
+}
+
+.react-flow__edge-path {
+    transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+/* Highlight nodes that are part of the active loop path */
+.react-flow__node.loop-path-node {
+    border-color: var(--yellow) !important;
 }

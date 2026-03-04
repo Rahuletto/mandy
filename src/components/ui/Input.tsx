@@ -492,7 +492,7 @@ export function UrlInput({
           {/* Warning triangle with simple tooltip */}
           <div
             ref={warningRef}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500 z-20 cursor-help"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-red z-20 cursor-help"
             onMouseEnter={handleWarningEnter}
             onMouseLeave={handleWarningLeave}
           >
@@ -518,14 +518,14 @@ export function UrlInput({
               onMouseLeave={handlePopoverLeave}
             >
               <div className="flex flex-col gap-2">
-                <div className="text-red-400 font-medium text-[11px]">
+                <div className="text-red font-medium text-[11px]">
                   Invalid environment variable
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {invalidVariableNames.map((varName) => (
                     <span
                       key={varName}
-                      className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[11px] font-mono"
+                      className="px-1.5 py-0.5 bg-red/20 text-red rounded text-[11px] font-mono"
                     >
                       {`{{${varName}}}`}
                     </span>

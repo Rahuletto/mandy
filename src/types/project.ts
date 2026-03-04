@@ -1,4 +1,5 @@
 import type { ApiRequest, ApiResponse, AuthType } from "../bindings";
+import type { WorkflowFile } from "./workflow";
 
 export interface EnvironmentVariable {
   id: string;
@@ -36,7 +37,7 @@ export interface Folder {
   id: string;
   type: "folder";
   name: string;
-  children: (Folder | RequestFile)[];
+  children: (Folder | RequestFile | WorkflowFile)[];
   expanded?: boolean;
 }
 
@@ -54,6 +55,6 @@ export interface Project {
   recentRequests: RecentRequest[];
 }
 
-export type TreeItem = Folder | RequestFile;
+export type TreeItem = Folder | RequestFile | WorkflowFile;
 
 export type SortMode = "manual" | "method" | "alphabetical";

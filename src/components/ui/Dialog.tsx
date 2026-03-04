@@ -75,7 +75,7 @@ export function Dialog({
             onClick={onConfirm}
             className={`px-4 py-2 cursor-pointer text-xs font-semibold rounded-full transition-colors shadow-sm ${
               isDestructive
-                ? "bg-red-500 hover:bg-red-600 text-white"
+                ? "bg-red hover:bg-red text-white"
                 : "bg-accent hover:bg-accent/90 text-background"
             }`}
             autoFocus

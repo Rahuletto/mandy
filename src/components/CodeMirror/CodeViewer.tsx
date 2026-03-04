@@ -126,7 +126,7 @@ export function CodeViewer({
         title="Copy to clipboard"
       >
         {copied ? (
-          <BiCheck size={16} className="text-green-400" />
+          <BiCheck size={16} className="text-green" />
         ) : (
           <BiCopy size={16} />
         )}

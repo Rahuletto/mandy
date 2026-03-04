@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component<
                 <summary className="text-xs text-white/30 cursor-pointer hover:text-white/50 transition-colors">
                   Show error details
                 </summary>
-                <pre className="mt-2 p-3 bg-white/5 rounded-lg text-xs text-red-400 overflow-auto max-h-32 font-mono">
+                <pre className="mt-2 p-3 bg-white/5 rounded-lg text-xs text-red overflow-auto max-h-32 font-mono">
                   {this.state.error.message}
                   {"\n\n"}
                   {this.state.error.stack}

@@ -11,7 +11,6 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import {
   bracketMatching,
   indentOnInput,
-
   foldKeymap,
 } from "@codemirror/language";
 import { lintKeymap } from "@codemirror/lint";
@@ -20,6 +19,8 @@ import {
   completionKeymap,
   closeBrackets,
   closeBracketsKeymap,
+  type CompletionContext,
+  type Completion,
 } from "@codemirror/autocomplete";
 import { getMandyExtension } from "./theme";
 import { languageExtensions, type Language } from "./languageExtensions";
@@ -29,12 +30,19 @@ import { BiCopy, BiCheck } from "react-icons/bi";
 import { subscribeToThemeChanges } from "../../utils/themeColors";
 import type { Extension } from "@codemirror/state";
 
+export interface CompletionItem {
+  label: string;
+  type?: string;
+  detail?: string;
+}
+
 interface CodeEditorProps {
   code: string;
   language: Language;
   onChange: (value: string) => void;
   placeholder?: string;
   readOnly?: boolean;
+  completions?: CompletionItem[];
 }
 
 export function CodeEditor({
@@ -42,10 +50,12 @@ export function CodeEditor({
   language,
   onChange,
   readOnly = false,
+  completions = [],
 }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
+  const completionsRef = useRef(completions);
   const [copied, setCopied] = useState(false);
   const [activeExtensions, setActiveExtensions] = useState<Extension[]>([]);
   const [themeKey, setThemeKey] = useState(0);
@@ -53,6 +63,10 @@ export function CodeEditor({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    completionsRef.current = completions;
+  }, [completions]);
 
   useEffect(() => {
     const unsubscribe = subscribeToThemeChanges(() => {
@@ -97,9 +111,28 @@ export function CodeEditor({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const workflowCompletions = (context: CompletionContext) => {
+      const word = context.matchBefore(/\{\{[\w.]*$/);
+      if (!word || completionsRef.current.length === 0) return null;
+
+      const options: Completion[] = completionsRef.current.map((c) => ({
+        label: c.label,
+        type: c.type || "variable",
+        detail: c.detail,
+        apply: c.label,
+      }));
+
+      return {
+        from: word.from,
+        options,
+        validFor: /^\{\{[\w.]*$/,
+      };
+    };
+
     const state = EditorState.create({
       doc: code,
       extensions: [
+        lineNumbers(),
         highlightActiveLine(),
         drawSelection(),
         ...activeExtensions,
@@ -108,10 +141,39 @@ export function CodeEditor({
         closeBrackets(),
         indentOnInput(),
         autocompletion({
-          override: [],
+          override: [workflowCompletions],
           defaultKeymap: true,
+          icons: false,
         }),
-
+        EditorView.theme({
+          ".cm-tooltip.cm-tooltip-autocomplete": {
+            backgroundColor: "var(--color-card, #1a1a1a)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "8px",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+            padding: "4px",
+          },
+          ".cm-tooltip-autocomplete ul": {
+            fontFamily: "ui-monospace, monospace",
+            fontSize: "12px",
+          },
+          ".cm-tooltip-autocomplete ul li": {
+            padding: "4px 8px",
+            borderRadius: "4px",
+          },
+          ".cm-tooltip-autocomplete ul li[aria-selected]": {
+            backgroundColor: "var(--color-accent, #ff6b35)",
+            color: "var(--color-background, #0a0a0a)",
+          },
+          ".cm-completionLabel": {
+            color: "rgba(255, 255, 255, 0.9)",
+          },
+          ".cm-completionDetail": {
+            color: "rgba(255, 255, 255, 0.4)",
+            marginLeft: "8px",
+            fontSize: "10px",
+          },
+        }),
         ...getMandyExtension(),
         keymap.of([
           ...defaultKeymap,
@@ -189,7 +251,7 @@ export function CodeEditor({
           title="Copy to clipboard"
         >
           {copied ? (
-            <BiCheck size={14} className="text-green-400" />
+            <BiCheck size={14} className="text-green" />
           ) : (
             <BiCopy size={14} />
           )}

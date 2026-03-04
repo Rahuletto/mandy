@@ -60,7 +60,7 @@ function collectRequests(folder: Folder): RequestFile[] {
   for (const child of folder.children) {
     if (child.type === "request") {
       results.push(child);
-    } else {
+    } else if (child.type === "folder") {
       results.push(...collectRequests(child));
     }
   }
@@ -130,7 +130,8 @@ const RequestDetails = React.memo(function RequestDetails({
 
   const currentLang = useMemo(() => {
     if (selectedLanguage === "javascript") return "javascript";
-    if (selectedLanguage === "python") return "python";
+    // Render Python snippets as plain text so we don't re-introduce Python editor mode
+    if (selectedLanguage === "python") return "text";
     if (selectedLanguage === "go") return "go";
     if (selectedLanguage === "rust") return "rust";
     if (selectedLanguage === "java") return "java";
@@ -336,6 +337,10 @@ const FolderSection = React.memo(function FolderSection({
                   onRunRequest={onRunRequest}
                 />
               );
+            }
+
+            if (child.type === "workflow") {
+              return null;
             }
 
             const prev = folder.children[index - 1];
@@ -738,7 +743,7 @@ export function ProjectOverview({
               </p>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-semibold rounded-lg border border-red-500/20 transition-all cursor-pointer"
+                className="px-4 py-2 bg-red/10 hover:bg-red/20 text-red text-xs font-semibold rounded-lg border border-red/20 transition-all cursor-pointer"
               >
                 Delete Project
               </button>
@@ -819,7 +824,7 @@ export function ProjectOverview({
                       <button
                         onClick={() => onDeleteEnvironment?.(env.id)}
                         disabled={project.environments.length <= 1}
-                        className="p-1.5 rounded text-white/20 hover:text-red-400 hover:bg-red-400/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                        className="p-1.5 rounded text-white/20 hover:text-red hover:bg-red/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                       >
                         <HiTrash size={14} />
                       </button>
