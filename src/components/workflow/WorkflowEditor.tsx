@@ -7,6 +7,7 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
+  useReactFlow,
   ConnectionLineType,
   MarkerType,
   type Connection,
@@ -34,7 +35,6 @@ import { haptic } from "../../utils/haptics";
 import { WorkflowEngine } from "../../utils/workflowEngine";
 import { useToastStore } from "../../stores/toastStore";
 import {
-  runTSSandboxed,
   runTSConditionSandboxed,
   preloadTsWorker,
   terminateAllTSRuns,
@@ -62,6 +62,7 @@ function WorkflowEditorInner({
   projectRoot,
 }: WorkflowEditorProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const { screenToFlowPosition } = useReactFlow();
   const workflowEngineRef = useRef<WorkflowEngine | null>(null);
   const forceKilledRef = useRef(false);
   const [runningEdges, setRunningEdges] = useState<Set<string>>(new Set());
@@ -114,6 +115,16 @@ function WorkflowEditorInner({
 
   const deepCopy = <T,>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
+  const getViewportCenter = useCallback(() => {
+    const wrapper = reactFlowWrapper.current;
+    if (!wrapper) return { x: 250, y: 200 };
+    const rect = wrapper.getBoundingClientRect();
+    return screenToFlowPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    });
+  }, [screenToFlowPosition]);
+
   const beginUserAction = useCallback(() => {
     if (isApplyingHistoryRef.current) return;
     if (actionInProgressRef.current) {
@@ -157,19 +168,22 @@ function WorkflowEditorInner({
   useEffect(() => {
     if (workflow.id !== workflowIdRef.current) {
       workflowIdRef.current = workflow.id;
-      setNodes(
-        workflow.nodes.map((n) => {
+      const sanitizedNodes = workflow.nodes
+        .filter((n) => (n.data as any)?.type !== "script")
+        .map((n) => {
           const nd = n.data as any;
-          if (nd?.type === "script" && nd.language === "python") {
-            return { ...n, data: { ...nd, language: "typescript" } };
-          }
           if (nd?.type === "condition" && nd.conditionLanguage === "python") {
             return { ...n, data: { ...nd, conditionLanguage: "typescript" } };
           }
           return n;
-        }),
+        });
+      const nodeIds = new Set(sanitizedNodes.map((n) => n.id));
+      const sanitizedEdges = workflow.edges.filter(
+        (e) => nodeIds.has(e.source) && nodeIds.has(e.target),
       );
-      setEdges(workflow.edges);
+
+      setNodes(sanitizedNodes);
+      setEdges(sanitizedEdges);
       setNodeOutputs({});
       setSelectedNodeId(null);
     }
@@ -426,7 +440,51 @@ function WorkflowEditorInner({
       method?: string;
       output?: NodeOutput;
       requestId?: string;
+      isPrimary?: boolean;
     }[] = [];
+    const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+    if (!selectedNode) return [];
+
+    if ((selectedNode.data as WorkflowNodeData).type === "end") {
+      const primarySourceIds = new Set(
+        edges.filter((e) => e.target === selectedNodeId).map((e) => e.source),
+      );
+
+      for (const sourceNode of nodes) {
+        if (sourceNode.id === selectedNodeId) continue;
+        const nodeData = sourceNode.data as WorkflowNodeData;
+        if (nodeData.type === "start" || nodeData.type === "end") continue;
+
+        const outputData: {
+          nodeId: string;
+          nodeName: string;
+          type: string;
+          method?: string;
+          output?: NodeOutput;
+          requestId?: string;
+          isPrimary?: boolean;
+        } = {
+          nodeId: sourceNode.id,
+          nodeName: nodeData.label || sourceNode.id,
+          type: nodeData.type,
+          output: nodeOutputs[sourceNode.id],
+          isPrimary: primarySourceIds.has(sourceNode.id),
+        };
+
+        if (nodeData.type === "request") {
+          const requestData = nodeData as any;
+          outputData.method = requestData.method;
+          outputData.nodeName =
+            requestData.requestName || nodeData.label || sourceNode.id;
+          outputData.requestId = requestData.requestId;
+        }
+
+        outputs.push(outputData);
+      }
+
+      return outputs;
+    }
+
     const incomingEdges = edges.filter((e) => e.target === selectedNodeId);
 
     for (const edge of incomingEdges) {
@@ -461,7 +519,7 @@ function WorkflowEditorInner({
 
     // If the selected node is reachable from a loop node (i.e., it's inside a loop body),
     // expose loop helper variables so users can autocomplete and use {{item}} and {{index}}
-    // in overrides and scripts.
+    // in request overrides and condition expressions.
     const isInLoop = (() => {
       if (!selectedNodeId) return false;
       const visited = new Set<string>();
@@ -688,41 +746,6 @@ function WorkflowEditorInner({
         }
         await new Promise((resolve) => setTimeout(resolve, 500));
         return { status: 200, body: { success: true } };
-      },
-      async (code: string, context: any) => {
-        if (forceKilledRef.current) {
-          return {
-            status: 0,
-            body: undefined,
-            error: "Workflow was force killed",
-          };
-        }
-
-        try {
-          const result = await runTSSandboxed(code, {
-            status: context.lastResponse?.status,
-            body: context.lastResponse?.body,
-            headers: context.lastResponse?.headers,
-            cookies: context.lastResponse?.cookies,
-            item: context.loopItem,
-            index: context.loopIndex,
-          });
-          if (forceKilledRef.current) {
-            return {
-              status: 0,
-              body: undefined,
-              error: "Workflow was force killed",
-            };
-          }
-          return { status: 200, body: result };
-        } catch (err: any) {
-          console.error("Script execution error:", err);
-          return {
-            status: 0,
-            body: undefined,
-            error: err?.message || "Script execution failed",
-          };
-        }
       },
       async (code: string, context: any) => {
         if (forceKilledRef.current) return false;
@@ -1098,32 +1121,14 @@ function WorkflowEditorInner({
     [workflow, onWorkflowChange],
   );
 
-  const addScriptNode = useCallback(() => {
-    beginUserAction();
-    setNodes((nds) => {
-      const newNode: Node<WorkflowNodeData> = {
-        id: `script-${Date.now()}`,
-        type: "script",
-        position: { x: 250, y: nds.length * 100 + 100 },
-        data: {
-          type: "script",
-          label: "New Script",
-          status: "idle",
-          language: "typescript",
-          code: "",
-        },
-      };
-      return [...nds, newNode];
-    });
-  }, [setNodes, beginUserAction]);
-
   const addConditionNode = useCallback(() => {
     beginUserAction();
+    const center = getViewportCenter();
     setNodes((nds) => {
       const newNode: Node<WorkflowNodeData> = {
         id: `condition-${Date.now()}`,
         type: "condition",
-        position: { x: 250, y: nds.length * 100 + 100 },
+        position: center,
         data: {
           type: "condition",
           label: "New Condition",
@@ -1133,15 +1138,16 @@ function WorkflowEditorInner({
       };
       return [...nds, newNode];
     });
-  }, [setNodes, beginUserAction]);
+  }, [setNodes, beginUserAction, getViewportCenter]);
 
   const addLoopNode = useCallback(() => {
     beginUserAction();
+    const center = getViewportCenter();
     setNodes((nds) => {
       const newNode: Node<WorkflowNodeData> = {
         id: `loop-${Date.now()}`,
         type: "loop",
-        position: { x: 250, y: nds.length * 100 + 100 },
+        position: center,
         data: {
           type: "loop",
           label: "New Loop",
@@ -1153,7 +1159,7 @@ function WorkflowEditorInner({
       };
       return [...nds, newNode];
     });
-  }, [setNodes, beginUserAction]);
+  }, [setNodes, beginUserAction, getViewportCenter]);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -1236,7 +1242,7 @@ function WorkflowEditorInner({
               className="flex items-center gap-1.5 px-4 py-2 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors"
             >
               <VscCode size={14} />
-              Script
+              Logic
             </button>
           </div>
         </div>
@@ -1261,11 +1267,12 @@ function WorkflowEditorInner({
           onClose={() => setRequestPopover(null)}
           onAddRequest={(requestId, requestName, method) => {
             beginUserAction();
+            const center = getViewportCenter();
             setNodes((nds) => {
               const newNode: Node<WorkflowNodeData> = {
                 id: `request-${Date.now()}`,
                 type: "request",
-                position: { x: 250, y: nds.length * 80 + 100 },
+                position: center,
                 data: {
                   type: "request",
                   label: requestName,
@@ -1285,7 +1292,6 @@ function WorkflowEditorInner({
         <NodeTypePopover
           position={nodeTypePopover}
           onClose={() => setNodeTypePopover(null)}
-          onAddScript={addScriptNode}
           onAddCondition={addConditionNode}
           onAddLoop={addLoopNode}
         />

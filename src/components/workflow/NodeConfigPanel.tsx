@@ -9,7 +9,6 @@ import type { Node } from "@xyflow/react";
 import type {
   WorkflowNodeData,
   RequestNodeData,
-  ScriptNodeData,
   ConditionNodeData,
   LoopNodeData,
   NodeOutput,
@@ -23,6 +22,8 @@ import { getStatusColor, STATUS_TEXT } from "../../utils/format";
 import { RequestOverrideModal } from "./RequestOverrideModal";
 import { useProjectStore } from "../../stores/projectStore";
 import { BiLogoTypescript } from "react-icons/bi";
+import { TimingPopover } from "../popovers/TimingPopover";
+import { SizePopover } from "../popovers/SizePopover";
 
 interface InputNodeInfo {
   nodeId: string;
@@ -31,6 +32,7 @@ interface InputNodeInfo {
   method?: string;
   output?: NodeOutput;
   requestId?: string;
+  isPrimary?: boolean;
 }
 
 interface NodeConfigPanelProps {
@@ -41,6 +43,20 @@ interface NodeConfigPanelProps {
   nodeOutput?: NodeOutput;
   width: number;
   onWidthChange: (width: number) => void;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function getDurationMs(output?: NodeOutput): number {
+  const direct = output?.duration;
+  if (typeof direct === "number" && Number.isFinite(direct)) return direct;
+  const timed = (output as any)?.timing?.total_ms;
+  if (typeof timed === "number" && Number.isFinite(timed)) return timed;
+  return 0;
 }
 
 function normalizeOverrides(raw?: Partial<RequestOverrides>): RequestOverrides {
@@ -64,44 +80,6 @@ function findRequestById(root: Folder, requestId: string): RequestFile | null {
   return null;
 }
 
-const ScriptOutputViewer = memo(function ScriptOutputViewer({
-  output,
-}: {
-  output: NodeOutput;
-}) {
-  const formatOutput = (data: unknown): string => {
-    if (data === undefined) return "undefined";
-    if (data === null) return "null";
-    if (typeof data === "string") return data;
-    try {
-      return JSON.stringify(data, null, 2);
-    } catch {
-      return String(data);
-    }
-  };
-
-  const outputStr = formatOutput(output.body);
-  const lineCount = outputStr.split("\n").length;
-  const height = Math.min(200, Math.max(60, lineCount * 18 + 40));
-
-  return (
-    <div
-      className="flex flex-col border-t border-white/10 bg-inset shrink-0"
-      style={{ height }}
-    >
-      <div className="flex items-center justify-between px-3 py-1.5 shrink-0 border-b border-white/5">
-        <span className="text-[10px] text-white/40">Return value</span>
-        {output.error && (
-          <span className="text-[10px] text-red">{output.error}</span>
-        )}
-      </div>
-      <div className="flex-1 overflow-auto">
-        <CodeViewer code={outputStr} language="json" />
-      </div>
-    </div>
-  );
-});
-
 const OutputViewer = memo(function OutputViewer({
   output,
   height,
@@ -114,6 +92,7 @@ const OutputViewer = memo(function OutputViewer({
   resizable?: boolean;
 }) {
   const [isResizing, setIsResizing] = useState(false);
+  const [isResizingY, setIsResizingY] = useState(false);
   const [activeTab, setActiveTab] = useState<"raw" | "headers" | "cookies">(
     "raw",
   );
@@ -295,6 +274,87 @@ const OutputViewer = memo(function OutputViewer({
   );
 });
 
+const EndResponseViewer = memo(function EndResponseViewer({
+  output,
+}: {
+  output?: NodeOutput;
+}) {
+  const [viewMode, setViewMode] = useState<"raw" | "json">("json");
+
+  const formatBody = (body: unknown): string => {
+    if (typeof body === "string") return body;
+    try {
+      return JSON.stringify(body, null, 2);
+    } catch {
+      return String(body);
+    }
+  };
+
+  const toJsonString = (body: unknown): string | null => {
+    if (body === undefined) return null;
+    if (typeof body === "string") {
+      try {
+        return JSON.stringify(JSON.parse(body), null, 2);
+      } catch {
+        return null;
+      }
+    }
+    try {
+      return JSON.stringify(body, null, 2);
+    } catch {
+      return null;
+    }
+  };
+
+  const rawString =
+    output && output.body !== undefined ? formatBody(output.body) : "";
+  const jsonString = output ? toJsonString(output.body) : null;
+  const code =
+    viewMode === "json"
+      ? jsonString || "// No JSON response body"
+      : rawString || "// No response body";
+
+  return (
+    <div className="border-y border-white/10 overflow-hidden bg-inset">
+      <div className="flex items-center justify-between p-2 px-4 shrink-0 border-b border-white/10">
+        <span className="text-xs font-medium text-white">Response</span>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setViewMode("raw")}
+            className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${
+              viewMode === "raw"
+                ? "text-accent bg-accent/10"
+                : "text-white/60 hover:text-white/50"
+            }`}
+          >
+            Raw
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("json")}
+            className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${
+              viewMode === "json"
+                ? "text-accent bg-accent/10"
+                : "text-white/60 hover:text-white/50"
+            }`}
+          >
+            JSON
+          </button>
+        </div>
+      </div>
+
+      <div className="h-[340px] overflow-auto">
+        <CodeViewer
+          code={code}
+          language={viewMode === "json" && jsonString ? "json" : "text"}
+        />
+      </div>
+
+    </div>
+  );
+});
+
 function RequestConfig({
   data,
   onUpdate,
@@ -311,6 +371,14 @@ function RequestConfig({
   onOutputHeightChange: (h: number) => void;
 }) {
   const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [isResizingY, setIsResizingY] = useState(false);
+  const [expandedConsole, setExpandedConsole] = useState<Set<string>>(
+    new Set(),
+  );
+  const [hoverTimingId, setHoverTimingId] = useState<string | null>(null);
+  const [hoverSizeId, setHoverSizeId] = useState<string | null>(null);
+  const timingRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const sizeRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const overrides = normalizeOverrides(data.overrides);
   const project = useProjectStore((s) => s.getActiveProject());
 
@@ -387,7 +455,7 @@ function RequestConfig({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 space-y-3 flex-1 overflow-auto">
+      <div className="p-3 space-y-3 shrink-0">
         <div className="flex items-center gap-2 p-2.5 bg-white/[0.02] rounded-lg">
           <span
             className="text-xs font-mono font-bold"
@@ -436,13 +504,234 @@ function RequestConfig({
         </button>
       </div>
 
-      {nodeOutput && (
-        <OutputViewer
-          output={nodeOutput}
-          height={outputHeight}
-          onHeightChange={onOutputHeightChange}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="overflow-auto" style={{ height: `${outputHeight}%` }}>
+          {nodeOutput && <EndResponseViewer output={nodeOutput} />}
+        </div>
+
+        <div
+          className="h-[2px] bg-white/10 cursor-row-resize transition-colors shrink-0"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsResizingY(true);
+            const startY = e.clientY;
+            const start = outputHeight;
+            const onMove = (ev: MouseEvent) => {
+              const delta = ev.clientY - startY;
+              const pctDelta = (delta / window.innerHeight) * 100;
+              const next = Math.max(35, Math.min(80, start + pctDelta));
+              onOutputHeightChange(next);
+            };
+            const onUp = () => {
+              setIsResizingY(false);
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+            };
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          }}
         />
-      )}
+
+        <div className="overflow-auto bg-card" style={{ height: `${100 - outputHeight}%` }}>
+          <div className="flex items-center gap-1 p-2 shrink-0 border-b border-white/5">
+            <span className="text-xs px-2 py-0.5 rounded-md font-medium text-accent bg-accent/10">
+              Console
+            </span>
+          </div>
+
+          {inputs.length === 0 ? (
+            <div className="p-3 text-xs text-white/35">No connected inputs</div>
+          ) : (
+            <div className="border-b border-white/10">
+              {inputs.map((input) => {
+                const output = input.output;
+                const outputBodyString = output
+                  ? JSON.stringify(output.body ?? null)
+                  : "";
+                const outputBytes = outputBodyString
+                  ? new TextEncoder().encode(outputBodyString).length
+                  : 0;
+                const timingInfo =
+                  output?.timing || {
+                    total_ms: getDurationMs(output),
+                    dns_lookup_ms: 0,
+                    tcp_handshake_ms: 0,
+                    tls_handshake_ms: 0,
+                    ttfb_ms: getDurationMs(output),
+                    content_download_ms: 0,
+                  };
+                const responseSize =
+                  output?.responseSize || {
+                    total_bytes: outputBytes,
+                    headers_bytes: 0,
+                    body_bytes: outputBytes,
+                  };
+                const requestSize =
+                  output?.requestSize || {
+                    total_bytes: 0,
+                    headers_bytes: 0,
+                    body_bytes: 0,
+                  };
+
+                return (
+                  <div
+                    key={input.nodeId}
+                    className="border-b border-white/10 overflow-hidden last:border-b-0"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExpandedConsole((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(input.nodeId)) next.delete(input.nodeId);
+                          else next.add(input.nodeId);
+                          return next;
+                        });
+                      }}
+                      className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-white/[0.05] transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 text-left">
+                        {input.method ? (
+                          <span
+                            className="text-[10px] font-mono font-bold"
+                            style={{ color: getMethodColor(input.method) }}
+                          >
+                            {input.method}
+                          </span>
+                        ) : null}
+                        <span className="text-xs text-white/80 truncate">
+                          {input.nodeName}
+                        </span>
+                        {!output ? (
+                          <span className="text-[10px] text-white/35">
+                            no output
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {output?.status !== undefined ? (
+                          <span className="relative group">
+                            <span
+                              className="text-[10px] font-bold px-2 py-0.5 rounded"
+                              style={{
+                                color: getStatusColor(output.status),
+                                backgroundColor: `${getStatusColor(output.status)}20`,
+                              }}
+                            >
+                              {output.status}
+                            </span>
+                            <span className="absolute right-0 top-full mt-1 whitespace-nowrap text-[10px] px-2 py-1 rounded bg-card border border-white/10 text-white/80 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-20">
+                              {output.status}{" "}
+                              {STATUS_TEXT[output.status] || "Unknown Status"}
+                            </span>
+                          </span>
+                        ) : null}
+                        <VscChevronRight
+                          size={12}
+                          className={`shrink-0 text-white/40 transition-transform ${expandedConsole.has(input.nodeId) ? "rotate-90" : ""}`}
+                        />
+                      </div>
+                    </button>
+
+                    {expandedConsole.has(input.nodeId) ? (
+                      <div className="border-t border-white/5 bg-black/20">
+                        {output ? (
+                          <>
+                            <div className="flex items-center justify-between bg-inset border-b border-white/10 shrink-0 pr-2">
+                              <div className="flex items-center gap-1">
+                                <span
+                                  className="text-xs font-bold px-3 py-2 flex items-center gap-1.5"
+                                  style={{
+                                    color: getStatusColor(output.status || 0),
+                                    backgroundColor: `${getStatusColor(output.status || 0)}20`,
+                                  }}
+                                >
+                                  {output.status || 0}{" "}
+                                  {STATUS_TEXT[output.status || 0] || "Unknown"}
+                                </span>
+                                <button
+                                  ref={(el) => {
+                                    timingRefs.current[input.nodeId] = el;
+                                  }}
+                                  type="button"
+                                  onMouseEnter={() => {
+                                    setHoverSizeId(null);
+                                    setHoverTimingId(input.nodeId);
+                                  }}
+                                  onMouseLeave={() => setHoverTimingId(null)}
+                                  className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+                                >
+                                  {getDurationMs(output) >= 1000
+                                    ? `${(getDurationMs(output) / 1000).toFixed(2)} s`
+                                    : `${getDurationMs(output).toFixed(0)} ms`}
+                                </button>
+                                <span className="text-white/20">•</span>
+                                <button
+                                  ref={(el) => {
+                                    sizeRefs.current[input.nodeId] = el;
+                                  }}
+                                  type="button"
+                                  onMouseEnter={() => {
+                                    setHoverTimingId(null);
+                                    setHoverSizeId(input.nodeId);
+                                  }}
+                                  onMouseLeave={() => setHoverSizeId(null)}
+                                  className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+                                >
+                                  {formatBytes(outputBytes)}
+                                </button>
+                              </div>
+                            </div>
+                            {timingRefs.current[input.nodeId] && (
+                              <TimingPopover
+                                timing={timingInfo as any}
+                                anchorRef={{
+                                  current: timingRefs.current[
+                                    input.nodeId
+                                  ] as HTMLElement | null,
+                                }}
+                                open={hoverTimingId === input.nodeId}
+                                onClose={() => setHoverTimingId(null)}
+                                onMouseEnter={() => setHoverTimingId(input.nodeId)}
+                                onMouseLeave={() => setHoverTimingId(null)}
+                              />
+                            )}
+                            {sizeRefs.current[input.nodeId] && (
+                              <SizePopover
+                                requestSize={requestSize as any}
+                                responseSize={responseSize as any}
+                                anchorRef={{
+                                  current: sizeRefs.current[
+                                    input.nodeId
+                                  ] as HTMLElement | null,
+                                }}
+                                open={hoverSizeId === input.nodeId}
+                                onClose={() => setHoverSizeId(null)}
+                                onMouseEnter={() => setHoverSizeId(input.nodeId)}
+                                onMouseLeave={() => setHoverSizeId(null)}
+                              />
+                            )}
+                            <div className="max-h-[220px] overflow-auto border-t border-white/10 bg-black/20">
+                              <CodeViewer
+                                code={JSON.stringify(output, null, 2)}
+                                language="json"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-xs text-white/40 p-2">
+                            Run the workflow to see this node output
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
 
       <RequestOverrideModal
         isOpen={showOverrideModal}
@@ -750,145 +1039,6 @@ function LoopConfig({
   );
 }
 
-function ScriptConfig({
-  data,
-  onUpdate,
-  inputs,
-  nodeOutput,
-}: {
-  data: ScriptNodeData;
-  onUpdate: (d: Partial<ScriptNodeData>) => void;
-  inputs: InputNodeInfo[];
-  nodeOutput?: NodeOutput;
-}) {
-  const codeRef = useRef<string>(data.code || "");
-  const project = useProjectStore((s) => s.getActiveProject());
-
-  const defaultCode = `/* Process data from previous nodes
-  Use {{status}}, {{body}}, {{headers}}, {{cookies}}
-  Return value becomes this node's output
-*/
-
-const data = body;
-
-// Example: transform data
-const result = {
-  processed: true,
-  count: Array.isArray(data?.items) ? data.items.length : 0,
-};
-
-return result;`;
-
-  const completions = useMemo((): CompletionItem[] => {
-    const items: CompletionItem[] = [];
-    const hasDataInputs = inputs.some((i) => i.type !== "start");
-
-    items.push(
-      { label: "{{item}}", type: "variable", detail: "loop item" },
-      { label: "{{index}}", type: "variable", detail: "loop index" },
-    );
-
-    for (const input of inputs) {
-      if (input.type === "start") continue;
-      const inputRequest =
-        input.requestId && project
-          ? findRequestById(project.root, input.requestId)
-          : null;
-      let responseBody = input.output?.body;
-      if (!responseBody && inputRequest?.response?.body_base64) {
-        try {
-          responseBody = JSON.parse(atob(inputRequest.response.body_base64));
-        } catch {}
-      }
-
-      if (hasDataInputs && items.length <= 2) {
-        items.push(
-          { label: "{{status}}", type: "variable", detail: "number" },
-          { label: "{{headers}}", type: "variable", detail: "object" },
-          { label: "{{cookies}}", type: "variable", detail: "object" },
-        );
-      }
-
-      if (responseBody && typeof responseBody === "object") {
-        const addPaths = (
-          obj: Record<string, unknown>,
-          prefix: string,
-          depth = 0,
-        ) => {
-          if (depth > 4) return;
-          for (const [key, value] of Object.entries(obj)) {
-            const path = prefix ? `${prefix}.${key}` : key;
-            const type = Array.isArray(value) ? "array" : typeof value;
-            items.push({
-              label: `{{body.${path}}}`,
-              type: "property",
-              detail: type,
-            });
-            if (value && typeof value === "object" && !Array.isArray(value)) {
-              addPaths(value as Record<string, unknown>, path, depth + 1);
-            }
-            if (
-              Array.isArray(value) &&
-              value.length > 0 &&
-              typeof value[0] === "object"
-            ) {
-              addPaths(
-                value[0] as Record<string, unknown>,
-                `${path}[0]`,
-                depth + 1,
-              );
-            }
-          }
-        };
-        addPaths(responseBody as Record<string, unknown>, "");
-      }
-    }
-    return items;
-  }, [inputs, project]);
-
-  return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="p-3 shrink-0">
-        <label className="block text-[10px] text-white/30 mb-1 px-1">
-          Name
-        </label>
-        <input
-          type="text"
-          value={data.label || ""}
-          onChange={(e) => onUpdate({ label: e.target.value })}
-          placeholder="Transform data"
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-accent/50"
-        />
-      </div>
-
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden border-y border-white/5">
-        <div className="px-3 py-1 shrink-0 flex items-center justify-between">
-          <span className="text-[10px] text-white/30 flex items-center gap-1">
-            <BiLogoTypescript size={14} />
-            TypeScript
-          </span>
-          <span className="text-[10px] text-white/30">
-            Type {"{{"} for suggestions
-          </span>
-        </div>
-        <div className="flex-1">
-          <CodeEditor
-            code={data.code || defaultCode}
-            language="typescript"
-            onChange={(v) => {
-              codeRef.current = v;
-              onUpdate({ code: v });
-            }}
-            completions={completions}
-          />
-        </div>
-      </div>
-
-      {nodeOutput && <ScriptOutputViewer output={nodeOutput} />}
-    </div>
-  );
-}
-
 function EndConfig({
   inputs,
   outputHeight,
@@ -948,7 +1098,6 @@ const NODE_TITLES: Record<string, string> = {
   request: "Request",
   condition: "Condition",
   loop: "Loop",
-  script: "Script",
   start: "Start",
   end: "End",
 };
@@ -969,12 +1118,17 @@ export function NodeConfigPanel({
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.idle;
 
   const [isResizing, setIsResizing] = useState(false);
-  const [outputHeight, setOutputHeight] = useState(180);
+  const [isResizingY, setIsResizingY] = useState(false);
+  const [outputHeight, setOutputHeight] = useState(58);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const [expandedOutputs, setExpandedOutputs] = useState<Set<string>>(
     new Set(),
   );
+  const [hoverTimingId, setHoverTimingId] = useState<string | null>(null);
+  const [hoverSizeId, setHoverSizeId] = useState<string | null>(null);
+  const timingRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const sizeRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const [envVars, setEnvVars] = useState<
     Array<{ id: string; key: string; value: string }>
@@ -1048,15 +1202,6 @@ export function NodeConfigPanel({
             nodeOutput={nodeOutput}
           />
         );
-      case "script":
-        return (
-          <ScriptConfig
-            data={nodeData as ScriptNodeData}
-            onUpdate={handleUpdate}
-            inputs={availableOutputs}
-            nodeOutput={nodeOutput}
-          />
-        );
       case "start":
         return (
           <div className="flex flex-col h-full">
@@ -1067,7 +1212,7 @@ export function NodeConfigPanel({
               <div className="text-[9px] text-white/30">
                 Define variables for this workflow accessible as{" "}
                 <code className="text-accent">{"{{ KEY }}"}</code> in all
-                requests and scripts
+                requests
               </div>
             </div>
 
@@ -1179,63 +1324,90 @@ export function NodeConfigPanel({
           </div>
         );
       case "end": {
-        const inputsWithOutput = availableOutputs.filter((i) => !!i.output);
         const finalOutputSource =
-          inputsWithOutput.length > 0
-            ? inputsWithOutput[inputsWithOutput.length - 1]
-            : null;
+          availableOutputs.find((i) => i.isPrimary && !!i.output) ||
+          availableOutputs.filter((i) => !!i.output).slice(-1)[0] ||
+          null;
         const finalOutput = finalOutputSource?.output;
 
         return (
           <div className="flex flex-col h-full">
-            <div className="p-3 border-b border-white/10 shrink-0 space-y-1">
-              <div className="text-[10px] text-white/40">Workflow Outputs</div>
-              <div className="text-[9px] text-white/30">
-                Outputs from connected nodes
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="overflow-auto" style={{ height: `${outputHeight}%` }}>
+                <EndResponseViewer output={finalOutput} />
               </div>
-              {finalOutputSource ? (
-                <div className="text-[10px] text-white/60">
-                  Output at End Node:{" "}
-                  <span className="text-white/80">{finalOutputSource.nodeName}</span>
-                </div>
-              ) : null}
-            </div>
 
-            <div className="flex-1 overflow-auto">
-              {finalOutput ? (
-                <div className="px-2 pt-2">
-                  <div className="text-[10px] text-white/35 px-1 pb-1">
-                    Final Output
-                  </div>
-                  <div className="border border-white/10 rounded-lg overflow-hidden bg-white/[0.02]">
-                    <OutputViewer
-                      output={finalOutput}
-                      height={Math.max(170, Math.min(340, outputHeight))}
-                      onHeightChange={setOutputHeight}
-                    />
-                  </div>
-                </div>
-              ) : null}
+              <div
+                className="h-[2px] bg-white/10 cursor-row-resize transition-colors shrink-0"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setIsResizingY(true);
+                  const startY = e.clientY;
+                  const start = outputHeight;
+                  const onMove = (ev: MouseEvent) => {
+                    const delta = ev.clientY - startY;
+                    const pctDelta = (delta / window.innerHeight) * 100;
+                    const next = Math.max(35, Math.min(80, start + pctDelta));
+                    setOutputHeight(next);
+                  };
+                  const onUp = () => {
+                    setIsResizingY(false);
+                    document.removeEventListener("mousemove", onMove);
+                    document.removeEventListener("mouseup", onUp);
+                  };
+                  document.addEventListener("mousemove", onMove);
+                  document.addEventListener("mouseup", onUp);
+                }}
+              />
 
-              <div className="px-3 pt-3 pb-1 border-b border-white/5">
-                <div className="text-[10px] text-white/35">Node Outputs</div>
+              <div className="overflow-auto bg-card" style={{ height: `${100 - outputHeight}%` }}>
+
+              <div className="flex items-center gap-1 p-2 shrink-0 border-b border-white/5">
+                <span className="text-xs px-2 py-0.5 rounded-md font-medium text-accent bg-accent/10">
+                  Console
+                </span>
               </div>
 
               {availableOutputs.length === 0 ? (
                 <div className="h-full flex items-center justify-center p-4 text-center">
-                  <div className="text-sm text-white/40">
-                    No connected nodes
-                  </div>
+                  <div className="text-sm text-white/40">No connected nodes</div>
                 </div>
               ) : (
-                <div className="space-y-1 p-2">
+                <div>
                   {availableOutputs.map((input) => {
                     const output = input.output;
+                    const outputBodyString = output
+                      ? JSON.stringify(output.body ?? null)
+                      : "";
+                    const outputBytes = outputBodyString
+                      ? new TextEncoder().encode(outputBodyString).length
+                      : 0;
+                    const timingInfo =
+                      output?.timing || {
+                        total_ms: getDurationMs(output),
+                        dns_lookup_ms: 0,
+                        tcp_handshake_ms: 0,
+                        tls_handshake_ms: 0,
+                        ttfb_ms: getDurationMs(output),
+                        content_download_ms: 0,
+                      };
+                    const responseSize =
+                      output?.responseSize || {
+                        total_bytes: outputBytes,
+                        headers_bytes: 0,
+                        body_bytes: outputBytes,
+                      };
+                    const requestSize =
+                      output?.requestSize || {
+                        total_bytes: 0,
+                        headers_bytes: 0,
+                        body_bytes: 0,
+                      };
 
                     return (
                       <div
                         key={input.nodeId}
-                        className="border border-white/10 rounded-lg overflow-hidden bg-white/[0.02]"
+                        className="border-b border-white/10 overflow-hidden last:border-b-0"
                       >
                         <button
                           type="button"
@@ -1250,12 +1422,17 @@ export function NodeConfigPanel({
                               return next;
                             });
                           }}
-                          className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/[0.05] transition-colors"
+                          className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-white/[0.05] transition-colors"
                         >
                           <div className="flex items-center gap-2 min-w-0 text-left">
-                            <span className="text-[10px] font-mono font-bold text-white/60">
-                              {input.method || input.type.toUpperCase()}
-                            </span>
+                            {input.method ? (
+                              <span
+                                className="text-[10px] font-mono font-bold"
+                                style={{ color: getMethodColor(input.method) }}
+                              >
+                                {input.method}
+                              </span>
+                            ) : null}
                             <span className="text-xs text-white/80 truncate">
                               {input.nodeName}
                             </span>
@@ -1264,42 +1441,123 @@ export function NodeConfigPanel({
                                 no output
                               </span>
                             ) : null}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
                             {output?.status !== undefined ? (
-                              <span
-                                className={`text-[10px] px-1 rounded ${getStatusColor(output.status)}`}
-                              >
-                                {output.status}
+                              <span className="relative group">
+                                <span
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded"
+                                  style={{
+                                    color: getStatusColor(output.status),
+                                    backgroundColor: `${getStatusColor(output.status)}20`,
+                                  }}
+                                >
+                                  {output.status}
+                                </span>
+                                <span className="absolute right-0 top-full mt-1 whitespace-nowrap text-[10px] px-2 py-1 rounded bg-card border border-white/10 text-white/80 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-20">
+                                  {output.status}{" "}
+                                  {STATUS_TEXT[output.status] || "Unknown Status"}
+                                </span>
                               </span>
                             ) : null}
-                          </div>
-                          <svg
-                            className={`w-3 h-3 shrink-0 text-white/40 transition-transform ${expandedOutputs.has(input.nodeId) ? "rotate-180" : ""}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                            <VscChevronRight
+                              size={12}
+                              className={`shrink-0 text-white/40 transition-transform ${expandedOutputs.has(input.nodeId) ? "rotate-90" : ""}`}
                             />
-                          </svg>
+                          </div>
                         </button>
 
                         {expandedOutputs.has(input.nodeId) ? (
-                          <div className="border-t border-white/5 p-3 bg-black/20 space-y-2">
+                          <div className="border-t border-white/5 bg-black/20">
                             {output ? (
                               <>
-                                <OutputViewer
-                                  output={output}
-                                  height={220}
-                                  onHeightChange={() => {}}
-                                  resizable={false}
-                                />
+                                <div className="flex items-center justify-between bg-inset border-b border-white/10 shrink-0 pr-2">
+                                  <div className="flex items-center gap-1">
+                                    <span
+                                      className="text-xs font-bold px-3 py-2 flex items-center gap-1.5"
+                                      style={{
+                                        color: getStatusColor(output.status || 0),
+                                        backgroundColor: `${getStatusColor(output.status || 0)}20`,
+                                      }}
+                                    >
+                                      {output.status || 0}{" "}
+                                      {STATUS_TEXT[output.status || 0] || "Unknown"}
+                                    </span>
+                                    <button
+                                      ref={(el) => {
+                                        timingRefs.current[input.nodeId] = el;
+                                      }}
+                                      type="button"
+                                      onMouseEnter={() => {
+                                        setHoverSizeId(null);
+                                        setHoverTimingId(input.nodeId);
+                                      }}
+                                      onMouseLeave={() => setHoverTimingId(null)}
+                                      className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+                                    >
+                                      {getDurationMs(output) >= 1000
+                                        ? `${(getDurationMs(output) / 1000).toFixed(2)} s`
+                                        : `${getDurationMs(output).toFixed(0)} ms`}
+                                    </button>
+                                    <span className="text-white/20">•</span>
+                                    <button
+                                      ref={(el) => {
+                                        sizeRefs.current[input.nodeId] = el;
+                                      }}
+                                      type="button"
+                                      onMouseEnter={() => {
+                                        setHoverTimingId(null);
+                                        setHoverSizeId(input.nodeId);
+                                      }}
+                                      onMouseLeave={() => setHoverSizeId(null)}
+                                      className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+                                    >
+                                      {formatBytes(outputBytes)}
+                                    </button>
+                                  </div>
+                                </div>
+                                {timingRefs.current[input.nodeId] && (
+                                  <TimingPopover
+                                    timing={timingInfo as any}
+                                    anchorRef={{
+                                      current: timingRefs.current[
+                                        input.nodeId
+                                      ] as HTMLElement | null,
+                                    }}
+                                    open={hoverTimingId === input.nodeId}
+                                    onClose={() => setHoverTimingId(null)}
+                                    onMouseEnter={() =>
+                                      setHoverTimingId(input.nodeId)
+                                    }
+                                    onMouseLeave={() => setHoverTimingId(null)}
+                                  />
+                                )}
+                                {sizeRefs.current[input.nodeId] && (
+                                  <SizePopover
+                                    requestSize={requestSize as any}
+                                    responseSize={responseSize as any}
+                                    anchorRef={{
+                                      current: sizeRefs.current[
+                                        input.nodeId
+                                      ] as HTMLElement | null,
+                                    }}
+                                    open={hoverSizeId === input.nodeId}
+                                    onClose={() => setHoverSizeId(null)}
+                                    onMouseEnter={() =>
+                                      setHoverSizeId(input.nodeId)
+                                    }
+                                    onMouseLeave={() => setHoverSizeId(null)}
+                                  />
+                                )}
+                                <div className="max-h-[220px] overflow-auto border-t border-white/10 bg-black/20">
+                                  <CodeViewer
+                                    code={JSON.stringify(output, null, 2)}
+                                    language="json"
+                                  />
+                                </div>
                               </>
                             ) : (
-                              <div className="text-xs text-white/40">
+                              <div className="text-xs text-white/40 p-2">
                                 Run the workflow to see this node output
                               </div>
                             )}
@@ -1310,6 +1568,7 @@ export function NodeConfigPanel({
                   })}
                 </div>
               )}
+              </div>
             </div>
           </div>
         );

@@ -1472,6 +1472,10 @@ function App() {
                     }, {}),
                     body,
                     params: resolvedParams,
+                    duration: resp.timing?.total_ms ?? 0,
+                    timing: resp.timing,
+                    requestSize: resp.request_size,
+                    responseSize: resp.response_size,
                   };
                 } catch (err: any) {
                   console.error("Request failed:", err);

@@ -1,10 +1,9 @@
 import { useRef, useEffect } from "react";
-import { VscCode, VscGitMerge, VscRefresh } from "react-icons/vsc";
+import { VscGitMerge, VscRefresh } from "react-icons/vsc";
 
 interface NodeTypePopoverProps {
   position: { x: number; y: number };
   onClose: () => void;
-  onAddScript: () => void;
   onAddCondition: () => void;
   onAddLoop: () => void;
 }
@@ -12,7 +11,6 @@ interface NodeTypePopoverProps {
 export function NodeTypePopover({
   position,
   onClose,
-  onAddScript,
   onAddCondition,
   onAddLoop
 }: NodeTypePopoverProps) {
@@ -53,12 +51,6 @@ export function NodeTypePopover({
   };
 
   const items = [
-    {
-      icon: VscCode,
-      label: "Custom Script",
-      color: "text-purple-400",
-      onClick: () => { onAddScript(); onClose(); },
-    },
     {
       icon: VscGitMerge,
       label: "Condition",

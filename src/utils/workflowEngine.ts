@@ -4,7 +4,6 @@ import type {
   WorkflowNodeStatus,
   WorkflowExecutionContext,
   RequestNodeData,
-  ScriptNodeData,
   ConditionNodeData,
   LoopNodeData,
   NodeOutput,
@@ -230,10 +229,6 @@ export class WorkflowEngine {
     context: WorkflowExecutionContext,
     overrides?: RequestOverrides,
   ) => Promise<NodeOutput>;
-  private executeScript: (
-    code: string,
-    context: WorkflowExecutionContext,
-  ) => Promise<NodeOutput>;
   private evaluateCondition: (
     code: string,
     context: WorkflowExecutionContext,
@@ -252,10 +247,6 @@ export class WorkflowEngine {
       requestId: string,
       context: WorkflowExecutionContext,
       overrides?: RequestOverrides,
-    ) => Promise<NodeOutput>,
-    executeScript: (
-      code: string,
-      context: WorkflowExecutionContext,
     ) => Promise<NodeOutput>,
     evaluateCondition: (
       code: string,
@@ -278,7 +269,6 @@ export class WorkflowEngine {
     this.onNodeStatusChange = onNodeStatusChange;
     this.onEdgeStatusChange = onEdgeStatusChange;
     this.executeRequest = executeRequest;
-    this.executeScript = executeScript;
     this.evaluateCondition = evaluateCondition;
     this.onNodeOutput = onNodeOutput;
     this.onEdgeFlash = onEdgeFlash;
@@ -426,21 +416,6 @@ export class WorkflowEngine {
             context,
             resolvedOverrides,
           );
-          context.nodeOutputs[nodeId] = output;
-          context.lastResponse = output;
-          this.onNodeOutput?.(nodeId, output);
-          if (output.error) {
-            this.onNodeStatusChange(nodeId, "error");
-            throw new Error(output.error);
-          }
-          this.onNodeStatusChange(nodeId, "completed");
-          break;
-        }
-
-        case "script": {
-          const scriptData = nodeData as ScriptNodeData;
-          const resolvedCode = resolveVariables(scriptData.code, context, true);
-          const output = await this.executeScript(resolvedCode, context);
           context.nodeOutputs[nodeId] = output;
           context.lastResponse = output;
           this.onNodeOutput?.(nodeId, output);
@@ -1137,7 +1112,7 @@ export function aggregateLoopResultsForTest(
 
 /**
  * Executable test helper (dev only): runs a minimal workflow containing a count loop
- * with a small script in the loop body that returns `{ i: index }` (test-only behavior).
+ * with a request-like step in the loop body that returns `{ i: index }` (test-only behavior).
  *
  * Returns an object { success, output } where `output` is the aggregated loop NodeOutput.
  *
@@ -1169,13 +1144,14 @@ export async function testLoopCollectionExample(): Promise<{
       } as any,
     },
     {
-      id: "script1",
+      id: "request1",
       position: { x: 0, y: 0 },
       data: {
-        type: "script",
-        language: "typescript",
-        code: "return { i: index }",
-        label: "Inline script",
+        type: "request",
+        requestId: "request1",
+        requestName: "Loop Body",
+        method: "GET",
+        label: "Loop Body",
         status: "idle",
       } as any,
     },
@@ -1192,7 +1168,7 @@ export async function testLoopCollectionExample(): Promise<{
       id: "e2",
       source: "loop1",
       sourceHandle: "loop",
-      target: "script1",
+      target: "request1",
     } as any,
     { id: "e3", source: "loop1", sourceHandle: "exit", target: "end" } as any,
   ];
@@ -1204,8 +1180,7 @@ export async function testLoopCollectionExample(): Promise<{
     edges,
     () => {}, // onNodeStatusChange
     () => {}, // onEdgeStatusChange
-    async () => ({ status: 200, body: null }), // executeRequest (unused in this test)
-    async (_code, ctx) => ({ status: 200, body: { i: ctx.loopIndex } }), // executeScript
+    async (_requestId, ctx) => ({ status: 200, body: { i: ctx.loopIndex } }), // executeRequest
     async () => false, // evaluateCondition (unused)
     (nodeId, output) => {
       if (nodeId === "loop1") loopOutput = output;

@@ -4,7 +4,6 @@ export type WorkflowNodeType =
   | "start"
   | "end"
   | "request"
-  | "script"
   | "condition"
   | "loop";
 
@@ -65,12 +64,6 @@ export interface RequestNodeData extends BaseWorkflowNodeData {
   overrides?: RequestOverrides;
 }
 
-export interface ScriptNodeData extends BaseWorkflowNodeData {
-  type: "script";
-  language: "typescript";
-  code: string;
-}
-
 export interface ConditionNodeData extends BaseWorkflowNodeData {
   type: "condition";
   expression: string;
@@ -110,7 +103,6 @@ export interface EndNodeData extends BaseWorkflowNodeData {
 
 export type WorkflowNodeData =
   | RequestNodeData
-  | ScriptNodeData
   | ConditionNodeData
   | LoopNodeData
   | StartNodeData
@@ -134,6 +126,24 @@ export interface NodeOutput {
   params?: Record<string, string>;
   error?: string;
   duration?: number;
+  timing?: {
+    total_ms: number;
+    dns_lookup_ms?: number;
+    tcp_handshake_ms?: number;
+    tls_handshake_ms?: number;
+    ttfb_ms?: number;
+    content_download_ms?: number;
+  };
+  requestSize?: {
+    total_bytes: number;
+    headers_bytes: number;
+    body_bytes: number;
+  };
+  responseSize?: {
+    total_bytes: number;
+    headers_bytes: number;
+    body_bytes: number;
+  };
   iterationOutputs?: NodeOutput[];
 }
 

@@ -214,8 +214,11 @@ function SortableItem({
           </span>
         </div>
       ) : item.type === "workflow" ? (
-        <span className="text-accent shrink-0 mr-2">
-          <VscTypeHierarchySub size={16} />
+        <span className="text-accent shrink-0 mr-2 w-10 text-right">
+          <VscTypeHierarchySub
+            size={14}
+            className="inline-block align-[-2px] relative top-[1px]"
+          />
         </span>
       ) : (
         <span
