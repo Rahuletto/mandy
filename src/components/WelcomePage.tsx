@@ -1,12 +1,18 @@
 import React, { useState } from "react";
-import { BiPlus, BiFile } from "react-icons/bi";
+import { BiFile } from "react-icons/bi";
 import { FaFolder } from "react-icons/fa6";
-import { TbChevronDown, TbPlus } from "react-icons/tb";
+import {
+  TbChevronDown,
+  TbPlus,
+  TbWorld,
+  TbPlugConnected,
+} from "react-icons/tb";
 import { Logo } from "./ui";
 import { getShortMethod } from "../utils/methodConstants";
 
 interface WelcomePageProps {
   onNewRequest: () => void;
+  onNewWebSocket: () => void;
   onNewFolder: () => void;
   onImportClick: () => void;
   recentRequests: Array<{
@@ -40,6 +46,7 @@ const getMethodColorTw = (method: string) => {
 
 export const WelcomePage: React.FC<WelcomePageProps> = ({
   onNewRequest,
+  onNewWebSocket,
   onNewFolder,
   onImportClick,
   recentRequests,
@@ -119,18 +126,25 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
           <div className="space-y-3.5">
             <button
               onClick={onNewRequest}
-              className="group flex cursor-pointer items-center gap-3 text-white/40 hover:text-white/80 transition-all duration-200 text-left w-full"
+              className="group flex cursor-pointer items-center gap-3 text-white opacity-50 hover:opacity-80 transition-all duration-200 text-left w-full"
             >
               <div className="flex items-center justify-center w-4 h-4">
-                <BiPlus size={18} />
+                <TbWorld size={18} />
               </div>
-              <span className="text-[14px] font-medium">
-                Create a new request
-              </span>
+              <span className="text-[14px] font-medium">REST Request</span>
+            </button>
+            <button
+              onClick={onNewWebSocket}
+              className="group flex cursor-pointer items-center gap-3 text-white opacity-50 hover:opacity-80 transition-all duration-200 text-left w-full"
+            >
+              <div className="flex items-center justify-center w-4 h-4">
+                <TbPlugConnected size={18} />
+              </div>
+              <span className="text-[14px] font-medium">WebSocket</span>
             </button>
             <button
               onClick={onNewFolder}
-              className="group flex items-center gap-3 text-white/40 cursor-pointer hover:text-white/80 transition-all duration-200 text-left w-full"
+              className="group flex items-center gap-3  cursor-pointer text-white opacity-50 hover:opacity-80 transition-all duration-200 text-left w-full"
             >
               <div className="flex items-center justify-center w-4 h-4">
                 <FaFolder size={14} />
@@ -141,7 +155,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
             </button>
             <button
               onClick={onImportClick}
-              className="group flex items-center gap-3 text-white/40 hover:text-white/80 cursor-pointer transition-all duration-200 text-left w-full"
+              className="group flex items-center gap-3 text-white opacity-50 hover:opacity-80 cursor-pointer transition-all duration-200 text-left w-full"
             >
               <div className="flex items-center justify-center w-4 h-4">
                 <BiFile size={16} />

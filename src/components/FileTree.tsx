@@ -19,8 +19,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { VscChevronRight, VscChevronDown, VscAdd } from "react-icons/vsc";
 import { FaFolder, FaFolderOpen, FaPlus } from "react-icons/fa6";
 import { HiDownload } from "react-icons/hi";
+import { TbPlugConnected, TbWorld } from "react-icons/tb";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
-import type { WorkflowFile } from "../types/workflow";
+
 import { ContextMenu, MenuItem } from "./ui";
 import { getSimpleShortcut, getShortcutDisplay } from "../utils/platform";
 import { haptic } from "../utils/haptics";
@@ -29,9 +30,13 @@ import { VscTypeHierarchySub } from "react-icons/vsc";
 interface FileTreeProps {
   root: Folder;
   selectedItemId: string | null;
-  onSelect: (id: string, type: "folder" | "request" | "workflow") => void;
+  onSelect: (
+    id: string,
+    type: "folder" | "request" | "workflow" | "websocket",
+  ) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
+  onAddWebSocket: (folderId: string) => void;
   onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -220,6 +225,13 @@ function SortableItem({
             className="inline-block align-[-2px] relative top-[1px]"
           />
         </span>
+      ) : item.type === "websocket" ? (
+        <span className="text-emerald-400 shrink-0 mr-2 w-10 text-right">
+          <TbPlugConnected
+            size={14}
+            className="inline-block align-[-2px] relative top-[1px]"
+          />
+        </span>
       ) : (
         <span
           className="font-mono text-[11px] font-bold shrink-0 mr-2 w-10 text-right"
@@ -341,6 +353,7 @@ export function FileTree({
   onSelect,
   onToggleFolder,
   onAddRequest,
+  onAddWebSocket,
   onAddWorkflow,
   onAddFolder,
   onRename,
@@ -688,10 +701,27 @@ export function FileTree({
 
     if (item.type === "folder") {
       return [
-        { label: "New Request", onClick: () => onAddRequest(item.id) },
-        { label: "New Workflow", onClick: () => onAddWorkflow(item.id) },
+        {
+          label: "REST Request",
+          icon: <TbWorld size={14} />,
+          onClick: () => onAddRequest(item.id),
+        },
+        {
+          label: "WebSocket",
+          icon: <TbPlugConnected size={14} />,
+          onClick: () => onAddWebSocket(item.id),
+        },
         { label: "", onClick: () => {}, divider: true },
-        { label: "New Folder", onClick: () => onAddFolder(item.id) },
+        {
+          label: "New Workflow",
+          icon: <VscTypeHierarchySub size={14} />,
+          onClick: () => onAddWorkflow(item.id),
+        },
+        {
+          label: "New Folder",
+          icon: <FaFolder size={12} />,
+          onClick: () => onAddFolder(item.id),
+        },
         { label: "", onClick: () => {}, divider: true },
         ...commonActions,
         { label: "Sort by Method", onClick: () => onSort(item.id, "method") },
@@ -753,7 +783,7 @@ export function FileTree({
         <div className="px-3 py-2">
           <div className="flex gap-2 opacity-0 hover:opacity-100 transition-opacity duration-300">
             <button
-              onClick={() => onAddRequest(root.id)}
+              onClick={(e) => handleContextMenu(e, root, true)}
               className="flex-1 px-3 py-2 text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
               <FaPlus size={10} />
@@ -782,7 +812,7 @@ export function FileTree({
           y={contextMenu.y}
           items={
             contextMenu.filterAddOnly
-              ? getContextMenuItems(contextMenu.item).slice(0, 4)
+              ? getContextMenuItems(contextMenu.item).slice(0, 5)
               : getContextMenuItems(contextMenu.item)
           }
           onClose={() => setContextMenu(null)}

@@ -7,6 +7,7 @@ export interface MenuItem {
   divider?: boolean;
   disabled?: boolean;
   shortcut?: React.ReactNode;
+  icon?: React.ReactNode;
 }
 
 interface ContextMenuProps {
@@ -77,14 +78,17 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               item.onClick();
               onClose();
             }}
-            className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between gap-4 ${
+            className={`w-full text-left pl-3 pr-2 py-1.5 text-xs transition-colors flex items-center justify-start gap-4 ${
               item.disabled
-                ? "opacity-50 cursor-not-allowed text-white/50"
+                ? "opacity-50 cursor-not-allowed text-white"
                 : item.danger
                   ? "text-red hover:bg-red/10"
-                  : "text-white/80 hover:bg-white/10"
+                  : "text-white opacity-80 hover:bg-white/10"
             }`}
           >
+            {item.icon && (
+              <span className="text-white opacity-60">{item.icon}</span>
+            )}
             <span>{item.label}</span>
             {item.shortcut && <span>{item.shortcut}</span>}
           </button>

@@ -339,7 +339,7 @@ const FolderSection = React.memo(function FolderSection({
               );
             }
 
-            if (child.type === "workflow") {
+            if (child.type === "workflow" || child.type === "websocket") {
               return null;
             }
 

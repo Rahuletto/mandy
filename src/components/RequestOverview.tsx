@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { FaPython } from "react-icons/fa";
 import type { RequestFile } from "../types/project";
 import {
   generateCurl,
@@ -76,7 +75,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
       case "Python Requests":
         return {
           code: generatePythonRequests(activeRequest.request),
-          lang: "text" as const,
+          lang: "python" as const,
         };
       case "Go Native":
         return { code: generateGo(activeRequest.request), lang: "go" as const };
@@ -269,7 +268,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
             {isEditingName ? (
               <input
                 autoFocus
-                className="text-3xl font-bold bg-transparent border-none outline-none text-white w-full mb-2"
+                className="text-2xl font-bold bg-transparent border-none outline-none text-white w-full mb-2"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onBlur={handleNameBlur}
@@ -277,7 +276,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
               />
             ) : (
               <h1
-                className="text-3xl font-bold text-white mb-2 cursor-text hover:text-white/90"
+                className="text-2xl font-bold text-white mb-2 cursor-text hover:text-white/90"
                 onClick={() => setIsEditingName(true)}
               >
                 {activeRequest.name}
@@ -285,14 +284,18 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
             )}
 
             <textarea
-              className="w-full bg-transparent border-none outline-none text-white/60 resize-none overflow-hidden min-h-6 h-fit mb-3 placeholder:text-white/20"
+              ref={(el) => {
+                if (el) {
+                  el.style.height = "auto";
+                  el.style.height = el.scrollHeight + "px";
+                }
+              }}
+              className="w-full bg-transparent border-none outline-none text-sm text-white/60 resize-none overflow-hidden min-h-6 mb-3 placeholder:text-white/20"
               placeholder="Add a description..."
               value={description}
               onChange={(e) => {
                 setDescription(e.target.value);
                 onUpdateDescription(e.target.value);
-              }}
-              onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
                 target.style.height = "auto";
                 target.style.height = target.scrollHeight + "px";
@@ -448,7 +451,6 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
                       },
                       {
                         label: "Python Requests",
-                        icon: <FaPython size={12} />,
                         onClick: () => {
                           setSnippetLang("Python Requests");
                           setShowSnippetDropdown(false);
