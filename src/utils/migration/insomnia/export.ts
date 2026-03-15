@@ -1,4 +1,4 @@
-import type { Project, Folder, RequestFile } from "../../../types/project";
+import type { Project, Folder, RequestFile, WebSocketFile } from "../../../types/project";
 import type { AuthType, BodyType } from "../../../bindings";
 import { generatePrefixedId } from "../shared";
 import type {
@@ -9,6 +9,7 @@ import type {
   InsomniaCookieJar,
   InsomniaRequestGroup,
   InsomniaRequest,
+  InsomniaWebSocketRequest,
   InsomniaHeader,
   InsomniaParameter,
   InsomniaBody,
@@ -107,6 +108,37 @@ function convertBodyToInsomnia(body: BodyType): InsomniaBody {
   return {};
 }
 
+function convertWebSocketToInsomnia(
+  ws: WebSocketFile,
+  parentId: string,
+  sortKey: number,
+): InsomniaWebSocketRequest {
+  const parameters: InsomniaParameter[] = (ws.params || [])
+    .filter((p) => p.enabled && (p.key || p.value))
+    .map((p) => ({ name: p.key, value: p.value }));
+
+  const headers: InsomniaHeader[] = (ws.headerItems || [])
+    .filter((h) => h.enabled && (h.key || h.value))
+    .map((h) => ({ name: h.key, value: h.value }));
+
+  const authentication: InsomniaAuthentication = ws.auth
+    ? convertAuthToInsomnia(ws.auth)
+    : { type: "none" };
+
+  return {
+    _id: generateId(),
+    _type: "websocket_request",
+    parentId,
+    name: ws.name,
+    description: ws.description,
+    url: ws.url,
+    headers,
+    parameters,
+    authentication,
+    metaSortKey: sortKey,
+  };
+}
+
 function convertRequestToInsomnia(
   req: RequestFile,
   parentId: string,
@@ -178,9 +210,12 @@ function convertFolderToInsomnia(
   for (const child of folder.children) {
     if (child.type === "folder") {
       resources.push(...convertFolderToInsomnia(child, folderId, childSortKey));
-    } else {
+    } else if (child.type === "request") {
       resources.push(convertRequestToInsomnia(child, folderId, childSortKey));
+    } else if (child.type === "websocket") {
+      resources.push(convertWebSocketToInsomnia(child, folderId, childSortKey));
     }
+    // workflows are skipped — no Insomnia equivalent
     childSortKey++;
   }
 
@@ -244,8 +279,10 @@ export function generateInsomniaExport(project: Project): InsomniaExport {
   for (const child of project.root.children) {
     if (child.type === "folder") {
       resources.push(...convertFolderToInsomnia(child, workspaceId, sortKey));
-    } else {
+    } else if (child.type === "request") {
       resources.push(convertRequestToInsomnia(child, workspaceId, sortKey));
+    } else if (child.type === "websocket") {
+      resources.push(convertWebSocketToInsomnia(child, workspaceId, sortKey));
     }
     sortKey++;
   }

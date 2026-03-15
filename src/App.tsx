@@ -1298,6 +1298,14 @@ function App() {
                 setActiveRequestId(id);
                 setShowProjectOverview(false);
               }}
+              onSelectWorkflow={(id) => {
+                setActiveWorkflowId(id);
+                setShowProjectOverview(false);
+              }}
+              onSelectWebSocket={(id) => {
+                setActiveWebSocketId(id);
+                setShowProjectOverview(false);
+              }}
               onRunRequest={(id) => {
                 setActiveRequestId(id);
                 setShowProjectOverview(false);

@@ -21,7 +21,7 @@ export function generateOpenAPISpec(
     for (const child of folder.children) {
       if (child.type === "request") {
         results.push({ request: child, folders: path });
-      } else {
+      } else if (child.type === "folder") {
         results.push(...collectRequests(child, [...path, child.name]));
       }
     }

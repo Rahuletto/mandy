@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import type { Project, Folder, RequestFile } from "../types/project";
+import type { Project, Folder, RequestFile, WebSocketFile } from "../types/project";
+import type { WorkflowFile } from "../types/workflow";
 import type { AuthType } from "../bindings";
 import { HiChevronRight, HiChevronDown, HiTrash } from "react-icons/hi";
 import {
@@ -36,6 +37,8 @@ interface ProjectOverviewProps {
   onUpdateProject: (updates: Partial<Project>) => void;
   onExport: () => void;
   onSelectRequest: (requestId: string) => void;
+  onSelectWorkflow?: (workflowId: string) => void;
+  onSelectWebSocket?: (webSocketId: string) => void;
   onRunRequest?: (requestId: string) => void;
   onAddEnvironment?: (name: string) => void;
   onUpdateEnvironment?: (envId: string, name: string) => void;
@@ -278,12 +281,122 @@ const RequestDetails = React.memo(function RequestDetails({
   );
 });
 
+const WorkflowCard = React.memo(function WorkflowCard({
+  workflow,
+  onSelect,
+  isFirstInGroup,
+  isLastInGroup,
+}: {
+  workflow: WorkflowFile;
+  onSelect: () => void;
+  isFirstInGroup?: boolean;
+  isLastInGroup?: boolean;
+}) {
+  const borderRadiusClasses =
+    isFirstInGroup && isLastInGroup
+      ? "rounded-xl"
+      : isFirstInGroup
+        ? "rounded-t-xl rounded-md"
+        : isLastInGroup
+          ? "rounded-b-xl rounded-md"
+          : "rounded-md";
+
+  const nodeCount = workflow.nodes?.length ?? 0;
+
+  return (
+    <div
+      className={`group/card flex flex-col bg-white/[0.02] border-x border-b first:border-t border-white/5 ${borderRadiusClasses} overflow-hidden hover:bg-white/[0.04] transition-all relative`}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-400/40" />
+      <div className="w-full flex items-stretch h-10">
+        <div className="flex items-center justify-start px-4 bg-purple-500/10 text-purple-400 shrink-0 min-w-[69px]">
+          <span className="text-xs font-semibold font-mono">WF</span>
+        </div>
+        <div className="flex-1 flex items-center justify-between px-4 min-w-0">
+          <span className="text-sm text-white/90 font-semibold truncate">{workflow.name}</span>
+          <div className="flex items-center gap-3 shrink-0 ml-4">
+            <span className="text-[10px] text-white/40 font-mono">
+              {nodeCount} node{nodeCount !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="border-t border-white/5 bg-white/[0.01] px-4 py-3 flex items-center justify-between">
+        <p className="text-sm text-white/40 italic">
+          {workflow.description || "No description"}
+        </p>
+        <button
+          onClick={onSelect}
+          className="text-xs text-accent text-left hover:text-accent/80 font-medium cursor-pointer shrink-0 ml-4"
+        >
+          Open Workflow →
+        </button>
+      </div>
+    </div>
+  );
+});
+
+const WebSocketCard = React.memo(function WebSocketCard({
+  ws,
+  onSelect,
+  isFirstInGroup,
+  isLastInGroup,
+}: {
+  ws: WebSocketFile;
+  onSelect: () => void;
+  isFirstInGroup?: boolean;
+  isLastInGroup?: boolean;
+}) {
+  const borderRadiusClasses =
+    isFirstInGroup && isLastInGroup
+      ? "rounded-xl"
+      : isFirstInGroup
+        ? "rounded-t-xl rounded-md"
+        : isLastInGroup
+          ? "rounded-b-xl rounded-md"
+          : "rounded-md";
+
+  return (
+    <div
+      className={`group/card flex flex-col bg-white/[0.02] border-x border-b first:border-t border-white/5 ${borderRadiusClasses} overflow-hidden hover:bg-white/[0.04] transition-all relative`}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400/40" />
+      <div className="w-full flex items-stretch h-10">
+        <div className="flex items-center justify-start px-4 bg-emerald-500/10 text-emerald-400 shrink-0 min-w-[69px]">
+          <span className="text-xs font-semibold font-mono">WS</span>
+        </div>
+        <div className="flex-1 flex items-center justify-between px-4 min-w-0">
+          <span className="text-sm text-white/90 font-semibold truncate">{ws.name}</span>
+          <div className="flex items-center gap-3 shrink-0 ml-4">
+            <span className="text-[10px] text-white/40 font-mono truncate max-w-[200px] group-hover/card:text-white/60 transition-colors">
+              {ws.url || "/"}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="border-t border-white/5 bg-white/[0.01] px-4 py-3 flex items-center justify-between">
+        <p className="text-sm text-white/40 italic">
+          {ws.description || "No description"}
+        </p>
+        <button
+          onClick={onSelect}
+          className="text-xs text-accent text-left hover:text-accent/80 font-medium cursor-pointer shrink-0 ml-4"
+        >
+          Open WebSocket →
+        </button>
+      </div>
+    </div>
+  );
+});
+
 const FolderSection = React.memo(function FolderSection({
   folder,
   depth = 0,
   expandedIds,
   toggleFolder,
   onSelectRequest,
+  onSelectWorkflow,
+  onSelectWebSocket,
   onRunRequest,
 }: {
   folder: Folder;
@@ -291,6 +404,8 @@ const FolderSection = React.memo(function FolderSection({
   expandedIds: Set<string>;
   toggleFolder: (id: string) => void;
   onSelectRequest: (id: string) => void;
+  onSelectWorkflow?: (id: string) => void;
+  onSelectWebSocket?: (id: string) => void;
   onRunRequest?: (id: string) => void;
 }) {
   const isExpanded = expandedIds.has(folder.id);
@@ -334,13 +449,39 @@ const FolderSection = React.memo(function FolderSection({
                   expandedIds={expandedIds}
                   toggleFolder={toggleFolder}
                   onSelectRequest={onSelectRequest}
+                  onSelectWorkflow={onSelectWorkflow}
+                  onSelectWebSocket={onSelectWebSocket}
                   onRunRequest={onRunRequest}
                 />
               );
             }
 
-            if (child.type === "workflow" || child.type === "websocket") {
-              return null;
+            if (child.type === "workflow") {
+              const prev = folder.children[index - 1];
+              const next = folder.children[index + 1];
+              return (
+                <WorkflowCard
+                  key={child.id}
+                  workflow={child}
+                  onSelect={() => onSelectWorkflow?.(child.id)}
+                  isFirstInGroup={!prev || prev.type !== "workflow"}
+                  isLastInGroup={!next || next.type !== "workflow"}
+                />
+              );
+            }
+
+            if (child.type === "websocket") {
+              const prev = folder.children[index - 1];
+              const next = folder.children[index + 1];
+              return (
+                <WebSocketCard
+                  key={child.id}
+                  ws={child}
+                  onSelect={() => onSelectWebSocket?.(child.id)}
+                  isFirstInGroup={!prev || prev.type !== "websocket"}
+                  isLastInGroup={!next || next.type !== "websocket"}
+                />
+              );
             }
 
             const prev = folder.children[index - 1];
@@ -370,6 +511,8 @@ export function ProjectOverview({
   onUpdateProject,
   onExport,
   onSelectRequest,
+  onSelectWorkflow,
+  onSelectWebSocket,
   onRunRequest,
   onAddEnvironment,
   onUpdateEnvironment,
@@ -678,6 +821,8 @@ export function ProjectOverview({
                 expandedIds={expandedIds}
                 toggleFolder={toggleFolder}
                 onSelectRequest={onSelectRequest}
+                onSelectWorkflow={onSelectWorkflow}
+                onSelectWebSocket={onSelectWebSocket}
                 onRunRequest={onRunRequest}
               />
 

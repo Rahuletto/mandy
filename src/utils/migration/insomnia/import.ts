@@ -2,6 +2,8 @@ import type {
   Project,
   Folder,
   RequestFile,
+  WebSocketFile,
+  WebSocketKeyValue,
   Environment,
   EnvironmentVariable,
 } from "../../../types/project";
@@ -12,6 +14,7 @@ import type {
   InsomniaWorkspace,
   InsomniaEnvironment,
   InsomniaRequest,
+  InsomniaWebSocketRequest,
   InsomniaHeader,
   InsomniaBody,
   InsomniaAuthentication,
@@ -183,6 +186,43 @@ function parseInsomniaRequest(resource: InsomniaRequest): RequestFile {
   };
 }
 
+function parseInsomniaWebSocket(resource: InsomniaWebSocketRequest): WebSocketFile {
+  const headerItems: WebSocketKeyValue[] = (resource.headers || [])
+    .filter((h) => !h.disabled)
+    .map((h) => ({
+      id: crypto.randomUUID(),
+      key: h.name,
+      value: h.value,
+      description: "",
+      enabled: true,
+    }));
+
+  const params: WebSocketKeyValue[] = (resource.parameters || [])
+    .filter((p) => !p.disabled)
+    .map((p) => ({
+      id: crypto.randomUUID(),
+      key: p.name,
+      value: p.value,
+      description: "",
+      enabled: true,
+    }));
+
+  return {
+    id: crypto.randomUUID(),
+    type: "websocket",
+    name: resource.name,
+    description: resource.description,
+    url: resource.url,
+    messages: [],
+    headers: {},
+    headerItems,
+    params,
+    auth: parseInsomniaAuth(resource.authentication),
+    useInheritedAuth:
+      !resource.authentication || resource.authentication.type === "none",
+  };
+}
+
 export function parseInsomniaExport(data: any): Partial<Project> {
   if (!data.resources || !Array.isArray(data.resources)) {
     throw new Error("Invalid Insomnia export: missing resources array");
@@ -207,7 +247,7 @@ export function parseInsomniaExport(data: any): Partial<Project> {
   }
 
   function buildFolder(parentId: string, name: string): Folder {
-    const children: (Folder | RequestFile)[] = [];
+    const children: (Folder | RequestFile | WebSocketFile)[] = [];
     const childResources = childrenMap.get(parentId) || [];
 
     childResources.sort((a, b) => {
@@ -221,6 +261,8 @@ export function parseInsomniaExport(data: any): Partial<Project> {
         children.push(buildFolder(child._id, child.name));
       } else if (child._type === "request") {
         children.push(parseInsomniaRequest(child as InsomniaRequest));
+      } else if (child._type === "websocket_request") {
+        children.push(parseInsomniaWebSocket(child as InsomniaWebSocketRequest));
       }
     }
 
