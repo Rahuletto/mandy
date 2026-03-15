@@ -1543,7 +1543,6 @@ function App() {
                 }
               }}
               onNewWebSocket={handleNewWebSocket}
-              }}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");
@@ -2154,7 +2153,6 @@ function App() {
                 }
               }}
               onNewWebSocket={handleNewWebSocket}
-              }}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");
