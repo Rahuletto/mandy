@@ -6,7 +6,7 @@ use std::time::Duration;
 use url::Url;
 
 use crate::types::{
-    ApiKeyLocation, ApiRequest, ApiResponse, AuthType, BodyType, Cookie, HttpProtocol,
+    ApiKeyLocation, ApiRequest, ApiResponse, AuthType, BodyType, Cookie,
     Methods, ResponseRenderer, SizeInfo, TimingInfo,
 };
 

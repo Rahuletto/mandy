@@ -253,9 +253,10 @@ function convertFolderToPostman(folder: Folder): PostmanItemGroup {
   for (const child of folder.children) {
     if (child.type === "folder") {
       items.push(convertFolderToPostman(child));
-    } else {
+    } else if (child.type === "request") {
       items.push(convertRequestToPostman(child));
     }
+    // websocket and workflow items are skipped — Postman WS collections can't be mixed with HTTP
   }
 
   return {
@@ -270,7 +271,7 @@ export function generatePostmanCollection(project: Project): PostmanCollection {
   for (const child of project.root.children) {
     if (child.type === "folder") {
       items.push(convertFolderToPostman(child));
-    } else {
+    } else if (child.type === "request") {
       items.push(convertRequestToPostman(child));
     }
   }

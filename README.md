@@ -76,5 +76,5 @@ Mandy supports importing from popular API tools:
 - [x] REST API Testing
 - [x] Workflows
 - [ ] GraphQL Support
-- [ ] WebSockets
+- [x] WebSockets
 - [ ] SocketIO

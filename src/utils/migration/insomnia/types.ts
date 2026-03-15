@@ -107,10 +107,21 @@ export interface InsomniaCookieJar extends InsomniaResource {
   }>;
 }
 
+export interface InsomniaWebSocketRequest extends InsomniaResource {
+  _type: "websocket_request";
+  description?: string;
+  url: string;
+  headers: InsomniaHeader[];
+  parameters: InsomniaParameter[];
+  authentication: InsomniaAuthentication;
+  metaSortKey?: number;
+}
+
 export type InsomniaResourceType =
   | InsomniaWorkspace
   | InsomniaRequestGroup
   | InsomniaRequest
+  | InsomniaWebSocketRequest
   | InsomniaEnvironment
   | InsomniaCookieJar;
 

@@ -19,6 +19,7 @@ import { playSuccessChime } from "./utils/sounds";
 import { CodeViewer } from "./components/CodeMirror";
 import { BodyEditor } from "./components/editors/BodyEditor";
 import { AuthEditor } from "./components/editors/AuthEditor";
+import { WebSocketEditor } from "./components/editors/WebSocketEditor";
 import { Sidebar } from "./components/Sidebar";
 import {
   Dropdown,
@@ -83,6 +84,7 @@ function App() {
     resolveVariables,
     getActiveEnvironmentVariables,
     addRequest,
+    addWebSocket,
     addWorkflow,
     addFolder,
     renameItem,
@@ -93,10 +95,13 @@ function App() {
     moveItem,
     updateRequest,
     updateWorkflow,
+    updateWebSocket,
     setRequestResponse,
     markSaved,
     activeWorkflowId,
     setActiveWorkflowId,
+    activeWebSocketId,
+    setActiveWebSocketId,
     clipboard,
     copyToClipboard,
     cutToClipboard,
@@ -115,7 +120,7 @@ function App() {
     const project = state.projects.find((p) => p.id === state.activeProjectId);
     if (!project) return null;
     
-    const activeId = state.activeRequestId || state.activeWorkflowId;
+    const activeId = state.activeRequestId || state.activeWorkflowId || state.activeWebSocketId;
     if (!activeId) return null;
 
     const findItem = (root: any, itemId: string): any => {
@@ -135,6 +140,7 @@ function App() {
 
   const activeRequest = activeItem?.type === "request" ? activeItem : null;
   const activeWorkflow = activeItem?.type === "workflow" ? activeItem : null;
+  const activeWebSocket = activeItem?.type === "websocket" ? activeItem : null;
 
   const { addToast } = useToastStore();
 
@@ -215,6 +221,14 @@ function App() {
     sizeTimeoutRef.current = window.setTimeout(() => {
       setShowSizePopover(false);
     }, 200);
+  };
+
+  const handleNewWebSocket = () => {
+    if (activeProject) {
+      addWebSocket(activeProject.root.id);
+    } else {
+      setShowNewProjectModal(true);
+    }
   };
 
   const [requestProtocol, setRequestProtocol] = useState<HttpProtocol>("Tcp");
@@ -340,8 +354,9 @@ function App() {
 
       if (isCmdOrCtrl && e.key === "s") {
         e.preventDefault();
-        if (activeRequestId) {
-          markSaved(activeRequestId);
+        const idToSave = activeRequestId || activeWebSocketId || activeWorkflowId;
+        if (idToSave) {
+          markSaved(idToSave);
         }
         return;
       }
@@ -399,6 +414,7 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     activeRequestId,
+    activeWebSocketId,
     markSaved,
     activeRequest,
     activeProject,
@@ -1155,11 +1171,15 @@ function App() {
               } else if (type === "workflow") {
                 setActiveWorkflowId(id);
                 setShowProjectOverview(false);
+              } else if (type === "websocket") {
+                setActiveWebSocketId(id);
+                setShowProjectOverview(false);
               }
             }}
-            selectedItemId={showProjectOverview ? null : (activeRequestId || activeWorkflowId)}
+            selectedItemId={showProjectOverview ? null : (activeRequestId || activeWorkflowId || activeWebSocketId)}
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
+            onAddWebSocket={addWebSocket}
             onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
@@ -1212,11 +1232,15 @@ function App() {
               } else if (type === "workflow") {
                 setActiveWorkflowId(id);
                 setShowProjectOverview(false);
+              } else if (type === "websocket") {
+                setActiveWebSocketId(id);
+                setShowProjectOverview(false);
               }
             }}
-            selectedItemId={showProjectOverview ? null : (activeRequestId || activeWorkflowId)}
+            selectedItemId={showProjectOverview ? null : (activeRequestId || activeWorkflowId || activeWebSocketId)}
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
+            onAddWebSocket={addWebSocket}
             onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
@@ -1277,6 +1301,14 @@ function App() {
               onExport={() => setShowExportModal(true)}
               onSelectRequest={(id) => {
                 setActiveRequestId(id);
+                setShowProjectOverview(false);
+              }}
+              onSelectWorkflow={(id) => {
+                setActiveWorkflowId(id);
+                setShowProjectOverview(false);
+              }}
+              onSelectWebSocket={(id) => {
+                setActiveWebSocketId(id);
                 setShowProjectOverview(false);
               }}
               onRunRequest={(id) => {
@@ -1486,7 +1518,18 @@ function App() {
                 }
               }}
             />
-          ) : !activeRequest && !activeWorkflow && !showProjectOverview ? (
+          ) : activeWebSocket && !showProjectOverview ? (
+            <WebSocketEditor
+              ws={activeWebSocket}
+              onUpdate={(updater) => updateWebSocket(activeWebSocket.id, updater)}
+              availableVariables={getActiveEnvironmentVariables().map((v) => v.key)}
+              projectAuth={activeProject?.authorization}
+              onOpenProjectSettings={() => {
+                setProjectOverviewTab("configuration");
+                setShowProjectOverview(true);
+              }}
+            />
+          ) : !activeRequest && !activeWorkflow && !activeWebSocket && !showProjectOverview ? (
             <WelcomePage
               onNewRequest={() => {
                 if (activeProject) {
@@ -1499,6 +1542,7 @@ function App() {
                   setShowNewProjectModal(true);
                 }
               }}
+              onNewWebSocket={handleNewWebSocket}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");
@@ -2108,6 +2152,7 @@ function App() {
                   setShowNewProjectModal(true);
                 }
               }}
+              onNewWebSocket={handleNewWebSocket}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");

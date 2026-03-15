@@ -217,15 +217,21 @@ function parsePostmanItem(item: PostmanItem): RequestFile {
   };
 }
 
+function isWebSocketItem(item: PostmanItem): boolean {
+  const req = item.request as any;
+  return !req?.method;
+}
+
 function parsePostmanItemGroup(group: PostmanItemGroup): Folder {
   const children: (Folder | RequestFile)[] = [];
 
   for (const child of group.item) {
     if (isItemGroup(child)) {
       children.push(parsePostmanItemGroup(child));
-    } else {
-      children.push(parsePostmanItem(child));
+    } else if (!isWebSocketItem(child as PostmanItem)) {
+      children.push(parsePostmanItem(child as PostmanItem));
     }
+    // WebSocket items are skipped — Postman WS format carries no structured data to import
   }
 
   return {
@@ -253,7 +259,7 @@ export function parsePostmanCollection(collection: any): Partial<Project> {
   for (const item of collection.item) {
     if (isItemGroup(item)) {
       root.children.push(parsePostmanItemGroup(item as PostmanItemGroup));
-    } else {
+    } else if (!isWebSocketItem(item as PostmanItem)) {
       root.children.push(parsePostmanItem(item as PostmanItem));
     }
   }

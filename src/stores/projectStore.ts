@@ -4,6 +4,7 @@ import type {
   Project,
   Folder,
   RequestFile,
+  WebSocketFile,
   TreeItem,
   SortMode,
   Environment,
@@ -103,6 +104,19 @@ function cloneTreeItem(item: TreeItem): TreeItem {
       response: null,
     };
   }
+  if (item.type === "websocket") {
+    return {
+      ...item,
+      id: generateId(),
+      name: `${item.name} (copy)`,
+      headers: { ...item.headers },
+      params: item.params ? JSON.parse(JSON.stringify(item.params)) : undefined,
+      headerItems: item.headerItems ? JSON.parse(JSON.stringify(item.headerItems)) : undefined,
+      cookies: item.cookies ? JSON.parse(JSON.stringify(item.cookies)) : undefined,
+      auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
+      messages: [],
+    };
+  }
   if (item.type === "workflow") {
     return {
       ...item,
@@ -160,6 +174,7 @@ interface ProjectState {
   activeProjectId: string | null;
   activeRequestId: string | null;
   activeWorkflowId: string | null;
+  activeWebSocketId: string | null;
   selectedItemId: string | null;
   unsavedChanges: Set<string>;
 
@@ -204,10 +219,17 @@ interface ProjectState {
 
   setActiveRequestId: (id: string | null) => void;
   setActiveWorkflowId: (id: string | null) => void;
+  setActiveWebSocketId: (id: string | null) => void;
   setSelectedItem: (id: string | null) => void;
   addRequest: (parentFolderId: string, name?: string) => string;
+  addWebSocket: (parentFolderId: string, name?: string) => string;
   addWorkflow: (parentFolderId: string, name?: string) => string;
   addFolder: (parentFolderId: string, name?: string) => string;
+  updateWebSocket: (
+    wsId: string,
+    updater: (ws: WebSocketFile) => WebSocketFile,
+  ) => void;
+  getActiveWebSocket: () => WebSocketFile | null;
   renameItem: (itemId: string, newName: string) => void;
   deleteItem: (itemId: string) => void;
   duplicateItem: (itemId: string) => void;
@@ -262,6 +284,7 @@ export const useProjectStore = create<ProjectState>()(
       activeProjectId: initialProject.id,
       activeRequestId: null,
       activeWorkflowId: null,
+      activeWebSocketId: null,
       selectedItemId: null,
       unsavedChanges: new Set(),
       clipboard: null,
@@ -499,13 +522,16 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       setActiveRequestId: (id) => {
-        set({ activeRequestId: id, activeWorkflowId: null });
+        set({ activeRequestId: id, activeWorkflowId: null, activeWebSocketId: null });
         if (id) {
           get().addToRecentRequests(id);
         }
       },
       setActiveWorkflowId: (id) => {
-        set({ activeWorkflowId: id, activeRequestId: null });
+        set({ activeWorkflowId: id, activeRequestId: null, activeWebSocketId: null });
+      },
+      setActiveWebSocketId: (id) => {
+        set({ activeWebSocketId: id, activeRequestId: null, activeWorkflowId: null });
       },
       setSelectedItem: (id) => set({ selectedItemId: id }),
 
@@ -542,6 +568,48 @@ export const useProjectStore = create<ProjectState>()(
           activeRequestId: newId,
         }));
         get().addToRecentRequests(newId);
+        return newId;
+      },
+
+      addWebSocket: (parentFolderId, name = "New WebSocket") => {
+        const newId = generateId();
+        const ws: WebSocketFile = {
+          id: newId,
+          type: "websocket",
+          name,
+          url: "",
+          messages: [],
+          headers: {},
+          params: [],
+          headerItems: [],
+          cookies: [],
+          auth: "None",
+          useInheritedAuth: true,
+        };
+
+        set((state) => ({
+          ...state,
+          projects: state.projects.map((p) => {
+            if (p.id !== state.activeProjectId) return p;
+
+            const addChildToFolder = (folder: Folder): Folder => {
+              if (folder.id === parentFolderId) {
+                return { ...folder, children: [...folder.children, ws] };
+              }
+              return {
+                ...folder,
+                children: folder.children.map((child) =>
+                  child.type === "folder" ? addChildToFolder(child) : child
+                ),
+              };
+            };
+
+            return { ...p, root: addChildToFolder(p.root) };
+          }),
+          activeWebSocketId: newId,
+          activeRequestId: null,
+          activeWorkflowId: null,
+        }));
         return newId;
       },
 
@@ -1022,6 +1090,37 @@ export const useProjectStore = create<ProjectState>()(
         return item?.type === "workflow" ? item : null;
       },
 
+      updateWebSocket: (wsId, updater) => {
+        set((state) => {
+          const project = state.projects.find(
+            (p) => p.id === state.activeProjectId,
+          );
+          if (!project) return state;
+          const item = findItem(project.root, wsId);
+          if (item && item.type === "websocket") {
+            const updated = updater(item);
+            Object.assign(item, updated);
+            const newUnsaved = new Set(state.unsavedChanges);
+            newUnsaved.add(wsId);
+            return {
+              projects: [...state.projects],
+              unsavedChanges: newUnsaved,
+            };
+          }
+          return state;
+        });
+      },
+
+      getActiveWebSocket: () => {
+        const state = get();
+        const project = state.projects.find(
+          (p) => p.id === state.activeProjectId,
+        );
+        if (!project || !state.activeWebSocketId) return null;
+        const item = findItem(project.root, state.activeWebSocketId);
+        return item?.type === "websocket" ? item : null;
+      },
+
       markSaved: (requestId) => {
         set((state) => {
           const newUnsaved = new Set(state.unsavedChanges);
@@ -1166,6 +1265,7 @@ export const useProjectStore = create<ProjectState>()(
         activeProjectId: state.activeProjectId,
         activeRequestId: state.activeRequestId,
         activeWorkflowId: state.activeWorkflowId,
+        activeWebSocketId: state.activeWebSocketId,
         selectedItemId: state.selectedItemId,
         selectedLanguage: state.selectedLanguage,
       }),

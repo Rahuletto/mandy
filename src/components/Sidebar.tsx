@@ -2,15 +2,21 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import type { Project, SortMode } from "../types/project";
 import { FileTree } from "./FileTree";
 import { ContextMenu, MenuItem, IconPicker, getIconComponent } from "./ui";
-import { FaPlus } from "react-icons/fa6";
+import { FaFolder, FaPlus } from "react-icons/fa6";
+import { TbPlugConnected, TbWorld } from "react-icons/tb";
+import { VscTypeHierarchySub } from "react-icons/vsc";
 
 interface SidebarProps {
   activeProject: Project | null;
   selectedItemId: string | null;
   unsavedIds: Set<string>;
-  onSelect: (id: string, type: "folder" | "request" | "workflow") => void;
+  onSelect: (
+    id: string,
+    type: "folder" | "request" | "workflow" | "websocket",
+  ) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
+  onAddWebSocket: (folderId: string) => void;
   onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -45,6 +51,7 @@ export function Sidebar({
   onSelect,
   onToggleFolder,
   onAddRequest,
+  onAddWebSocket,
   onAddWorkflow,
   onAddFolder,
   onRename,
@@ -117,18 +124,27 @@ export function Sidebar({
   const addMenuItems: MenuItem[] = activeProject
     ? [
         {
-          label: "New Request",
+          label: "REST Request",
+          icon: <TbWorld size={14} />,
           onClick: () => onAddRequest(activeProject.root.id),
         },
         {
-          label: "New Workflow",
-          onClick: () => onAddWorkflow(activeProject.root.id),
+          label: "WebSocket",
+          icon: <TbPlugConnected size={14} />,
+          onClick: () => onAddWebSocket(activeProject.root.id),
         },
         { label: "", onClick: () => {}, divider: true },
         {
+          label: "New Workflow",
+          icon: <VscTypeHierarchySub size={14} />,
+          onClick: () => onAddWorkflow(activeProject.root.id),
+        },
+        {
           label: "New Folder",
+          icon: <FaFolder size={12} />,
           onClick: () => onAddFolder(activeProject.root.id),
         },
+        { label: "", onClick: () => {}, divider: true },
         {
           label: "Import Collection",
           onClick: onImportClick,
@@ -207,6 +223,7 @@ export function Sidebar({
             onSelect={onSelect}
             onToggleFolder={onToggleFolder}
             onAddRequest={onAddRequest}
+            onAddWebSocket={onAddWebSocket}
             onAddWorkflow={onAddWorkflow}
             onAddFolder={onAddFolder}
             onRename={onRename}
