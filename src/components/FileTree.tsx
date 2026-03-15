@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { VscChevronRight, VscChevronDown, VscAdd } from "react-icons/vsc";
 import { FaFolder, FaFolderOpen, FaPlus } from "react-icons/fa6";
 import { HiDownload } from "react-icons/hi";
-import { TbPlugConnected, TbWorld } from "react-icons/tb";
+import { TbPlugConnected, TbWorld, TbBrandGraphql } from "react-icons/tb";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
 
 import { ContextMenu, MenuItem } from "./ui";
@@ -32,11 +32,12 @@ interface FileTreeProps {
   selectedItemId: string | null;
   onSelect: (
     id: string,
-    type: "folder" | "request" | "workflow" | "websocket",
+    type: "folder" | "request" | "workflow" | "websocket" | "graphql",
   ) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
   onAddWebSocket: (folderId: string) => void;
+  onAddGraphQL: (folderId: string) => void;
   onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -232,6 +233,13 @@ function SortableItem({
             className="inline-block align-[-2px] relative top-[1px]"
           />
         </span>
+      ) : item.type === "graphql" ? (
+        <span className="text-fuchsia-400 shrink-0 mr-2 w-10 text-right">
+          <TbBrandGraphql
+            size={14}
+            className="inline-block align-[-2px] relative top-[1px]"
+          />
+        </span>
       ) : (
         <span
           className="font-mono text-[11px] font-bold shrink-0 mr-2 w-10 text-right"
@@ -329,6 +337,11 @@ const DragOverlayItem = memo(function DragOverlayItem({
           <VscTypeHierarchySub size={16} className="shrink-0 text-accent" />
           <span className="truncate text-white/90">{item.name}</span>
         </>
+      ) : item.type === "graphql" ? (
+        <>
+          <TbBrandGraphql size={16} className="shrink-0 text-fuchsia-400" />
+          <span className="truncate text-white/90">{item.name}</span>
+        </>
       ) : (
         <>
           <span
@@ -354,6 +367,7 @@ export function FileTree({
   onToggleFolder,
   onAddRequest,
   onAddWebSocket,
+  onAddGraphQL,
   onAddWorkflow,
   onAddFolder,
   onRename,
@@ -710,6 +724,11 @@ export function FileTree({
           label: "WebSocket",
           icon: <TbPlugConnected size={14} />,
           onClick: () => onAddWebSocket(item.id),
+        },
+        {
+          label: "GraphQL",
+          icon: <TbBrandGraphql size={14} />,
+          onClick: () => onAddGraphQL(item.id),
         },
         { label: "", onClick: () => {}, divider: true },
         {

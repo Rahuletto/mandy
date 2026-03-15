@@ -5,6 +5,7 @@ import type {
   Folder,
   RequestFile,
   WebSocketFile,
+  GraphQLFile,
   TreeItem,
   SortMode,
   Environment,
@@ -117,6 +118,17 @@ function cloneTreeItem(item: TreeItem): TreeItem {
       messages: [],
     };
   }
+  if (item.type === "graphql") {
+    return {
+      ...item,
+      id: generateId(),
+      name: `${item.name} (copy)`,
+      headers: { ...item.headers },
+      headerItems: item.headerItems ? JSON.parse(JSON.stringify(item.headerItems)) : undefined,
+      auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
+      response: null,
+    };
+  }
   if (item.type === "workflow") {
     return {
       ...item,
@@ -175,6 +187,7 @@ interface ProjectState {
   activeRequestId: string | null;
   activeWorkflowId: string | null;
   activeWebSocketId: string | null;
+  activeGraphQLId: string | null;
   selectedItemId: string | null;
   unsavedChanges: Set<string>;
 
@@ -220,9 +233,11 @@ interface ProjectState {
   setActiveRequestId: (id: string | null) => void;
   setActiveWorkflowId: (id: string | null) => void;
   setActiveWebSocketId: (id: string | null) => void;
+  setActiveGraphQLId: (id: string | null) => void;
   setSelectedItem: (id: string | null) => void;
   addRequest: (parentFolderId: string, name?: string) => string;
   addWebSocket: (parentFolderId: string, name?: string) => string;
+  addGraphQL: (parentFolderId: string, name?: string) => string;
   addWorkflow: (parentFolderId: string, name?: string) => string;
   addFolder: (parentFolderId: string, name?: string) => string;
   updateWebSocket: (
@@ -230,6 +245,11 @@ interface ProjectState {
     updater: (ws: WebSocketFile) => WebSocketFile,
   ) => void;
   getActiveWebSocket: () => WebSocketFile | null;
+  updateGraphQL: (
+    gqlId: string,
+    updater: (gql: GraphQLFile) => GraphQLFile,
+  ) => void;
+  getActiveGraphQL: () => GraphQLFile | null;
   renameItem: (itemId: string, newName: string) => void;
   deleteItem: (itemId: string) => void;
   duplicateItem: (itemId: string) => void;
@@ -285,6 +305,7 @@ export const useProjectStore = create<ProjectState>()(
       activeRequestId: null,
       activeWorkflowId: null,
       activeWebSocketId: null,
+      activeGraphQLId: null,
       selectedItemId: null,
       unsavedChanges: new Set(),
       clipboard: null,
@@ -522,16 +543,19 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       setActiveRequestId: (id) => {
-        set({ activeRequestId: id, activeWorkflowId: null, activeWebSocketId: null });
+        set({ activeRequestId: id, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null });
         if (id) {
           get().addToRecentRequests(id);
         }
       },
       setActiveWorkflowId: (id) => {
-        set({ activeWorkflowId: id, activeRequestId: null, activeWebSocketId: null });
+        set({ activeWorkflowId: id, activeRequestId: null, activeWebSocketId: null, activeGraphQLId: null });
       },
       setActiveWebSocketId: (id) => {
-        set({ activeWebSocketId: id, activeRequestId: null, activeWorkflowId: null });
+        set({ activeWebSocketId: id, activeRequestId: null, activeWorkflowId: null, activeGraphQLId: null });
+      },
+      setActiveGraphQLId: (id) => {
+        set({ activeGraphQLId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null });
       },
       setSelectedItem: (id) => set({ selectedItemId: id }),
 
@@ -609,6 +633,49 @@ export const useProjectStore = create<ProjectState>()(
           activeWebSocketId: newId,
           activeRequestId: null,
           activeWorkflowId: null,
+        }));
+        return newId;
+      },
+
+      addGraphQL: (parentFolderId, name = "New GraphQL") => {
+        const newId = generateId();
+        const gql: GraphQLFile = {
+          id: newId,
+          type: "graphql",
+          name,
+          url: "",
+          query: "query {\n  \n}",
+          variables: "{}",
+          headers: { "Content-Type": "application/json" },
+          headerItems: [],
+          auth: "None",
+          useInheritedAuth: true,
+          response: null,
+        };
+
+        set((state) => ({
+          ...state,
+          projects: state.projects.map((p) => {
+            if (p.id !== state.activeProjectId) return p;
+
+            const addChildToFolder = (folder: Folder): Folder => {
+              if (folder.id === parentFolderId) {
+                return { ...folder, children: [...folder.children, gql] };
+              }
+              return {
+                ...folder,
+                children: folder.children.map((child) =>
+                  child.type === "folder" ? addChildToFolder(child) : child
+                ),
+              };
+            };
+
+            return { ...p, root: addChildToFolder(p.root) };
+          }),
+          activeGraphQLId: newId,
+          activeRequestId: null,
+          activeWorkflowId: null,
+          activeWebSocketId: null,
         }));
         return newId;
       },
@@ -1121,6 +1188,37 @@ export const useProjectStore = create<ProjectState>()(
         return item?.type === "websocket" ? item : null;
       },
 
+      updateGraphQL: (gqlId, updater) => {
+        set((state) => {
+          const project = state.projects.find(
+            (p) => p.id === state.activeProjectId,
+          );
+          if (!project) return state;
+          const item = findItem(project.root, gqlId);
+          if (item && item.type === "graphql") {
+            const updated = updater(item);
+            Object.assign(item, updated);
+            const newUnsaved = new Set(state.unsavedChanges);
+            newUnsaved.add(gqlId);
+            return {
+              projects: [...state.projects],
+              unsavedChanges: newUnsaved,
+            };
+          }
+          return state;
+        });
+      },
+
+      getActiveGraphQL: () => {
+        const state = get();
+        const project = state.projects.find(
+          (p) => p.id === state.activeProjectId,
+        );
+        if (!project || !state.activeGraphQLId) return null;
+        const item = findItem(project.root, state.activeGraphQLId);
+        return item?.type === "graphql" ? item : null;
+      },
+
       markSaved: (requestId) => {
         set((state) => {
           const newUnsaved = new Set(state.unsavedChanges);
@@ -1266,6 +1364,7 @@ export const useProjectStore = create<ProjectState>()(
         activeRequestId: state.activeRequestId,
         activeWorkflowId: state.activeWorkflowId,
         activeWebSocketId: state.activeWebSocketId,
+        activeGraphQLId: state.activeGraphQLId,
         selectedItemId: state.selectedItemId,
         selectedLanguage: state.selectedLanguage,
       }),

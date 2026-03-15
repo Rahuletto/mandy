@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { BiFile } from "react-icons/bi";
 import { FaFolder } from "react-icons/fa6";
 import {
@@ -6,6 +6,7 @@ import {
   TbPlus,
   TbWorld,
   TbPlugConnected,
+  TbBrandGraphql,
 } from "react-icons/tb";
 import { Logo } from "./ui";
 import { getShortMethod } from "../utils/methodConstants";
@@ -13,6 +14,7 @@ import { getShortMethod } from "../utils/methodConstants";
 interface WelcomePageProps {
   onNewRequest: () => void;
   onNewWebSocket: () => void;
+  onNewGraphQL: () => void;
   onNewFolder: () => void;
   onImportClick: () => void;
   recentRequests: Array<{
@@ -47,6 +49,7 @@ const getMethodColorTw = (method: string) => {
 export const WelcomePage: React.FC<WelcomePageProps> = ({
   onNewRequest,
   onNewWebSocket,
+  onNewGraphQL,
   onNewFolder,
   onImportClick,
   recentRequests,
@@ -57,7 +60,51 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
   onNewProject,
 }) => {
   const [showProjectSelector, setShowProjectSelector] = useState(false);
+  const [showRequestTypes, setShowRequestTypes] = useState(false);
   const activeProject = projects.find((p) => p.id === activeProjectId);
+  const requestDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showRequestTypes) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        requestDropdownRef.current &&
+        !requestDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowRequestTypes(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowRequestTypes(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [showRequestTypes]);
+
+  const requestTypes = [
+    {
+      label: "REST Request",
+      icon: <TbWorld size={16} />,
+      color: "text-emerald-400",
+      onClick: onNewRequest,
+    },
+    {
+      label: "WebSocket",
+      icon: <TbPlugConnected size={16} />,
+      color: "text-sky-400",
+      onClick: onNewWebSocket,
+    },
+    {
+      label: "GraphQL",
+      icon: <TbBrandGraphql size={16} />,
+      color: "text-fuchsia-400",
+      onClick: onNewGraphQL,
+    },
+  ];
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-white/30 select-none font-sans overflow-auto py-20 h-full">
@@ -122,40 +169,68 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 
       <div className="w-full max-w-[320px] space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
         <div className="space-y-3">
-          <h2 className=" text-white/40 text-xs">New</h2>
+          <h2 className="text-white/40 text-xs">New</h2>
           <div className="space-y-3.5">
-            <button
-              onClick={onNewRequest}
-              className="group flex cursor-pointer items-center gap-3 text-white opacity-50 hover:opacity-80 transition-all duration-200 text-left w-full"
-            >
-              <div className="flex items-center justify-center w-4 h-4">
-                <TbWorld size={18} />
-              </div>
-              <span className="text-[14px] font-medium">REST Request</span>
-            </button>
-            <button
-              onClick={onNewWebSocket}
-              className="group flex cursor-pointer items-center gap-3 text-white opacity-50 hover:opacity-80 transition-all duration-200 text-left w-full"
-            >
-              <div className="flex items-center justify-center w-4 h-4">
-                <TbPlugConnected size={18} />
-              </div>
-              <span className="text-[14px] font-medium">WebSocket</span>
-            </button>
+            <div className="relative" ref={requestDropdownRef}>
+              <button
+                onClick={() => setShowRequestTypes(!showRequestTypes)}
+                className={`group flex cursor-pointer items-center gap-3 text-white transition-all duration-200 text-left w-full ${
+                  showRequestTypes
+                    ? "opacity-90"
+                    : "opacity-50 hover:opacity-80"
+                }`}
+              >
+                <div className="flex items-center justify-center w-4 h-4">
+                  <TbPlus size={18} />
+                </div>
+                <span className="text-[14px] font-medium">New Request</span>
+                <TbChevronDown
+                  size={12}
+                  className={`ml-auto opacity-30 transition-transform duration-200 ${showRequestTypes ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {showRequestTypes && (
+                <div className="absolute min-w-[200px] z-50 mt-2 ml-7 bg-card border border-border rounded-xl shadow-2xl py-1.5 animate-in fade-in slide-in-from-top-2 zoom-in-95 duration-200 origin-top">
+                  {requestTypes.map((rt) => (
+                    <button
+                      key={rt.label}
+                      onClick={() => {
+                        rt.onClick();
+                        setShowRequestTypes(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <span className={rt.color}>{rt.icon}</span>
+                      <span className="text-[13px] font-medium">
+                        {rt.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button
               onClick={onNewFolder}
-              className="group flex items-center gap-3  cursor-pointer text-white opacity-50 hover:opacity-80 transition-all duration-200 text-left w-full"
+              className={`group flex items-center gap-3 cursor-pointer text-white transition-all duration-200 text-left w-full ${
+                showRequestTypes
+                  ? "opacity-20 pointer-events-none"
+                  : "opacity-50 hover:opacity-80"
+              }`}
             >
               <div className="flex items-center justify-center w-4 h-4">
                 <FaFolder size={14} />
               </div>
-              <span className="text-[14px] font-medium">
-                Create a new folder
-              </span>
+              <span className="text-[14px] font-medium">New Folder</span>
             </button>
             <button
               onClick={onImportClick}
-              className="group flex items-center gap-3 text-white opacity-50 hover:opacity-80 cursor-pointer transition-all duration-200 text-left w-full"
+              className={`group flex items-center gap-3 text-white cursor-pointer transition-all duration-200 text-left w-full ${
+                showRequestTypes
+                  ? "opacity-20 pointer-events-none"
+                  : "opacity-50 hover:opacity-80"
+              }`}
             >
               <div className="flex items-center justify-center w-4 h-4">
                 <BiFile size={16} />
@@ -165,8 +240,12 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
           </div>
         </div>
 
-        <div className="space-y-5">
-          <h2 className=" text-white/40 text-xs">Recents</h2>
+        <div
+          className={`space-y-5 transition-opacity duration-200 ${
+            showRequestTypes ? "opacity-20 pointer-events-none" : ""
+          }`}
+        >
+          <h2 className="text-white/40 text-xs">Recents</h2>
           <div className="space-y-3.5">
             {recentRequests.length > 0 ? (
               recentRequests.slice(0, 5).map((req) => (

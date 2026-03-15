@@ -3,7 +3,7 @@ import type { Project, SortMode } from "../types/project";
 import { FileTree } from "./FileTree";
 import { ContextMenu, MenuItem, IconPicker, getIconComponent } from "./ui";
 import { FaFolder, FaPlus } from "react-icons/fa6";
-import { TbPlugConnected, TbWorld } from "react-icons/tb";
+import { TbPlugConnected, TbWorld, TbBrandGraphql } from "react-icons/tb";
 import { VscTypeHierarchySub } from "react-icons/vsc";
 
 interface SidebarProps {
@@ -12,11 +12,12 @@ interface SidebarProps {
   unsavedIds: Set<string>;
   onSelect: (
     id: string,
-    type: "folder" | "request" | "workflow" | "websocket",
+    type: "folder" | "request" | "workflow" | "websocket" | "graphql",
   ) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
   onAddWebSocket: (folderId: string) => void;
+  onAddGraphQL: (folderId: string) => void;
   onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -52,6 +53,7 @@ export function Sidebar({
   onToggleFolder,
   onAddRequest,
   onAddWebSocket,
+  onAddGraphQL,
   onAddWorkflow,
   onAddFolder,
   onRename,
@@ -132,6 +134,11 @@ export function Sidebar({
           label: "WebSocket",
           icon: <TbPlugConnected size={14} />,
           onClick: () => onAddWebSocket(activeProject.root.id),
+        },
+        {
+          label: "GraphQL",
+          icon: <TbBrandGraphql size={14} />,
+          onClick: () => onAddGraphQL(activeProject.root.id),
         },
         { label: "", onClick: () => {}, divider: true },
         {
@@ -224,6 +231,7 @@ export function Sidebar({
             onToggleFolder={onToggleFolder}
             onAddRequest={onAddRequest}
             onAddWebSocket={onAddWebSocket}
+            onAddGraphQL={onAddGraphQL}
             onAddWorkflow={onAddWorkflow}
             onAddFolder={onAddFolder}
             onRename={onRename}

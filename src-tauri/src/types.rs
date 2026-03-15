@@ -64,7 +64,7 @@ pub struct Cookie {
 #[derive(Serialize, Deserialize, Type, Clone, Default)]
 pub enum HttpProtocol {
     #[default]
-    Tcp,   // HTTP/1.1 or HTTP/2 over TCP
+    Tcp,
 }
 
 #[derive(Serialize, Deserialize, Type, Clone)]
@@ -113,12 +113,11 @@ pub struct RedirectEntry {
 #[derive(Serialize, Deserialize, Type, Clone)]
 pub struct TimingInfo {
     pub total_ms: f64,
-    
     pub dns_lookup_ms: f64,
     pub tcp_handshake_ms: f64,
     pub tls_handshake_ms: f64,
-    pub transfer_start_ms: f64,  
-    pub ttfb_ms: f64,           
+    pub transfer_start_ms: f64,
+    pub ttfb_ms: f64,
     pub content_download_ms: f64,
 }
 
@@ -144,7 +143,7 @@ pub struct ApiResponse {
     pub http_version: String,
     pub available_renderers: Vec<ResponseRenderer>,
     pub detected_content_type: Option<String>,
-    pub protocol_used: String, 
+    pub protocol_used: String,
     pub error: Option<String>,
 }
 
@@ -166,4 +165,89 @@ impl Default for ApiRequest {
             protocol: None,
         }
     }
+}
+
+// ─── WebSocket types ────────────────────────────────────────────────────────
+
+/// Sent from the frontend to open a new WebSocket connection.
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct WsConnectRequest {
+    /// Unique connection ID chosen by the caller (e.g. the WebSocketFile id).
+    pub connection_id: String,
+    /// The WebSocket URL to connect to (ws:// or wss://).
+    pub url: String,
+    /// Optional extra headers to include in the upgrade handshake.
+    pub headers: HashMap<String, String>,
+    /// Optional sub-protocols.
+    pub protocols: Vec<String>,
+}
+
+/// Response returned synchronously from `ws_connect`.
+#[derive(Serialize, Deserialize, Type)]
+pub struct WsConnectResponse {
+    pub connection_id: String,
+    /// The exact URL that was dialled after query-param expansion.
+    pub url: String,
+    /// HTTP status of the upgrade response (101 on success).
+    pub status_code: u16,
+    pub status_text: String,
+    /// Response headers from the HTTP upgrade handshake.
+    pub response_headers: HashMap<String, String>,
+    pub error: Option<String>,
+}
+
+/// Pushed as a Tauri event (`ws://message/<connection_id>`) for every frame
+/// the server sends after the connection is established.
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct WsIncomingMessage {
+    pub connection_id: String,
+    pub id: String,
+    pub data: String,
+    pub binary: bool,
+    pub timestamp_ms: f64,
+}
+
+/// Pushed as a Tauri event (`ws://closed/<connection_id>`) when the connection
+/// is terminated (either side).
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct WsClosedEvent {
+    pub connection_id: String,
+    pub code: u16,
+    pub reason: String,
+}
+
+/// Sent from the frontend to `ws_send` to push a frame to the server.
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct WsSendRequest {
+    pub connection_id: String,
+    pub data: String,
+    pub binary: bool,
+}
+
+// ─── GraphQL types ──────────────────────────────────────────────────────────
+
+// ─── Generic URL fetch ───────────────────────────────────────────────────────
+
+/// Response from a raw URL GET fetch (used by ImportModal for OpenAPI URLs).
+#[derive(Serialize, Deserialize, Type)]
+pub struct FetchUrlResponse {
+    pub status: u16,
+    pub body: String,
+}
+
+// ─── GraphQL types ──────────────────────────────────────────────────────────
+
+/// Request to fetch (introspect) a GraphQL schema.
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct GraphQLIntrospectRequest {
+    pub url: String,
+    pub headers: HashMap<String, String>,
+}
+
+/// Result of a GraphQL introspection fetch.
+#[derive(Serialize, Deserialize, Type)]
+pub struct GraphQLIntrospectResponse {
+    /// Raw introspection JSON (the `data` field from the response).
+    pub schema_json: Option<String>,
+    pub error: Option<String>,
 }

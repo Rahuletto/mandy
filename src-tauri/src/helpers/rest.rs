@@ -7,7 +7,7 @@ use url::Url;
 
 use crate::types::{
     ApiKeyLocation, ApiRequest, ApiResponse, AuthType, BodyType, Cookie,
-    Methods, ResponseRenderer, SizeInfo, TimingInfo,
+    FetchUrlResponse, Methods, ResponseRenderer, SizeInfo, TimingInfo,
 };
 
 fn method_to_curl_string(method: &Methods) -> &'static str {
@@ -552,8 +552,78 @@ fn uuid_simple() -> String {
 #[tauri::command]
 #[specta::specta]
 pub async fn rest_request(req: ApiRequest) -> Result<ApiResponse, String> {
-
     tokio::task::spawn_blocking(move || execute_curl_request(req))
+        .await
+        .map_err(|e| format!("Task error: {}", e))?
+}
+
+fn execute_fetch_url(url: String) -> Result<FetchUrlResponse, String> {
+    let mut easy = Easy::new();
+
+    easy.url(&url).map_err(|e| format!("URL error: {}", e))?;
+    easy.get(true).map_err(|e| e.to_string())?;
+    easy.timeout(Duration::from_secs(30))
+        .map_err(|e| e.to_string())?;
+    easy.follow_location(true).map_err(|e| e.to_string())?;
+    easy.max_redirections(5).map_err(|e| e.to_string())?;
+    easy.ssl_verify_peer(true).map_err(|e| e.to_string())?;
+    easy.ssl_verify_host(true).map_err(|e| e.to_string())?;
+    easy.http_version(HttpVersion::V2TLS)
+        .map_err(|e| e.to_string())?;
+
+    let mut response_body: Vec<u8> = Vec::new();
+
+    {
+        let mut transfer = easy.transfer();
+        transfer
+            .write_function(|data| {
+                response_body.extend_from_slice(data);
+                Ok(data.len())
+            })
+            .map_err(|e| e.to_string())?;
+        transfer.perform().map_err(|e| {
+            let mut msg = String::new();
+            if e.is_couldnt_resolve_host() {
+                msg.push_str("Could not resolve host. ");
+            }
+            if e.is_couldnt_connect() {
+                msg.push_str("Could not connect. ");
+            }
+            if e.is_operation_timedout() {
+                msg.push_str("Request timed out. ");
+            }
+            msg.push_str(&e.to_string());
+            msg
+        })?;
+    }
+
+    let status = easy.response_code().unwrap_or(0) as u16;
+
+    if status == 0 {
+        return Err("No response received from server".to_string());
+    }
+
+    if status < 200 || status >= 300 {
+        return Err(format!(
+            "HTTP {}: {}",
+            status,
+            String::from_utf8_lossy(&response_body)
+        ));
+    }
+
+    let body = String::from_utf8(response_body)
+        .map_err(|_| "Response body is not valid UTF-8".to_string())?;
+
+    Ok(FetchUrlResponse { status, body })
+}
+
+/// Fetch a raw URL and return the response body as a string.
+/// Used by the ImportModal to download remote OpenAPI specs via Rust
+/// instead of a browser fetch() call.
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_url(url: String) -> Result<FetchUrlResponse, String> {
+    tokio::task::spawn_blocking(move || execute_fetch_url(url))
         .await
         .map_err(|e| format!("Task error: {}", e))?
 }

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { TbPlugConnected } from "react-icons/tb";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import type { AuthType } from "../../bindings";
 import type { WebSocketFile, WebSocketKeyValue } from "../../types/project";
@@ -115,8 +116,8 @@ export function WebSocketEditor({
     <div className="flex flex-col h-full">
       <div className="flex gap-4 border-b border-text/15 p-4">
         <div className="flex-1 flex items-center bg-inputbox rounded-lg overflow-hidden">
-          <span className="px-4 py-2.5 text-sm font-bold font-mono text-emerald-400">
-            WS
+          <span className="px-4 py-2.5 flex items-center text-emerald-400">
+            <TbPlugConnected size={18} />
           </span>
           <div className="w-px h-5 bg-white/10" />
           <input
@@ -183,10 +184,7 @@ export function WebSocketEditor({
             )}
 
             {activeTab === "message" && (
-              <WebSocketMessageComposer
-                status={status}
-                onSend={sendMessage}
-              />
+              <WebSocketMessageComposer status={status} onSend={sendMessage} />
             )}
 
             {activeTab === "params" && (
@@ -206,9 +204,7 @@ export function WebSocketEditor({
             {activeTab === "authorization" && (
               <AuthEditor
                 auth={ws.auth || "None"}
-                onChange={(auth) =>
-                  onUpdate((prev) => ({ ...prev, auth }))
-                }
+                onChange={(auth) => onUpdate((prev) => ({ ...prev, auth }))}
                 availableVariables={availableVariables}
                 projectAuth={projectAuth}
                 isInherited={ws.useInheritedAuth ?? true}

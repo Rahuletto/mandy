@@ -12,6 +12,72 @@ async restRequest(req: ApiRequest) : Promise<Result<ApiResponse, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Fetch a raw URL and return the response body as a string.
+ * Used by the ImportModal to download remote OpenAPI specs via Rust
+ * instead of a browser fetch() call.
+ */
+async fetchUrl(url: string) : Promise<Result<FetchUrlResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("fetch_url", { url }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Establish a new WebSocket connection.
+ * 
+ * - Spawns a background task that owns the socket and forwards incoming frames
+ * as Tauri events (`ws://message/<connection_id>`).
+ * - Returns synchronously once the HTTP upgrade handshake completes (or fails).
+ * - A channel sender is stored in `registry` so `ws_send` / `ws_disconnect`
+ * can reach the background task.
+ */
+async wsConnect(req: WsConnectRequest) : Promise<Result<WsConnectResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ws_connect", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Send a text or binary frame to an existing WebSocket connection.
+ */
+async wsSend(req: WsSendRequest) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ws_send", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Close an active WebSocket connection.
+ */
+async wsDisconnect(connectionId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ws_disconnect", { connectionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Fetch and return a GraphQL server's introspection schema.
+ * 
+ * This runs the full introspection query via the Rust/curl stack so the
+ * frontend never makes a direct network request.
+ */
+async graphqlIntrospect(req: GraphQLIntrospectRequest) : Promise<Result<GraphQLIntrospectResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("graphql_introspect", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -31,6 +97,22 @@ export type ApiResponse = { status: number; status_text: string; headers: Partia
 export type AuthType = "None" | { Basic: { username: string; password: string } } | { Bearer: { token: string } } | { ApiKey: { key: string; value: string; add_to: ApiKeyLocation } }
 export type BodyType = "None" | { Raw: { content: string; content_type: string | null } } | { FormUrlEncoded: { fields: Partial<{ [key in string]: string }> } } | { Multipart: { fields: MultipartField[] } } | { Binary: { data: number[]; filename: string | null } }
 export type Cookie = { name: string; value: string; domain: string | null; path: string | null; expires: string | null; http_only: boolean | null; secure: boolean | null }
+/**
+ * Response from a raw URL GET fetch (used by ImportModal for OpenAPI URLs).
+ */
+export type FetchUrlResponse = { status: number; body: string }
+/**
+ * Request to fetch (introspect) a GraphQL schema.
+ */
+export type GraphQLIntrospectRequest = { url: string; headers: Partial<{ [key in string]: string }> }
+/**
+ * Result of a GraphQL introspection fetch.
+ */
+export type GraphQLIntrospectResponse = { 
+/**
+ * Raw introspection JSON (the `data` field from the response).
+ */
+schema_json: string | null; error: string | null }
 export type HttpProtocol = "Tcp"
 export type Methods = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS" | "TRACE" | "CONNECT"
 export type MultipartField = { name: string; value: MultipartValue }
@@ -40,6 +122,56 @@ export type RedirectEntry = { url: string; status: number }
 export type ResponseRenderer = "Raw" | "Json" | "Xml" | "Html" | "HtmlPreview" | "Image" | "Audio" | "Video" | "Pdf"
 export type SizeInfo = { headers_bytes: number; body_bytes: number; total_bytes: number }
 export type TimingInfo = { total_ms: number; dns_lookup_ms: number; tcp_handshake_ms: number; tls_handshake_ms: number; transfer_start_ms: number; ttfb_ms: number; content_download_ms: number }
+/**
+ * Pushed as a Tauri event (`ws://closed/<connection_id>`) when the connection
+ * is terminated (either side).
+ */
+export type WsClosedEvent = { connection_id: string; code: number; reason: string }
+/**
+ * Sent from the frontend to open a new WebSocket connection.
+ */
+export type WsConnectRequest = { 
+/**
+ * Unique connection ID chosen by the caller (e.g. the WebSocketFile id).
+ */
+connection_id: string; 
+/**
+ * The WebSocket URL to connect to (ws:// or wss://).
+ */
+url: string; 
+/**
+ * Optional extra headers to include in the upgrade handshake.
+ */
+headers: Partial<{ [key in string]: string }>; 
+/**
+ * Optional sub-protocols.
+ */
+protocols: string[] }
+/**
+ * Response returned synchronously from `ws_connect`.
+ */
+export type WsConnectResponse = { connection_id: string; 
+/**
+ * The exact URL that was dialled after query-param expansion.
+ */
+url: string; 
+/**
+ * HTTP status of the upgrade response (101 on success).
+ */
+status_code: number; status_text: string; 
+/**
+ * Response headers from the HTTP upgrade handshake.
+ */
+response_headers: Partial<{ [key in string]: string }>; error: string | null }
+/**
+ * Pushed as a Tauri event (`ws://message/<connection_id>`) for every frame
+ * the server sends after the connection is established.
+ */
+export type WsIncomingMessage = { connection_id: string; id: string; data: string; binary: boolean; timestamp_ms: number }
+/**
+ * Sent from the frontend to `ws_send` to push a frame to the server.
+ */
+export type WsSendRequest = { connection_id: string; data: string; binary: boolean }
 
 /** tauri-specta globals **/
 

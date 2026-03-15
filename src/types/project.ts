@@ -64,6 +64,32 @@ export interface WebSocketMessage {
   };
 }
 
+export interface GraphQLKeyValue {
+  id: string;
+  key: string;
+  value: string;
+  description: string;
+  enabled: boolean;
+}
+
+export interface GraphQLFile {
+  id: string;
+  type: "graphql";
+  name: string;
+  description?: string;
+  url: string;
+  query: string;
+  variables: string;
+  headers: Record<string, string>;
+  headerItems?: GraphQLKeyValue[];
+  auth?: import("../bindings").AuthType;
+  useInheritedAuth?: boolean;
+  schema?: string;
+  schemaJSON?: string;
+  schemaLastFetched?: number;
+  response: ApiResponse | null;
+}
+
 export interface RecentRequest {
   requestId: string;
   name: string;
@@ -76,7 +102,7 @@ export interface Folder {
   id: string;
   type: "folder";
   name: string;
-  children: (Folder | RequestFile | WorkflowFile | WebSocketFile)[];
+  children: (Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile)[];
   expanded?: boolean;
 }
 
@@ -94,6 +120,6 @@ export interface Project {
   recentRequests: RecentRequest[];
 }
 
-export type TreeItem = Folder | RequestFile | WorkflowFile | WebSocketFile;
+export type TreeItem = Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile;
 
 export type SortMode = "manual" | "method" | "alphabetical";

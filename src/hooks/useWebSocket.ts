@@ -1,8 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { commands } from "../bindings";
+import type { WsIncomingMessage, WsClosedEvent } from "../bindings";
 import type { WebSocketFile, WebSocketMessage } from "../types/project";
 import { useToastStore } from "../stores/toastStore";
+import { playSuccessChime } from "../utils/sounds";
 
-export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
+export type ConnectionStatus =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "error";
 
 interface UseWebSocketOptions {
   ws: WebSocketFile;
@@ -12,15 +20,33 @@ interface UseWebSocketOptions {
 export function useWebSocket({ ws, onUpdate }: UseWebSocketOptions) {
   const { addToast } = useToastStore();
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
-  const socketRef = useRef<WebSocket | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Track the active connection_id so we can send/disconnect to the right session
+  const connectionIdRef = useRef<string | null>(null);
+
+  // Tauri event unlisteners — cleaned up on disconnect or unmount
+  const unlistenMsgRef = useRef<UnlistenFn | null>(null);
+  const unlistenCloseRef = useRef<UnlistenFn | null>(null);
+
+  // Clean up event listeners without closing the socket (used internally)
+  const cleanupListeners = useCallback(() => {
+    unlistenMsgRef.current?.();
+    unlistenMsgRef.current = null;
+    unlistenCloseRef.current?.();
+    unlistenCloseRef.current = null;
+  }, []);
+
+  // Disconnect and clean up everything on unmount
   useEffect(() => {
     return () => {
-      socketRef.current?.close();
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      const id = connectionIdRef.current;
+      if (id) {
+        commands.wsDisconnect(id).catch(() => {});
+        connectionIdRef.current = null;
+      }
+      cleanupListeners();
     };
-  }, []);
+  }, [cleanupListeners]);
 
   const addMessage = useCallback(
     (msg: WebSocketMessage) => {
@@ -30,108 +56,174 @@ export function useWebSocket({ ws, onUpdate }: UseWebSocketOptions) {
   );
 
   const connect = useCallback(
-    (url: string) => {
+    async (url: string) => {
       if (!url) return;
+
+      // If already connected, disconnect first
+      if (connectionIdRef.current) {
+        await commands.wsDisconnect(connectionIdRef.current).catch(() => {});
+        cleanupListeners();
+        connectionIdRef.current = null;
+      }
+
       setStatus("connecting");
 
-      try {
-        const socket = new WebSocket(url);
-        socketRef.current = socket;
+      // Build the connection ID from the ws file id so it's stable and unique
+      const connectionId = ws.id;
 
-        timeoutRef.current = setTimeout(() => {
-          if (socket.readyState !== WebSocket.OPEN) {
-            socket.close();
-            socketRef.current = null;
-            setStatus("error");
-            addToast("Connection timed out", "error");
-          }
-        }, 10000);
+      // Collect enabled headers
+      const headers: Record<string, string> = {};
+      for (const item of ws.headerItems || []) {
+        if (item.enabled && item.key) headers[item.key] = item.value;
+      }
+      for (const [k, v] of Object.entries(ws.headers || {})) {
+        headers[k] = v;
+      }
 
-        socket.onopen = () => {
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          setStatus("connected");
+      // Register Tauri event listeners BEFORE calling ws_connect so we
+      // never miss a message that arrives right after the handshake.
+      const msgEventName = `ws://message/${connectionId}`;
+      const closeEventName = `ws://closed/${connectionId}`;
 
-          const enabledHeaders: Record<string, string> = {};
-          for (const item of ws.headerItems || []) {
-            if (item.enabled && item.key) enabledHeaders[item.key] = item.value;
-          }
-          for (const [k, v] of Object.entries(ws.headers || {})) {
-            enabledHeaders[k] = v;
-          }
-
+      const unlistenMsg = await listen<WsIncomingMessage>(
+        msgEventName,
+        (event) => {
+          const { id, data, binary, timestamp_ms } = event.payload;
           addMessage({
-            id: crypto.randomUUID(),
-            direction: "system",
-            data: `Connected to ${url}`,
-            timestamp: Date.now(),
-            type: "connection",
-            handshake: {
-              requestUrl: url.replace(/^ws(s?):/, "http$1:"),
-              requestMethod: "GET",
-              statusCode: "101 Switching Protocols",
-              requestHeaders: {
-                Connection: "Upgrade",
-                Upgrade: "websocket",
-                "Sec-WebSocket-Version": "13",
-                ...enabledHeaders,
-              },
-              responseHeaders: {
-                Connection: "Upgrade",
-                Upgrade: "websocket",
-              },
-            },
-          });
-        };
-
-        socket.onmessage = (event) => {
-          addMessage({
-            id: crypto.randomUUID(),
+            id,
             direction: "receive",
-            data: String(event.data),
-            timestamp: Date.now(),
-            type: "text",
+            data,
+            timestamp: timestamp_ms,
+            type: binary ? "binary" : "text",
           });
-        };
+        },
+      );
+      unlistenMsgRef.current = unlistenMsg;
 
-        socket.onerror = () => {
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          setStatus("error");
-          addToast("Failed to connect to WebSocket", "error");
-        };
+      const unlistenClose = await listen<WsClosedEvent>(
+        closeEventName,
+        (event) => {
+          const { code, reason } = event.payload;
+          cleanupListeners();
+          connectionIdRef.current = null;
+          setStatus(code === 1000 || code === 1001 ? "disconnected" : "error");
 
-        socket.onclose = (event) => {
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          setStatus("disconnected");
-          socketRef.current = null;
-          if (event.code !== 1000) {
-            addToast(`WebSocket disconnected (code ${event.code})`, "error");
+          if (code !== 1000 && code !== 1001) {
+            addToast(`WebSocket disconnected (code ${code})`, "error");
           }
+
           addMessage({
             id: crypto.randomUUID(),
             direction: "system",
-            data: `Disconnected${event.reason ? `: ${event.reason}` : ""} (code ${event.code})`,
+            data: `Disconnected${reason ? `: ${reason}` : ""} (code ${code})`,
             timestamp: Date.now(),
             type: "close",
           });
-        };
-      } catch {
+        },
+      );
+      unlistenCloseRef.current = unlistenClose;
+
+      // Dial — this returns once the HTTP upgrade handshake is complete
+      const result = await commands.wsConnect({
+        connection_id: connectionId,
+        url,
+        headers,
+        protocols: ws.protocols ?? [],
+      });
+
+      if (result.status === "error") {
+        cleanupListeners();
         setStatus("error");
-        addToast("Failed to connect to WebSocket", "error");
+        addToast(`Failed to connect: ${result.error}`, "error");
+        return;
       }
+
+      const resp = result.data;
+
+      if (resp.error) {
+        cleanupListeners();
+        setStatus("error");
+        addToast(`Failed to connect: ${resp.error}`, "error");
+        return;
+      }
+
+      connectionIdRef.current = connectionId;
+      setStatus("connected");
+      playSuccessChime();
+
+      // Build the system connection message with real handshake data from Rust
+      const requestHeaders: Record<string, string> = {
+        Connection: "Upgrade",
+        Upgrade: "websocket",
+        "Sec-WebSocket-Version": "13",
+        ...headers,
+      };
+
+      const responseHeaders: Record<string, string> = {};
+      for (const [k, v] of Object.entries(resp.response_headers ?? {})) {
+        if (v != null) responseHeaders[k] = v;
+      }
+
+      addMessage({
+        id: crypto.randomUUID(),
+        direction: "system",
+        data: `Connected to ${resp.url}`,
+        timestamp: Date.now(),
+        type: "connection",
+        handshake: {
+          requestUrl: resp.url.replace(/^ws(s?):/, "http$1:"),
+          requestMethod: "GET",
+          statusCode: `${resp.status_code} ${resp.status_text}`,
+          requestHeaders,
+          responseHeaders,
+        },
+      });
     },
-    [addMessage, addToast, ws.headers, ws.headerItems],
+    [
+      ws.id,
+      ws.headers,
+      ws.headerItems,
+      ws.protocols,
+      addMessage,
+      addToast,
+      cleanupListeners,
+    ],
   );
 
-  const disconnect = useCallback(() => {
-    socketRef.current?.close();
-    socketRef.current = null;
+  const disconnect = useCallback(async () => {
+    const id = connectionIdRef.current;
+    if (!id) return;
+
+    await commands.wsDisconnect(id).catch(() => {});
+    cleanupListeners();
+    connectionIdRef.current = null;
     setStatus("disconnected");
-  }, []);
+
+    addMessage({
+      id: crypto.randomUUID(),
+      direction: "system",
+      data: "Disconnected",
+      timestamp: Date.now(),
+      type: "close",
+    });
+  }, [addMessage, cleanupListeners]);
 
   const sendMessage = useCallback(
-    (data: string) => {
-      if (!data.trim() || !socketRef.current) return;
-      socketRef.current.send(data);
+    async (data: string) => {
+      const id = connectionIdRef.current;
+      if (!data.trim() || !id) return;
+
+      const result = await commands.wsSend({
+        connection_id: id,
+        data,
+        binary: false,
+      });
+
+      if (result.status === "error") {
+        addToast(`Failed to send message: ${result.error}`, "error");
+        return;
+      }
+
       addMessage({
         id: crypto.randomUUID(),
         direction: "send",
@@ -140,7 +232,7 @@ export function useWebSocket({ ws, onUpdate }: UseWebSocketOptions) {
         type: "text",
       });
     },
-    [addMessage],
+    [addMessage, addToast],
   );
 
   const clearMessages = useCallback(() => {

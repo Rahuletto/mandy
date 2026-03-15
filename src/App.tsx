@@ -20,6 +20,7 @@ import { CodeViewer } from "./components/CodeMirror";
 import { BodyEditor } from "./components/editors/BodyEditor";
 import { AuthEditor } from "./components/editors/AuthEditor";
 import { WebSocketEditor } from "./components/editors/WebSocketEditor";
+import { GraphQLEditor } from "./components/editors/GraphQLEditor";
 import { Sidebar } from "./components/Sidebar";
 import {
   Dropdown,
@@ -85,6 +86,7 @@ function App() {
     getActiveEnvironmentVariables,
     addRequest,
     addWebSocket,
+    addGraphQL,
     addWorkflow,
     addFolder,
     renameItem,
@@ -96,12 +98,15 @@ function App() {
     updateRequest,
     updateWorkflow,
     updateWebSocket,
+    updateGraphQL,
     setRequestResponse,
     markSaved,
     activeWorkflowId,
     setActiveWorkflowId,
     activeWebSocketId,
     setActiveWebSocketId,
+    activeGraphQLId,
+    setActiveGraphQLId,
     clipboard,
     copyToClipboard,
     cutToClipboard,
@@ -119,8 +124,12 @@ function App() {
   const activeItem = useProjectStore((state) => {
     const project = state.projects.find((p) => p.id === state.activeProjectId);
     if (!project) return null;
-    
-    const activeId = state.activeRequestId || state.activeWorkflowId || state.activeWebSocketId;
+
+    const activeId =
+      state.activeRequestId ||
+      state.activeWorkflowId ||
+      state.activeWebSocketId ||
+      state.activeGraphQLId;
     if (!activeId) return null;
 
     const findItem = (root: any, itemId: string): any => {
@@ -141,6 +150,7 @@ function App() {
   const activeRequest = activeItem?.type === "request" ? activeItem : null;
   const activeWorkflow = activeItem?.type === "workflow" ? activeItem : null;
   const activeWebSocket = activeItem?.type === "websocket" ? activeItem : null;
+  const activeGraphQL = activeItem?.type === "graphql" ? activeItem : null;
 
   const { addToast } = useToastStore();
 
@@ -226,6 +236,14 @@ function App() {
   const handleNewWebSocket = () => {
     if (activeProject) {
       addWebSocket(activeProject.root.id);
+    } else {
+      setShowNewProjectModal(true);
+    }
+  };
+
+  const handleNewGraphQL = () => {
+    if (activeProject) {
+      addGraphQL(activeProject.root.id);
     } else {
       setShowNewProjectModal(true);
     }
@@ -354,7 +372,11 @@ function App() {
 
       if (isCmdOrCtrl && e.key === "s") {
         e.preventDefault();
-        const idToSave = activeRequestId || activeWebSocketId || activeWorkflowId;
+        const idToSave =
+          activeRequestId ||
+          activeWebSocketId ||
+          activeWorkflowId ||
+          activeGraphQLId;
         if (idToSave) {
           markSaved(idToSave);
         }
@@ -656,6 +678,95 @@ function App() {
       setShowInvalidVarDialog(true);
     } else {
       performSend();
+    }
+  }
+
+  const [graphqlLoading, setGraphqlLoading] = useState(false);
+
+  async function handleSendGraphQL() {
+    if (!activeGraphQL || !activeGraphQL.url) return;
+    const gqlId = activeGraphQL.id;
+    setGraphqlLoading(true);
+    try {
+      const resolvedUrl = resolveVariables(activeGraphQL.url);
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      (activeGraphQL.headerItems || [])
+        .filter((h) => h.enabled && h.key)
+        .forEach((h) => {
+          headers[h.key] = resolveVariables(h.value);
+        });
+
+      const hasProjectAuth =
+        activeProject?.authorization && activeProject.authorization !== "None";
+      const effectiveAuth =
+        activeGraphQL.useInheritedAuth && hasProjectAuth
+          ? activeProject!.authorization!
+          : activeGraphQL.auth;
+
+      if (effectiveAuth && effectiveAuth !== "None") {
+        if ("Bearer" in effectiveAuth) {
+          headers["Authorization"] =
+            `Bearer ${resolveVariables(effectiveAuth.Bearer.token)}`;
+        } else if ("Basic" in effectiveAuth) {
+          headers["Authorization"] =
+            `Basic ${btoa(`${resolveVariables(effectiveAuth.Basic.username)}:${resolveVariables(effectiveAuth.Basic.password)}`)}`;
+        } else if ("ApiKey" in effectiveAuth) {
+          if (effectiveAuth.ApiKey.add_to === "Header") {
+            headers[effectiveAuth.ApiKey.key] = resolveVariables(
+              effectiveAuth.ApiKey.value,
+            );
+          }
+        }
+      }
+
+      let variables: Record<string, unknown> = {};
+      try {
+        if (activeGraphQL.variables && activeGraphQL.variables.trim() !== "") {
+          variables = JSON.parse(activeGraphQL.variables);
+        }
+      } catch {
+        // invalid JSON variables, send as-is
+      }
+
+      const body = JSON.stringify({
+        query: activeGraphQL.query,
+        variables,
+      });
+
+      const resp = await sendRequest({
+        method: "POST",
+        url: resolvedUrl,
+        headers,
+        body: { Raw: { content: body, content_type: "application/json" } },
+        auth: "None",
+        query_params: {},
+        cookies: [],
+        timeout_ms: null,
+        follow_redirects: null,
+        max_redirects: null,
+        verify_ssl: null,
+        proxy: null,
+        protocol: null,
+      });
+
+      updateGraphQL(gqlId, (prev) => ({ ...prev, response: resp }));
+
+      if (resp.status < 200 || resp.status >= 300) {
+        addToast(
+          `GraphQL request failed: ${resp.status} ${resp.status_text}`,
+          "error",
+        );
+      } else {
+        playSuccessChime();
+      }
+    } catch (err: any) {
+      const errorMessage = err?.message || err?.toString() || "Unknown error";
+      addToast(`GraphQL request failed: ${errorMessage}`, "error");
+    } finally {
+      setGraphqlLoading(false);
     }
   }
 
@@ -1174,12 +1285,23 @@ function App() {
               } else if (type === "websocket") {
                 setActiveWebSocketId(id);
                 setShowProjectOverview(false);
+              } else if (type === "graphql") {
+                setActiveGraphQLId(id);
+                setShowProjectOverview(false);
               }
             }}
-            selectedItemId={showProjectOverview ? null : (activeRequestId || activeWorkflowId || activeWebSocketId)}
+            selectedItemId={
+              showProjectOverview
+                ? null
+                : activeRequestId ||
+                  activeWorkflowId ||
+                  activeWebSocketId ||
+                  activeGraphQLId
+            }
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
             onAddWebSocket={addWebSocket}
+            onAddGraphQL={addGraphQL}
             onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
@@ -1235,12 +1357,23 @@ function App() {
               } else if (type === "websocket") {
                 setActiveWebSocketId(id);
                 setShowProjectOverview(false);
+              } else if (type === "graphql") {
+                setActiveGraphQLId(id);
+                setShowProjectOverview(false);
               }
             }}
-            selectedItemId={showProjectOverview ? null : (activeRequestId || activeWorkflowId || activeWebSocketId)}
+            selectedItemId={
+              showProjectOverview
+                ? null
+                : activeRequestId ||
+                  activeWorkflowId ||
+                  activeWebSocketId ||
+                  activeGraphQLId
+            }
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
             onAddWebSocket={addWebSocket}
+            onAddGraphQL={addGraphQL}
             onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
@@ -1311,6 +1444,10 @@ function App() {
                 setActiveWebSocketId(id);
                 setShowProjectOverview(false);
               }}
+              onSelectGraphQL={(id) => {
+                setActiveGraphQLId(id);
+                setShowProjectOverview(false);
+              }}
               onRunRequest={(id) => {
                 setActiveRequestId(id);
                 setShowProjectOverview(false);
@@ -1345,7 +1482,11 @@ function App() {
               }}
               isRunning={isWorkflowRunning}
               projectRoot={activeProject?.root}
-              onExecuteRequest={async (requestId: string, workflowContext?: any, overrides?: any) => {
+              onExecuteRequest={async (
+                requestId: string,
+                workflowContext?: any,
+                overrides?: any,
+              ) => {
                 const findRequest = (folder: any): any => {
                   for (const item of folder.children) {
                     if (item.id === requestId && item.type === "request") {
@@ -1359,123 +1500,179 @@ function App() {
                   return null;
                 };
 
-                if (!activeProject) return { status: 0, error: "No active project" };
+                if (!activeProject)
+                  return { status: 0, error: "No active project" };
                 const request = findRequest(activeProject.root);
                 if (!request) return { status: 0, error: "Request not found" };
 
                 const resolveWorkflowVar = (text: string): string => {
                   if (!text || !workflowContext) return text;
-                  return text.replace(/\{\{([^}]+)\}\}/g, (match, path: string) => {
-                    const parts = path.split(".");
-                    const root = parts[0];
-                    let value: any;
-                    
-                    if (root === "status") value = workflowContext.lastResponse?.status;
-                    else if (root === "body") {
-                      value = workflowContext.lastResponse?.body;
-                      for (let i = 1; i < parts.length && value; i++) {
-                        value = value[parts[i]];
+                  return text.replace(
+                    /\{\{([^}]+)\}\}/g,
+                    (match, path: string) => {
+                      const parts = path.split(".");
+                      const root = parts[0];
+                      let value: any;
+
+                      if (root === "status")
+                        value = workflowContext.lastResponse?.status;
+                      else if (root === "body") {
+                        value = workflowContext.lastResponse?.body;
+                        for (let i = 1; i < parts.length && value; i++) {
+                          value = value[parts[i]];
+                        }
+                      } else if (root === "headers") {
+                        value =
+                          parts.length > 1
+                            ? workflowContext.lastResponse?.headers?.[parts[1]]
+                            : workflowContext.lastResponse?.headers;
+                      } else if (root === "cookies") {
+                        value =
+                          parts.length > 1
+                            ? workflowContext.lastResponse?.cookies?.[parts[1]]
+                            : workflowContext.lastResponse?.cookies;
                       }
-                    }
-                    else if (root === "headers") {
-                      value = parts.length > 1 
-                        ? workflowContext.lastResponse?.headers?.[parts[1]]
-                        : workflowContext.lastResponse?.headers;
-                    }
-                    else if (root === "cookies") {
-                      value = parts.length > 1
-                        ? workflowContext.lastResponse?.cookies?.[parts[1]]
-                        : workflowContext.lastResponse?.cookies;
-                    }
-                    
-                    if (value === undefined) return match;
-                    if (typeof value === "object") return JSON.stringify(value);
-                    return String(value);
-                  });
+
+                      if (value === undefined) return match;
+                      if (typeof value === "object")
+                        return JSON.stringify(value);
+                      return String(value);
+                    },
+                  );
                 };
 
                 try {
-                   // First, apply URL override if present (only the path part)
-                   let resolvedUrl = request.request.url;
-                   if (overrides?.url) {
-                     const overridePath = resolveWorkflowVar(overrides.url);
-                     try {
-                       const originalUrl = new URL(request.request.url);
-                       originalUrl.pathname = "";
-                       originalUrl.search = "";
-                       resolvedUrl = originalUrl.toString().slice(0, -1) + overridePath;
-                     } catch {
-                       resolvedUrl = overridePath;
-                     }
-                   } else {
-                     resolvedUrl = resolveVariables(resolvedUrl);
-                   }
-                   
-                   const resolvedHeaders: Record<string, string> = {};
-                   const resolvedParams: Record<string, string> = {};
-                  
-                  for (const [key, value] of Object.entries(request.request.headers)) {
-                    resolvedHeaders[key] = resolveVariables(value as string || "");
-                  }
-                  
-                  for (const [key, value] of Object.entries(request.request.query_params || {})) {
-                    resolvedParams[key] = resolveVariables(value as string || "");
+                  // First, apply URL override if present (only the path part)
+                  let resolvedUrl = request.request.url;
+                  if (overrides?.url) {
+                    const overridePath = resolveWorkflowVar(overrides.url);
+                    try {
+                      const originalUrl = new URL(request.request.url);
+                      originalUrl.pathname = "";
+                      originalUrl.search = "";
+                      resolvedUrl =
+                        originalUrl.toString().slice(0, -1) + overridePath;
+                    } catch {
+                      resolvedUrl = overridePath;
+                    }
+                  } else {
+                    resolvedUrl = resolveVariables(resolvedUrl);
                   }
 
-                  console.log("[Workflow] Request execution:", { requestId, hasOverrides: !!overrides, hasContext: !!workflowContext });
-                  
+                  const resolvedHeaders: Record<string, string> = {};
+                  const resolvedParams: Record<string, string> = {};
+
+                  for (const [key, value] of Object.entries(
+                    request.request.headers,
+                  )) {
+                    resolvedHeaders[key] = resolveVariables(
+                      (value as string) || "",
+                    );
+                  }
+
+                  for (const [key, value] of Object.entries(
+                    request.request.query_params || {},
+                  )) {
+                    resolvedParams[key] = resolveVariables(
+                      (value as string) || "",
+                    );
+                  }
+
+                  console.log("[Workflow] Request execution:", {
+                    requestId,
+                    hasOverrides: !!overrides,
+                    hasContext: !!workflowContext,
+                  });
+
                   if (overrides) {
-                    console.log("[Workflow] Overrides received:", JSON.stringify(overrides, null, 2));
+                    console.log(
+                      "[Workflow] Overrides received:",
+                      JSON.stringify(overrides, null, 2),
+                    );
                     console.log("[Workflow] Context:", workflowContext);
-                    console.log("[Workflow] Last response body:", workflowContext?.lastResponse?.body);
-                    
+                    console.log(
+                      "[Workflow] Last response body:",
+                      workflowContext?.lastResponse?.body,
+                    );
+
                     if (overrides.params?.length > 0) {
                       for (const param of overrides.params) {
-                        console.log(`[Workflow] Processing param: key="${param.key}", value="${param.value}", enabled=${param.enabled}`);
+                        console.log(
+                          `[Workflow] Processing param: key="${param.key}", value="${param.value}", enabled=${param.enabled}`,
+                        );
                         if (param.enabled && param.key) {
                           const resolved = resolveWorkflowVar(param.value);
-                          console.log(`[Workflow] Param resolved: ${param.key} = "${param.value}" -> "${resolved}"`);
+                          console.log(
+                            `[Workflow] Param resolved: ${param.key} = "${param.value}" -> "${resolved}"`,
+                          );
                           resolvedParams[param.key] = resolved;
                         }
                       }
                     }
-                    
+
                     if (overrides.headers?.length > 0) {
                       for (const header of overrides.headers) {
                         if (header.enabled && header.key) {
-                          resolvedHeaders[header.key] = resolveWorkflowVar(header.value);
+                          resolvedHeaders[header.key] = resolveWorkflowVar(
+                            header.value,
+                          );
                         }
                       }
                     }
-                    
+
                     if (overrides.auth && overrides.auth.type !== "inherit") {
-                      const authValue = resolveWorkflowVar(overrides.auth.value || "");
+                      const authValue = resolveWorkflowVar(
+                        overrides.auth.value || "",
+                      );
                       if (overrides.auth.type === "bearer") {
-                        resolvedHeaders["Authorization"] = `Bearer ${authValue}`;
+                        resolvedHeaders["Authorization"] =
+                          `Bearer ${authValue}`;
                       } else if (overrides.auth.type === "basic") {
-                        resolvedHeaders["Authorization"] = `Basic ${btoa(authValue)}`;
+                        resolvedHeaders["Authorization"] =
+                          `Basic ${btoa(authValue)}`;
                       } else if (overrides.auth.type === "apikey") {
-                        const headerName = overrides.auth.headerName || "X-API-Key";
+                        const headerName =
+                          overrides.auth.headerName || "X-API-Key";
                         resolvedHeaders[headerName] = authValue;
                       } else if (overrides.auth.type === "cookie") {
                         resolvedHeaders["Cookie"] = authValue;
                       }
                     }
                   }
-                  
+
                   let finalBody = request.request.body;
-                  if (overrides?.body && overrides.body.type !== "inherit" && overrides.body.type !== "none") {
-                    const bodyValue = resolveWorkflowVar(overrides.body.value || "");
-                    if (overrides.body.type === "json" || overrides.body.type === "variable") {
-                      finalBody = { Raw: { content: bodyValue, content_type: "application/json" } };
+                  if (
+                    overrides?.body &&
+                    overrides.body.type !== "inherit" &&
+                    overrides.body.type !== "none"
+                  ) {
+                    const bodyValue = resolveWorkflowVar(
+                      overrides.body.value || "",
+                    );
+                    if (
+                      overrides.body.type === "json" ||
+                      overrides.body.type === "variable"
+                    ) {
+                      finalBody = {
+                        Raw: {
+                          content: bodyValue,
+                          content_type: "application/json",
+                        },
+                      };
                     }
                   } else if (overrides?.body?.type === "none") {
                     finalBody = "None";
                   }
-                  
-                  console.log("[Workflow] Final params being sent:", resolvedParams);
-                  console.log("[Workflow] Final headers being sent:", resolvedHeaders);
-                  
+
+                  console.log(
+                    "[Workflow] Final params being sent:",
+                    resolvedParams,
+                  );
+                  console.log(
+                    "[Workflow] Final headers being sent:",
+                    resolvedHeaders,
+                  );
+
                   const resp = await sendRequest({
                     ...request.request,
                     url: resolvedUrl,
@@ -1483,9 +1680,9 @@ function App() {
                     query_params: resolvedParams,
                     body: finalBody,
                   });
-                  
+
                   setRequestResponse(requestId, resp);
-                  
+
                   const bodyText = atob(resp.body_base64 || "");
                   let body: unknown;
                   try {
@@ -1493,15 +1690,18 @@ function App() {
                   } catch {
                     body = bodyText;
                   }
-                  
+
                   return {
                     status: resp.status,
                     statusText: resp.status_text,
                     headers: resp.headers,
-                    cookies: resp.cookies?.reduce((acc: Record<string, string>, c: any) => {
-                      acc[c.name] = c.value;
-                      return acc;
-                    }, {}),
+                    cookies: resp.cookies?.reduce(
+                      (acc: Record<string, string>, c: any) => {
+                        acc[c.name] = c.value;
+                        return acc;
+                      },
+                      {},
+                    ),
                     body,
                     params: resolvedParams,
                     duration: resp.timing?.total_ms ?? 0,
@@ -1521,15 +1721,38 @@ function App() {
           ) : activeWebSocket && !showProjectOverview ? (
             <WebSocketEditor
               ws={activeWebSocket}
-              onUpdate={(updater) => updateWebSocket(activeWebSocket.id, updater)}
-              availableVariables={getActiveEnvironmentVariables().map((v) => v.key)}
+              onUpdate={(updater) =>
+                updateWebSocket(activeWebSocket.id, updater)
+              }
+              availableVariables={getActiveEnvironmentVariables().map(
+                (v) => v.key,
+              )}
               projectAuth={activeProject?.authorization}
               onOpenProjectSettings={() => {
                 setProjectOverviewTab("configuration");
                 setShowProjectOverview(true);
               }}
             />
-          ) : !activeRequest && !activeWorkflow && !activeWebSocket && !showProjectOverview ? (
+          ) : activeGraphQL && !showProjectOverview ? (
+            <GraphQLEditor
+              gql={activeGraphQL}
+              onUpdate={(updater) => updateGraphQL(activeGraphQL.id, updater)}
+              onSendQuery={handleSendGraphQL}
+              loading={graphqlLoading}
+              availableVariables={getActiveEnvironmentVariables().map(
+                (v) => v.key,
+              )}
+              projectAuth={activeProject?.authorization}
+              onOpenProjectSettings={() => {
+                setProjectOverviewTab("configuration");
+                setShowProjectOverview(true);
+              }}
+            />
+          ) : !activeRequest &&
+            !activeWorkflow &&
+            !activeWebSocket &&
+            !activeGraphQL &&
+            !showProjectOverview ? (
             <WelcomePage
               onNewRequest={() => {
                 if (activeProject) {
@@ -1543,6 +1766,7 @@ function App() {
                 }
               }}
               onNewWebSocket={handleNewWebSocket}
+              onNewGraphQL={handleNewGraphQL}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");
@@ -2153,6 +2377,7 @@ function App() {
                 }
               }}
               onNewWebSocket={handleNewWebSocket}
+              onNewGraphQL={handleNewGraphQL}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");
