@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
+import { autoSizeTextarea } from "../utils";
 import type { RequestFile } from "../types/project";
 import {
   generateCurl,
@@ -41,6 +42,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
   const [description, setDescription] = useState(
     activeRequest.description || "",
   );
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const [snippetLang, setSnippetLang] = useState("Shell cURL");
   const [showSnippetDropdown, setShowSnippetDropdown] = useState(false);
   const [editingProperty, setEditingProperty] = useState<string | null>(null);
@@ -50,6 +52,10 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
     setName(activeRequest.name);
     setDescription(activeRequest.description || "");
   }, [activeRequest]);
+
+  useLayoutEffect(() => {
+    autoSizeTextarea(descriptionRef.current);
+  }, [description]);
 
   const handleNameBlur = () => {
     setIsEditingName(false);
@@ -284,21 +290,13 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
             )}
 
             <textarea
-              ref={(el) => {
-                if (el) {
-                  el.style.height = "auto";
-                  el.style.height = el.scrollHeight + "px";
-                }
-              }}
+              ref={descriptionRef}
               className="w-full bg-transparent border-none outline-none text-sm text-white/60 resize-none overflow-hidden min-h-6 mb-3 placeholder:text-white/20"
               placeholder="Add a description..."
               value={description}
               onChange={(e) => {
                 setDescription(e.target.value);
                 onUpdateDescription(e.target.value);
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = "auto";
-                target.style.height = target.scrollHeight + "px";
               }}
             />
 

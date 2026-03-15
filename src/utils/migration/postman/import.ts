@@ -219,7 +219,7 @@ function parsePostmanItem(item: PostmanItem): RequestFile {
 
 function isWebSocketItem(item: PostmanItem): boolean {
   const req = item.request as any;
-  return !req?.method || req?.protocolProfileBehavior?.followRedirects === undefined && typeof req?.url === "string" && !req?.method;
+  return !req?.method;
 }
 
 function parsePostmanItemGroup(group: PostmanItemGroup): Folder {

@@ -1,3 +1,4 @@
+export { autoSizeTextarea } from "./dom";
 export { copyToClipboard } from "./clipboard";
 export { formatBytes, formatDuration, getStatusColor } from "./format";
 export { escapeHtml } from "./html";

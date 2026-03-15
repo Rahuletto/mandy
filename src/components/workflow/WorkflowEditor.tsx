@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect, useLayoutEffect } from "react";
+import { autoSizeTextarea } from "../../utils";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -351,11 +352,16 @@ function WorkflowOverview({
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState(workflow.name);
   const [description, setDescription] = useState(workflow.description || "");
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setName(workflow.name);
     setDescription(workflow.description || "");
   }, [workflow]);
+
+  useLayoutEffect(() => {
+    autoSizeTextarea(descriptionRef.current);
+  }, [description]);
 
   const handleNameBlur = () => {
     setIsEditingName(false);
@@ -420,21 +426,13 @@ function WorkflowOverview({
             )}
 
             <textarea
-              ref={(el) => {
-                if (el) {
-                  el.style.height = "auto";
-                  el.style.height = el.scrollHeight + "px";
-                }
-              }}
+              ref={descriptionRef}
               className="w-full bg-transparent border-none outline-none text-sm text-white/60 resize-none overflow-hidden min-h-6 mb-3 placeholder:text-white/20"
               placeholder="Add a description..."
               value={description}
               onChange={(e) => {
                 setDescription(e.target.value);
                 onWorkflowChange({ ...workflow, description: e.target.value });
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = "auto";
-                target.style.height = target.scrollHeight + "px";
               }}
             />
 

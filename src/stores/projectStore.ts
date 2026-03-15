@@ -110,6 +110,10 @@ function cloneTreeItem(item: TreeItem): TreeItem {
       id: generateId(),
       name: `${item.name} (copy)`,
       headers: { ...item.headers },
+      params: item.params ? JSON.parse(JSON.stringify(item.params)) : undefined,
+      headerItems: item.headerItems ? JSON.parse(JSON.stringify(item.headerItems)) : undefined,
+      cookies: item.cookies ? JSON.parse(JSON.stringify(item.cookies)) : undefined,
+      auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
       messages: [],
     };
   }

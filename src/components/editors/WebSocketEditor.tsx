@@ -1,4 +1,7 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { autoSizeTextarea } from "../../utils";
+import { useWebSocket } from "../../hooks/useWebSocket";
+import { useMessageFilters } from "../../hooks/useMessageFilters";
 import {
   TbSend,
   TbArrowDown,
@@ -22,7 +25,6 @@ import { AuthEditor } from "./AuthEditor";
 import { CodeEditor, CodeViewer } from "../CodeMirror";
 import type { Language } from "../CodeMirror";
 import { Dropdown } from "../ui";
-import { useToastStore } from "../../stores/toastStore";
 
 
 interface WebSocketEditorProps {
@@ -33,8 +35,8 @@ interface WebSocketEditorProps {
   onOpenProjectSettings?: () => void;
 }
 
-type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
-type MessageFilter = "all" | "sent" | "received";
+import type { ConnectionStatus } from "../../hooks/useWebSocket";
+
 type WsTab =
   | "overview"
   | "message"
@@ -310,7 +312,7 @@ use url::Url;
 
 fn main() {
     let (mut socket, _response) =
-        connect(Url::parse("${u}").unwrap())
+        connect(Url::parse("${u}").expect("Failed to parse URL"))
             .expect("Can't connect");
 
     socket.send("Hello".into()).expect("Error sending");
@@ -395,6 +397,7 @@ function WebSocketOverview({
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState(ws.name);
   const [description, setDescription] = useState(ws.description || "");
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const [snippetLang, setSnippetLang] = useState<WsSnippetLang>("JavaScript");
   const [showSnippetDropdown, setShowSnippetDropdown] = useState(false);
 
@@ -402,6 +405,10 @@ function WebSocketOverview({
     setName(ws.name);
     setDescription(ws.description || "");
   }, [ws]);
+
+  useLayoutEffect(() => {
+    autoSizeTextarea(descriptionRef.current);
+  }, [description]);
 
   const handleNameBlur = () => {
     setIsEditingName(false);
@@ -451,12 +458,7 @@ function WebSocketOverview({
             )}
 
             <textarea
-              ref={(el) => {
-                if (el) {
-                  el.style.height = "auto";
-                  el.style.height = el.scrollHeight + "px";
-                }
-              }}
+              ref={descriptionRef}
               className="w-full bg-transparent border-none outline-none text-sm text-white/60 resize-none overflow-hidden min-h-6 mb-3 placeholder:text-white/20"
               placeholder="Add a description..."
               value={description}
@@ -466,9 +468,6 @@ function WebSocketOverview({
                   ...prev,
                   description: e.target.value,
                 }));
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = "auto";
-                target.style.height = target.scrollHeight + "px";
               }}
             />
 
@@ -613,14 +612,15 @@ export function WebSocketEditor({
   projectAuth,
   onOpenProjectSettings,
 }: WebSocketEditorProps) {
-  const { addToast } = useToastStore();
-  const [status, setStatus] = useState<ConnectionStatus>("disconnected");
+  const { status, connect, disconnect, sendMessage, clearMessages } =
+    useWebSocket({ ws, onUpdate });
+  const { searchQuery, setSearchQuery, filter, cycleFilter, filteredMessages } =
+    useMessageFilters(ws.messages);
+
   const [messageInput, setMessageInput] = useState("");
   const [messageContentType, setMessageContentType] =
     useState<MessageContentType>("json");
   const [url, setUrl] = useState(ws.url);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<MessageFilter>("all");
   const [activeTab, setActiveTab] = useState<WsTab>("overview");
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(
     new Set(),
@@ -628,8 +628,6 @@ export function WebSocketEditor({
   const [splitPercent, setSplitPercent] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -641,13 +639,6 @@ export function WebSocketEditor({
   }, [ws.messages.length]);
 
   useEffect(() => {
-    return () => {
-      socketRef.current?.close();
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizing && splitContainerRef.current) {
         const rect = splitContainerRef.current.getBoundingClientRect();
@@ -655,9 +646,7 @@ export function WebSocketEditor({
         setSplitPercent(Math.max(30, Math.min(70, newPercent)));
       }
     };
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
+    const handleMouseUp = () => setIsResizing(false);
     if (isResizing) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
@@ -680,134 +669,15 @@ export function WebSocketEditor({
     [onUpdate],
   );
 
-  const addMessage = useCallback(
-    (msg: WebSocketMessage) => {
-      onUpdate((prev) => ({
-        ...prev,
-        messages: [...prev.messages, msg],
-      }));
-    },
-    [onUpdate],
-  );
-
-  const connect = useCallback(() => {
-    if (!url) return;
-    setStatus("connecting");
-
-    try {
-      const socket = new WebSocket(url);
-      socketRef.current = socket;
-
-      timeoutRef.current = setTimeout(() => {
-        if (socket.readyState !== WebSocket.OPEN) {
-          socket.close();
-          socketRef.current = null;
-          setStatus("error");
-          addToast("Connection timed out", "error");
-        }
-      }, 10000);
-
-      socket.onopen = () => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setStatus("connected");
-
-        const enabledHeaders: Record<string, string> = {};
-        for (const item of ws.headerItems || []) {
-          if (item.enabled && item.key) enabledHeaders[item.key] = item.value;
-        }
-        for (const [k, v] of Object.entries(ws.headers || {})) {
-          enabledHeaders[k] = v;
-        }
-
-        const connMsg: WebSocketMessage = {
-          id: crypto.randomUUID(),
-          direction: "system",
-          data: `Connected to ${url}`,
-          timestamp: Date.now(),
-          type: "connection",
-          handshake: {
-            requestUrl: url.replace(/^ws/, "http"),
-            requestMethod: "GET",
-            statusCode: "101 Switching Protocols",
-            requestHeaders: {
-              Connection: "Upgrade",
-              Upgrade: "websocket",
-              "Sec-WebSocket-Version": "13",
-              ...enabledHeaders,
-            },
-            responseHeaders: {
-              Connection: "Upgrade",
-              Upgrade: "websocket",
-            },
-          },
-        };
-        addMessage(connMsg);
-        setExpandedMessages(new Set());
-      };
-
-      socket.onmessage = (event) => {
-        const msg: WebSocketMessage = {
-          id: crypto.randomUUID(),
-          direction: "receive",
-          data: String(event.data),
-          timestamp: Date.now(),
-          type: "text",
-        };
-        addMessage(msg);
-      };
-
-      socket.onerror = () => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setStatus("error");
-        addToast("Failed to connect to WebSocket", "error");
-      };
-
-      socket.onclose = (event) => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setStatus("disconnected");
-        socketRef.current = null;
-        if (event.code !== 1000) {
-          addToast(`WebSocket disconnected (code ${event.code})`, "error");
-        }
-        const closeMsg: WebSocketMessage = {
-          id: crypto.randomUUID(),
-          direction: "system",
-          data: `Disconnected${event.reason ? `: ${event.reason}` : ""} (code ${event.code})`,
-          timestamp: Date.now(),
-          type: "close",
-        };
-        addMessage(closeMsg);
-      };
-    } catch {
-      setStatus("error");
-      addToast("Failed to connect to WebSocket", "error");
-    }
-  }, [url, addMessage, addToast, ws.headers, ws.headerItems]);
-
-  const disconnect = useCallback(() => {
-    socketRef.current?.close();
-    socketRef.current = null;
-    setStatus("disconnected");
-  }, []);
-
-  const sendMessage = useCallback(() => {
-    if (!messageInput.trim() || !socketRef.current) return;
-    socketRef.current.send(messageInput);
-    const msg: WebSocketMessage = {
-      id: crypto.randomUUID(),
-      direction: "send",
-      data: messageInput,
-      timestamp: Date.now(),
-      type: "text",
-    };
-    addMessage(msg);
+  const handleSend = useCallback(() => {
+    sendMessage(messageInput);
     setMessageInput("");
-  }, [messageInput, addMessage]);
+  }, [messageInput, sendMessage]);
 
-  const clearMessages = useCallback(() => {
-    onUpdate((prev) => ({ ...prev, messages: [] }));
+  const handleClearMessages = useCallback(() => {
+    clearMessages();
     setExpandedMessages(new Set());
-  }, [onUpdate]);
+  }, [clearMessages]);
 
   const toggleExpanded = useCallback((id: string) => {
     setExpandedMessages((prev) => {
@@ -817,25 +687,6 @@ export function WebSocketEditor({
       return next;
     });
   }, []);
-
-  const filteredMessages = useMemo(() => {
-    let msgs = ws.messages;
-
-    if (filter === "sent") {
-      msgs = msgs.filter((m) => m.direction === "send");
-    } else if (filter === "received") {
-      msgs = msgs.filter(
-        (m) => m.direction === "receive" || m.direction === "system",
-      );
-    }
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      msgs = msgs.filter((m) => m.data.toLowerCase().includes(q));
-    }
-
-    return msgs;
-  }, [ws.messages, filter, searchQuery]);
 
   const statusLabel = {
     disconnected: "Disconnected",
@@ -884,7 +735,7 @@ export function WebSocketEditor({
           </button>
         ) : (
           <button
-            onClick={connect}
+            onClick={() => connect(url)}
             disabled={!url || status === "connecting"}
             className="px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-full text-background font-semibold transition-all"
           >
@@ -925,7 +776,7 @@ export function WebSocketEditor({
               <WebSocketOverview
                 ws={ws}
                 onUpdate={onUpdate}
-                onConnect={connect}
+                onConnect={() => connect(url)}
                 status={status}
               />
             )}
@@ -961,7 +812,7 @@ export function WebSocketEditor({
                   />
                 </div>
                 <button
-                  onClick={sendMessage}
+                  onClick={handleSend}
                   disabled={!messageInput.trim() || status !== "connected"}
                   className="absolute right-4 bottom-4 p-2.5 bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-full text-background transition-all z-20"
                 >
@@ -1092,15 +943,7 @@ export function WebSocketEditor({
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setFilter((f) =>
-                      f === "all"
-                        ? "sent"
-                        : f === "sent"
-                          ? "received"
-                          : "all",
-                    )
-                  }
+                  onClick={cycleFilter}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/50 hover:text-white/70 transition-colors rounded-md hover:bg-white/5 cursor-pointer"
                 >
                   <TbFilter size={13} />
@@ -1114,7 +957,7 @@ export function WebSocketEditor({
                 {ws.messages.length > 0 && (
                   <button
                     type="button"
-                    onClick={clearMessages}
+                    onClick={handleClearMessages}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/40 hover:text-white/70 transition-colors rounded-md hover:bg-white/5 cursor-pointer"
                   >
                     <TbTrash size={13} />

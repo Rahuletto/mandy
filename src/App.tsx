@@ -223,6 +223,14 @@ function App() {
     }, 200);
   };
 
+  const handleNewWebSocket = () => {
+    if (activeProject) {
+      addWebSocket(activeProject.root.id);
+    } else {
+      setShowNewProjectModal(true);
+    }
+  };
+
   const [requestProtocol, setRequestProtocol] = useState<HttpProtocol>("Tcp");
 
   const isItemEnabled = (type: "param" | "header" | "cookie", key: string) => {
@@ -346,12 +354,9 @@ function App() {
 
       if (isCmdOrCtrl && e.key === "s") {
         e.preventDefault();
-        if (activeRequestId) {
-          markSaved(activeRequestId);
-        } else if (activeWebSocketId) {
-          markSaved(activeWebSocketId);
-        } else if (activeWorkflowId) {
-          markSaved(activeWorkflowId);
+        const idToSave = activeRequestId || activeWebSocketId || activeWorkflowId;
+        if (idToSave) {
+          markSaved(idToSave);
         }
         return;
       }
@@ -1537,12 +1542,7 @@ function App() {
                   setShowNewProjectModal(true);
                 }
               }}
-              onNewWebSocket={() => {
-                if (activeProject) {
-                  addWebSocket(activeProject.root.id);
-                } else {
-                  setShowNewProjectModal(true);
-                }
+              onNewWebSocket={handleNewWebSocket}
               }}
               onNewFolder={() => {
                 if (activeProject) {
@@ -2153,12 +2153,7 @@ function App() {
                   setShowNewProjectModal(true);
                 }
               }}
-              onNewWebSocket={() => {
-                if (activeProject) {
-                  addWebSocket(activeProject.root.id);
-                } else {
-                  setShowNewProjectModal(true);
-                }
+              onNewWebSocket={handleNewWebSocket}
               }}
               onNewFolder={() => {
                 if (activeProject) {
