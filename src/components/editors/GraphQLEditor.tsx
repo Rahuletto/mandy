@@ -16,12 +16,14 @@ import { formatBytes, getStatusColor, STATUS_TEXT } from "../../utils/format";
 
 interface GraphQLEditorProps {
   gql: GraphQLFile;
-  onUpdate: (updater: (gql: GraphQLFile) => GraphQLFile) => void;
+  onUpdate: (updater: (gql: GraphQLFile) => void) => void;
   onSendQuery: () => void;
-  loading: boolean;
+  loading?: boolean;
   availableVariables?: string[];
   projectAuth?: AuthType;
   onOpenProjectSettings?: () => void;
+  onStartLoading?: (id: string) => void;
+  onStopLoading?: (id: string) => void;
 }
 
 type GqlTab = "overview" | "query" | "variables" | "authorization" | "headers";
@@ -199,6 +201,7 @@ export function GraphQLEditor({
     async (targetUrl?: string) => {
       const urlToFetch = targetUrl || gql.url;
       if (!urlToFetch) return;
+      onStartLoading?.(gql.id);
       setSchemaLoading(true);
       setSchemaError(null);
 
@@ -245,9 +248,10 @@ export function GraphQLEditor({
         setSchemaError(err.message || "Failed to fetch schema");
       } finally {
         setSchemaLoading(false);
+        onStopLoading?.();
       }
     },
-    [gql.url, gql.headerItems, onUpdate],
+    [gql.url, gql.headerItems, onUpdate, onStartLoading, onStopLoading],
   );
 
   useEffect(() => {

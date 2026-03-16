@@ -43,6 +43,8 @@ interface SidebarProps {
   className?: string;
   loadingRequests?: Set<string>;
   completedRequests?: Set<string>;
+  loadingWebSockets?: Set<string>;
+  loadingGraphQLs?: Set<string>;
 }
 
 export function Sidebar({
@@ -75,6 +77,8 @@ export function Sidebar({
   className = "",
   loadingRequests = new Set(),
   completedRequests = new Set(),
+  loadingWebSockets = new Set(),
+  loadingGraphQLs = new Set(),
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isResizing, setIsResizing] = useState(false);
@@ -248,6 +252,8 @@ export function Sidebar({
             onImportClick={onImportClick}
             loadingRequests={loadingRequests}
             completedRequests={completedRequests}
+            loadingWebSockets={loadingWebSockets}
+            loadingGraphQLs={loadingGraphQLs}
           />
         </>
       ) : (

@@ -58,6 +58,8 @@ interface FileTreeProps {
   onImportClick: () => void;
   loadingRequests?: Set<string>;
   completedRequests?: Set<string>;
+  loadingWebSockets?: Set<string>;
+  loadingGraphQLs?: Set<string>;
 }
 
 import {
@@ -384,6 +386,8 @@ export function FileTree({
   onImportClick,
   loadingRequests = new Set(),
   completedRequests = new Set(),
+  loadingWebSockets = new Set(),
+  loadingGraphQLs = new Set(),
 }: FileTreeProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -794,7 +798,11 @@ export function FileTree({
               isNesting={isNesting && overFolderId === item.id}
               isCut={clipboard?.id === item.id && clipboard.type === "cut"}
               itemRectsRef={itemRectsRef}
-              isLoading={loadingRequests.has(item.id)}
+              isLoading={
+                (item.type === "request" && loadingRequests.has(item.id)) ||
+                (item.type === "websocket" && loadingWebSockets.has(item.id)) ||
+                (item.type === "graphql" && loadingGraphQLs.has(item.id))
+              }
               isCompleted={completedRequests.has(item.id)}
             />
           ))}

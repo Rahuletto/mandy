@@ -15,6 +15,8 @@ interface WebSocketEditorProps {
   availableVariables?: string[];
   projectAuth?: AuthType;
   onOpenProjectSettings?: () => void;
+  onStartLoading?: (id: string) => void;
+  onStopLoading?: (id: string) => void;
 }
 
 type WsTab =
@@ -53,7 +55,7 @@ export function WebSocketEditor({
   onOpenProjectSettings,
 }: WebSocketEditorProps) {
   const { status, connect, disconnect, sendMessage, clearMessages } =
-    useWebSocket({ ws, onUpdate });
+    useWebSocket({ ws, onUpdate, persist: true });
 
   const [url, setUrl] = useState(ws.url);
   const [activeTab, setActiveTab] = useState<WsTab>("overview");
@@ -138,7 +140,14 @@ export function WebSocketEditor({
           </button>
         ) : (
           <button
-            onClick={() => connect(url)}
+            onClick={async () => {
+              onStartLoading?.(ws.id);
+              try {
+                await connect(url);
+              } finally {
+                onStopLoading?.(ws.id);
+              }
+            }}
             disabled={!url || status === "connecting"}
             className="px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-full text-background font-semibold transition-all"
           >

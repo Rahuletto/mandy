@@ -160,6 +160,12 @@ function App() {
   const [completedRequests, setCompletedRequests] = useState<Set<string>>(
     new Set(),
   );
+  const [loadingWebSockets, setLoadingWebSockets] = useState<Set<string>>(
+    new Set(),
+  );
+  const [loadingGraphQLs, setLoadingGraphQLs] = useState<Set<string>>(
+    new Set(),
+  );
   const loading = activeRequest ? loadingRequests.has(activeRequest.id) : false;
   const [activeTab, setActiveTab] = useState<
     "overview" | "params" | "authorization" | "body" | "headers" | "cookies"
@@ -232,6 +238,30 @@ function App() {
       setShowSizePopover(false);
     }, 200);
   };
+
+  const startWsLoading = useCallback((wsId: string) => {
+    setLoadingWebSockets((prev) => new Set(prev).add(wsId));
+  }, []);
+
+  const stopWsLoading = useCallback((wsId: string) => {
+    setLoadingWebSockets((prev) => {
+      const next = new Set(prev);
+      next.delete(wsId);
+      return next;
+    });
+  }, []);
+
+  const startGqlLoading = useCallback((gqlId: string) => {
+    setLoadingGraphQLs((prev) => new Set(prev).add(gqlId));
+  }, []);
+
+  const stopGqlLoading = useCallback((gqlId: string) => {
+    setLoadingGraphQLs((prev) => {
+      const next = new Set(prev);
+      next.delete(gqlId);
+      return next;
+    });
+  }, []);
 
   const handleNewWebSocket = () => {
     if (activeProject) {
@@ -681,12 +711,10 @@ function App() {
     }
   }
 
-  const [graphqlLoading, setGraphqlLoading] = useState(false);
-
   async function handleSendGraphQL() {
     if (!activeGraphQL || !activeGraphQL.url) return;
     const gqlId = activeGraphQL.id;
-    setGraphqlLoading(true);
+    startGqlLoading(gqlId);
     try {
       const resolvedUrl = resolveVariables(activeGraphQL.url);
       const headers: Record<string, string> = {
@@ -766,7 +794,7 @@ function App() {
       const errorMessage = err?.message || err?.toString() || "Unknown error";
       addToast(`GraphQL request failed: ${errorMessage}`, "error");
     } finally {
-      setGraphqlLoading(false);
+      stopGqlLoading(gqlId);
     }
   }
 
@@ -1331,6 +1359,8 @@ function App() {
             className="relative"
             loadingRequests={loadingRequests}
             completedRequests={completedRequests}
+            loadingWebSockets={loadingWebSockets}
+            loadingGraphQLs={loadingGraphQLs}
           />
         </div>
 
@@ -1403,6 +1433,8 @@ function App() {
             className="h-full"
             loadingRequests={loadingRequests}
             completedRequests={completedRequests}
+            loadingWebSockets={loadingWebSockets}
+            loadingGraphQLs={loadingGraphQLs}
           />
         </div>
 
@@ -1738,7 +1770,9 @@ function App() {
               gql={activeGraphQL}
               onUpdate={(updater) => updateGraphQL(activeGraphQL.id, updater)}
               onSendQuery={handleSendGraphQL}
-              loading={graphqlLoading}
+              loading={loadingGraphQLs.has(activeGraphQL.id)}
+              onStartLoading={startGqlLoading}
+              onStopLoading={stopGqlLoading}
               availableVariables={getActiveEnvironmentVariables().map(
                 (v) => v.key,
               )}

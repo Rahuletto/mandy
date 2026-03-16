@@ -6,6 +6,8 @@ import type { WebSocketFile, WebSocketMessage } from "../types/project";
 import { useToastStore } from "../stores/toastStore";
 import { playSuccessChime } from "../utils/sounds";
 
+const persistentWsConnections = new Set<string>();
+
 export type ConnectionStatus =
   | "disconnected"
   | "connecting"
@@ -15,9 +17,14 @@ export type ConnectionStatus =
 interface UseWebSocketOptions {
   ws: WebSocketFile;
   onUpdate: (updater: (ws: WebSocketFile) => WebSocketFile) => void;
+  persist?: boolean;
 }
 
-export function useWebSocket({ ws, onUpdate }: UseWebSocketOptions) {
+export function useWebSocket({
+  ws,
+  onUpdate,
+  persist = false,
+}: UseWebSocketOptions) {
   const { addToast } = useToastStore();
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
 
@@ -40,13 +47,13 @@ export function useWebSocket({ ws, onUpdate }: UseWebSocketOptions) {
   useEffect(() => {
     return () => {
       const id = connectionIdRef.current;
-      if (id) {
+      if (id && !persist) {
         commands.wsDisconnect(id).catch(() => {});
         connectionIdRef.current = null;
       }
       cleanupListeners();
     };
-  }, [cleanupListeners]);
+  }, [cleanupListeners, persist]);
 
   const addMessage = useCallback(
     (msg: WebSocketMessage) => {
@@ -107,6 +114,9 @@ export function useWebSocket({ ws, onUpdate }: UseWebSocketOptions) {
           cleanupListeners();
           connectionIdRef.current = null;
           setStatus(code === 1000 || code === 1001 ? "disconnected" : "error");
+          if (persist && persistentWsConnections.has(ws.id)) {
+            persistentWsConnections.delete(ws.id);
+          }
 
           if (code !== 1000 && code !== 1001) {
             addToast(`WebSocket disconnected (code ${code})`, "error");
@@ -178,6 +188,10 @@ export function useWebSocket({ ws, onUpdate }: UseWebSocketOptions) {
           responseHeaders,
         },
       });
+
+      if (persist) {
+        persistentWsConnections.add(ws.id);
+      }
     },
     [
       ws.id,
@@ -198,6 +212,9 @@ export function useWebSocket({ ws, onUpdate }: UseWebSocketOptions) {
     cleanupListeners();
     connectionIdRef.current = null;
     setStatus("disconnected");
+    if (persist && persistentWsConnections.has(ws.id)) {
+      persistentWsConnections.delete(ws.id);
+    }
 
     addMessage({
       id: crypto.randomUUID(),
@@ -238,6 +255,69 @@ export function useWebSocket({ ws, onUpdate }: UseWebSocketOptions) {
   const clearMessages = useCallback(() => {
     onUpdate((prev) => ({ ...prev, messages: [] }));
   }, [onUpdate]);
+
+  // Reattach to existing persistent connection on mount
+  useEffect(() => {
+    if (persist && persistentWsConnections.has(ws.id)) {
+      const reattach = async () => {
+        const msgEventName = `ws://message/${ws.id}`;
+        const closeEventName = `ws://closed/${ws.id}`;
+
+        const unlistenMsg = await listen<WsIncomingMessage>(
+          msgEventName,
+          (event) => {
+            const { id, data, binary, timestamp_ms } = event.payload;
+            addMessage({
+              id,
+              direction: "receive",
+              data,
+              timestamp: timestamp_ms,
+              type: binary ? "binary" : "text",
+            });
+          },
+        );
+        unlistenMsgRef.current = unlistenMsg;
+
+        const unlistenClose = await listen<WsClosedEvent>(
+          closeEventName,
+          (event) => {
+            const { code, reason } = event.payload;
+            cleanupListeners();
+            connectionIdRef.current = null;
+            setStatus(
+              code === 1000 || code === 1001 ? "disconnected" : "error",
+            );
+            persistentWsConnections.delete(ws.id);
+
+            if (code !== 1000 && code !== 1001) {
+              addToast(`WebSocket disconnected (code ${code})`, "error");
+            }
+
+            addMessage({
+              id: crypto.randomUUID(),
+              direction: "system",
+              data: `Disconnected${reason ? `: ${reason}` : ""} (code ${code})`,
+              timestamp: Date.now(),
+              type: "close",
+            });
+          },
+        );
+        unlistenCloseRef.current = unlistenClose;
+
+        connectionIdRef.current = ws.id;
+        setStatus("connected");
+        addMessage({
+          id: crypto.randomUUID(),
+          direction: "system",
+          data: "Reconnected to existing WebSocket session",
+          timestamp: Date.now(),
+          type: "connection",
+        });
+      };
+
+      reattach();
+    }
+  }, [persist, ws.id, addMessage, addToast, cleanupListeners]);
 
   return { status, connect, disconnect, sendMessage, clearMessages };
 }
