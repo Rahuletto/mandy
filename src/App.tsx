@@ -1752,6 +1752,7 @@ function App() {
             />
           ) : activeWebSocket && !showProjectOverview ? (
             <WebSocketEditor
+              key={activeWebSocket.id}
               ws={activeWebSocket}
               onUpdate={(updater) =>
                 updateWebSocket(activeWebSocket.id, updater)
@@ -1764,9 +1765,13 @@ function App() {
                 setProjectOverviewTab("configuration");
                 setShowProjectOverview(true);
               }}
+              onStartLoading={startWsLoading}
+              onStopLoading={stopWsLoading}
+              resolveVariables={resolveVariables}
             />
           ) : activeGraphQL && !showProjectOverview ? (
             <GraphQLEditor
+              key={activeGraphQL.id}
               gql={activeGraphQL}
               onUpdate={(updater) => updateGraphQL(activeGraphQL.id, updater)}
               onSendQuery={handleSendGraphQL}
