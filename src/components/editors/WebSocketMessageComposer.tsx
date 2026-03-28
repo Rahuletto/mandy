@@ -3,6 +3,7 @@ import { TbSend } from "react-icons/tb";
 import { CodeEditor } from "../CodeMirror";
 import type { Language } from "../CodeMirror";
 import type { ConnectionStatus } from "../../hooks/useWebSocket";
+import { Tooltip } from "../ui/Tooltip";
 
 type MessageContentType = "json" | "text";
 
@@ -28,7 +29,7 @@ export const WebSocketMessageComposer = ({
     messageContentType === "json" ? "json" : "text";
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="relative flex h-full min-h-0 w-full min-w-0 flex-col">
       <div className="flex items-center gap-2 px-2 py-2 border-b border-white/5">
         {(["json", "text"] as const).map((ct) => (
           <button
@@ -57,13 +58,24 @@ export const WebSocketMessageComposer = ({
           }
         />
       </div>
-      <button
-        onClick={handleSend}
-        disabled={!messageInput.trim() || status !== "connected"}
-        className="absolute right-4 bottom-4 p-2.5 bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-full text-background transition-all z-20"
+      <Tooltip
+        content={
+          status !== "connected"
+            ? "Connect to a WebSocket server first"
+            : !messageInput.trim()
+              ? "Enter a message to send"
+              : undefined
+        }
+        wrapperClassName="absolute right-4 bottom-4 z-20"
       >
-        <TbSend size={16} />
-      </button>
+        <button
+          onClick={handleSend}
+          disabled={!messageInput.trim() || status !== "connected"}
+          className="p-2.5 bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-full text-background transition-all cursor-pointer"
+        >
+          <TbSend size={16} />
+        </button>
+      </Tooltip>
     </div>
   );
 };

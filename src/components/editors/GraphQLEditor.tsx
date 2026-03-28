@@ -67,6 +67,8 @@ export function GraphQLEditor({
   availableVariables,
   projectAuth,
   onOpenProjectSettings,
+  onStartLoading,
+  onStopLoading,
 }: GraphQLEditorProps) {
   const [activeTab, setActiveTab] = useState<GqlTab>("overview");
   const [schemaViewMode, setSchemaViewMode] =
@@ -363,9 +365,9 @@ export function GraphQLEditor({
         </button>
       </div>
 
-      <div ref={splitContainerRef} className="flex flex-1 overflow-hidden">
+      <div ref={splitContainerRef} className="flex-1 flex overflow-hidden">
         <div
-          className="flex flex-col overflow-hidden"
+          className="flex p-2 pl-4 flex-col overflow-hidden min-w-0"
           style={{
             width: isOverview
               ? "100%"
@@ -374,8 +376,7 @@ export function GraphQLEditor({
                 : "100%",
           }}
         >
-          {/* Top-level tabs */}
-          <div className="flex items-center gap-1 py-2 px-4 shrink-0">
+          <div className="flex items-center gap-1 py-2 shrink-0">
             {tabs.map((tab) => (
               <button
                 key={tab}
@@ -392,23 +393,20 @@ export function GraphQLEditor({
             ))}
           </div>
 
-          <div className="flex-1 overflow-hidden relative">
+          <div className="flex-1 overflow-auto relative min-h-0">
             {loading && activeTab !== "overview" && (
               <div className="absolute inset-0 z-10 bg-background/30 cursor-not-allowed" />
             )}
 
-            {/* Overview */}
             {activeTab === "overview" && (
-              <div className="h-full overflow-auto px-2 pl-4">
-                <GraphQLOverview
-                  gql={gql}
-                  onUpdate={onUpdate}
-                  onRun={() => {
-                    onSendQuery();
-                    setActiveTab("query");
-                  }}
-                />
-              </div>
+              <GraphQLOverview
+                gql={gql}
+                onUpdate={onUpdate}
+                onRun={() => {
+                  onSendQuery();
+                  setActiveTab("query");
+                }}
+              />
             )}
 
             {/* Query tab — editor top, schema pane bottom, resizable */}
@@ -531,7 +529,7 @@ export function GraphQLEditor({
 
             {/* Variables — top-level tab */}
             {activeTab === "variables" && (
-              <div className="h-full px-2 pl-4">
+              <div className="h-full min-h-0">
                 <CodeEditor
                   code={gql.variables}
                   language="json"
@@ -544,7 +542,7 @@ export function GraphQLEditor({
 
             {/* Authorization */}
             {activeTab === "authorization" && (
-              <div className="h-full overflow-auto px-2 pl-4">
+              <div className="h-full min-h-0 overflow-auto">
                 <AuthEditor
                   auth={gql.auth || "None"}
                   onChange={(auth) => onUpdate((prev) => ({ ...prev, auth }))}
@@ -564,7 +562,7 @@ export function GraphQLEditor({
 
             {/* Headers */}
             {activeTab === "headers" && (
-              <div className="h-full px-2 pl-4">
+              <div className="h-full min-h-0">
                 <KeyValueTable
                   items={toKeyValueItems(gql.headerItems || [])}
                   onChange={(items) =>

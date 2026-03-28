@@ -41,9 +41,9 @@ export const GraphQLOverview = ({
   ).length;
 
   return (
-    <div className="h-full overflow-y-auto overflow-x-hidden">
-      <div className="flex min-h-full max-w-[1600px] mx-auto relative pl-8 pr-4 gap-8">
-        <div className="flex-1 py-12 w-[40%]">
+    <div className="h-full min-w-0 overflow-y-auto overflow-x-hidden">
+      <div className="relative mx-auto flex min-h-full min-w-0 max-w-[1600px] gap-8 pl-8 pr-4">
+        <div className="min-w-0 flex-1 py-12 w-[40%]">
           <div className="max-w-3xl">
             {isEditingName ? (
               <input
@@ -79,15 +79,15 @@ export const GraphQLOverview = ({
 
             <section className="flex flex-col gap-8">
               {gql.url && (
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-sm font-semibold text-white/70 mb-2">
                     Endpoint
                   </h3>
-                  <div className="flex items-center gap-2 py-2">
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-fuchsia-500/20 text-fuchsia-400">
+                  <div className="flex min-w-0 items-center gap-2 py-2">
+                    <span className="shrink-0 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-fuchsia-500/20 text-fuchsia-400">
                       POST
                     </span>
-                    <span className="text-xs font-mono text-white/60 truncate">
+                    <span className="min-w-0 truncate text-xs font-mono text-white/60">
                       {gql.url}
                     </span>
                   </div>
@@ -99,7 +99,7 @@ export const GraphQLOverview = ({
                   <h3 className="text-sm font-semibold text-white/70 mb-2">
                     Query
                   </h3>
-                  <pre className="text-xs font-mono text-white/50 bg-white/5 rounded-lg p-3 overflow-x-auto max-h-48">
+                  <pre className="max-h-48 min-w-0 max-w-full overflow-auto rounded-lg bg-white/5 p-3 text-xs font-mono text-white/50">
                     {gql.query}
                   </pre>
                 </div>
@@ -134,39 +134,40 @@ export const GraphQLOverview = ({
           </div>
         </div>
 
-        <div className="w-[60%] shrink-0 py-4 self-start sticky top-0 h-[80vh]">
-          <div className="h-full rounded-xl bg-background border border-white/5 overflow-hidden flex flex-col">
+        <div className="h-[80vh] w-[60%] shrink-0 self-start py-4 sticky top-0 min-w-0">
+          <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-white/5 bg-background">
             <div className="flex shrink-0 items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-fuchsia-500/20 text-fuchsia-400">
                   GQL
                 </span>
-                <span className="text-xs text-white/40 truncate max-w-[200px]">
+                <span className="max-w-[150px] truncate text-xs text-white/40 ">
                   {gql.url || "No URL set"}
                 </span>
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 text-[11px] relative">
-              <div className="absolute inset-0 overflow-auto p-4">
-                <pre className="text-xs font-mono text-white/60 whitespace-pre-wrap">
+            <div className="relative min-h-0 flex-1 text-[11px]">
+              <div className="absolute inset-0 min-w-0 overflow-auto">
+                <pre className="box-border max-w-full min-w-0 whitespace-pre-wrap break-words p-4 text-xs font-mono text-white/60">
                   {gql.query || "# Write your GraphQL query..."}
                 </pre>
                 {gql.variables && gql.variables !== "{}" && (
-                  <div className="mt-4 pt-4 border-t border-white/5">
-                    <span className="text-[10px] text-white/30 uppercase tracking-wider">
+                  <div className="border-t border-white/5 px-4 pb-4 pt-4">
+                    <span className="text-[10px] uppercase tracking-wider text-white/30">
                       Variables
                     </span>
-                    <pre className="text-xs font-mono text-white/50 mt-2">
+                    <pre className="mt-2 max-w-full min-w-0 whitespace-pre-wrap break-words text-xs font-mono text-white/50">
                       {gql.variables}
                     </pre>
                   </div>
                 )}
               </div>
               <button
+                type="button"
                 onClick={onRun}
                 disabled={!gql.url}
-                className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent disabled:opacity-50 text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20"
+                className="absolute bottom-4 right-4 z-20 flex cursor-pointer items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-background transition-colors hover:bg-accent/90 disabled:opacity-50"
               >
                 Run Query
               </button>
