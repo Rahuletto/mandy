@@ -26,12 +26,18 @@ specta-typescript = "0.0.9"
 tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.22", features = ["serde"] }
 curl = "0.4"
-tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+native-tls = "0.2"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 base64 = "0.22"
 window-vibrancy = "0.7.1"
+tauri-plugin-liquid-glass = "0.1"
 url = "2"
 tauri-plugin-dialog = "2.6.0"
 tauri-plugin-fs = "2.4.5"
+uuid = { version = "1", features = ["v4"] }
+dashmap = "6"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-macos-haptics = "1.0.0"

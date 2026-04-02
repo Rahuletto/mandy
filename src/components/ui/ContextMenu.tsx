@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 
 export interface MenuItem {
   label: string;
@@ -60,7 +61,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       className="fixed z-[9999] bg-card border border-border rounded-lg shadow-2xl py-1 min-w-[160px] max-h-[calc(100vh-24px)] overflow-auto shadow-black/50 animate-blur-in"
@@ -94,6 +95,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
           </button>
         ),
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

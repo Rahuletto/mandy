@@ -11,6 +11,8 @@ interface WebSocketOverviewProps {
   onUpdate: (updater: (ws: WebSocketFile) => WebSocketFile) => void;
   onConnect: () => void;
   status: ConnectionStatus;
+  /** Another WebSocket file already holds the single active connection */
+  blockedByOtherConnection?: boolean;
 }
 
 export const WebSocketOverview = ({
@@ -18,6 +20,7 @@ export const WebSocketOverview = ({
   onUpdate,
   onConnect,
   status,
+  blockedByOtherConnection = false,
 }: WebSocketOverviewProps) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState(ws.name);
@@ -87,7 +90,8 @@ export const WebSocketOverview = ({
             />
 
             <section className="flex flex-col gap-8">
-              {(ws.params || []).filter((p) => p.enabled && p.key).length > 0 && (
+              {(ws.params || []).filter((p) => p.enabled && p.key).length >
+                0 && (
                 <div className="mt-4">
                   <h3 className="text-sm font-semibold text-white/70 mb-2">
                     Query Parameters
@@ -119,7 +123,8 @@ export const WebSocketOverview = ({
                 </div>
               )}
 
-              {(ws.headerItems || []).filter((h) => h.enabled && h.key).length > 0 && (
+              {(ws.headerItems || []).filter((h) => h.enabled && h.key)
+                .length > 0 && (
                 <div className="mt-4">
                   <h3 className="text-sm font-semibold text-white/70 mb-2">
                     Headers
@@ -160,7 +165,7 @@ export const WebSocketOverview = ({
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
                   WS
                 </span>
-                <span className="text-xs text-white/40 truncate max-w-[200px]">
+                <span className="text-xs text-white/40 truncate max-w-[150px] ">
                   {ws.url || "No URL set"}
                 </span>
               </div>
@@ -168,7 +173,7 @@ export const WebSocketOverview = ({
               <div className="relative">
                 <button
                   onClick={() => setShowSnippetDropdown(!showSnippetDropdown)}
-                  className="text-[11px] text-white/60 hover:text-white flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] text-white/60 hover:text-white flex items-center gap-1"
                 >
                   {snippetLang}
                   <svg
@@ -203,9 +208,23 @@ export const WebSocketOverview = ({
                 <CodeViewer code={snippetCode} language={snippetLanguage} />
               </div>
               <button
+                type="button"
                 onClick={onConnect}
-                disabled={!ws.url || status === "connected"}
-                className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent disabled:opacity-50 text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20"
+                disabled={
+                  !ws.url ||
+                  status === "connected" ||
+                  blockedByOtherConnection
+                }
+                title={
+                  !ws.url
+                    ? "Enter a WebSocket URL to connect"
+                    : blockedByOtherConnection
+                      ? "Only one WebSocket can be active at a time. Disconnect the other WebSocket first, then connect here."
+                      : status === "connected"
+                        ? "Already connected"
+                        : undefined
+                }
+                className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Connect
               </button>

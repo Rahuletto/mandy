@@ -24,9 +24,9 @@
         --text-secondary: #a0a0a0;
         --text-muted: #6e6a6a;
         --text-subtle: #4a4646;
-        --red: #FF4141;
-        --green: #4CB944;
-        --yellow: #FFCF56;
+        --red: #ff4141;
+        --green: #4cb944;
+        --yellow: #ffcf56;
         --border: rgba(255, 255, 255, 0.1);
     }
 
@@ -59,9 +59,9 @@
         --text-secondary: #3a3a3a;
         --text-muted: #5a5a5a;
         --text-subtle: #999999;
-        --red: #FF4141;
-        --green: #2F4B26;
-        --yellow: #FCBA04;
+        --red: #ff4141;
+        --green: #2f4b26;
+        --yellow: #fcba04;
         --border: rgba(0, 0, 0, 0.18);
     }
 
@@ -306,15 +306,13 @@ textarea,
 
 @keyframes blur-in {
     from {
-        filter: blur(20px);
         opacity: 0;
-        transform: translateY(4px) scale(0.98);
+        transform: translateY(3px);
     }
 
     to {
-        filter: blur(0);
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0);
     }
 }
 
@@ -333,7 +331,7 @@ textarea,
 }
 
 .animate-blur-in {
-    animation: blur-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: blur-in 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
 .animate-blur-out {
@@ -480,7 +478,9 @@ textarea,
 }
 
 .react-flow__edge-path {
-    transition: stroke 0.2s ease, stroke-width 0.2s ease;
+    transition:
+        stroke 0.2s ease,
+        stroke-width 0.2s ease;
 }
 
 /* Highlight nodes that are part of the active loop path */

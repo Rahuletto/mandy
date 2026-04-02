@@ -15,155 +15,155 @@ export const createMandyTheme = () => {
         backgroundColor: "transparent !important",
         color: colors.text,
       },
-    ".cm-scroller": {
-      overflow: "auto",
-      fontFamily:
-        "'IBM Plex Mono', ui-monospace, Menlo, Monaco, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', monospace",
-    },
-    ".cm-content": {
-      padding: "12px 0",
-      caretColor: colors.cursor,
-    },
-    ".cm-cursor, .cm-dropCursor": {
-      borderLeftColor: colors.cursor,
-      borderLeftWidth: "2px",
-    },
-    ".cm-gutters": {
-      backgroundColor: colors.inset,
-      borderRight: `1px solid ${colors.subtle}`,
-      color: colors.muted,
-      fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
-      fontSize: "12px",
-    },
-    ".cm-lineNumbers": {
-      minWidth: "40px",
-    },
-    ".cm-lineNumbers .cm-gutterElement": {
-      padding: "0 12px 0 8px",
-      textAlign: "right",
-    },
-    "&.cm-focused": {
-      outline: "none",
-    },
-    ".cm-activeLine": {
-      backgroundColor: "rgba(255, 97, 65, 0.05)",
-    },
-    ".cm-activeLineGutter": {
-      backgroundColor: "rgba(255, 97, 65, 0.05)",
-      color: colors.accent,
-    },
-    ".cm-selectionBackground, ::selection": {
-      backgroundColor: `${colors.selection} !important`,
-    },
-    "&.cm-focused .cm-selectionBackground": {
-      backgroundColor: `${colors.selection} !important`,
-    },
-    ".cm-matchingBracket": {
-      backgroundColor: "rgba(255, 97, 65, 0.30)",
-      color: colors.accent,
-      outline: "none",
-    },
-    ".cm-nonmatchingBracket": {
-      backgroundColor: "rgba(239, 83, 80, 0.30)",
-      color: colors.error,
-    },
-    ".cm-foldPlaceholder": {
-      backgroundColor: colors.inputbox,
-      color: colors.accent,
-      border: `1px solid ${colors.subtle}`,
-      padding: "0 6px",
-      borderRadius: "3px",
-      margin: "0 4px",
-    },
-    ".cm-foldGutter .cm-gutterElement": {
-      color: colors.muted,
-      cursor: "pointer",
-      transition: "color 0.15s",
-      "&:hover": {
-        color: colors.accent,
+      ".cm-scroller": {
+        overflow: "auto",
+        fontFamily:
+          "'IBM Plex Mono', ui-monospace, Menlo, Monaco, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', monospace",
       },
-    },
-    ".cm-tooltip": {
-      backgroundColor: colors.card,
-      border: `1px solid ${colors.subtle}`,
-      borderRadius: "6px",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-    },
-    ".cm-tooltip-autocomplete": {
-      "& > ul": {
-        fontFamily: "'IBM Plex Mono', monospace",
+      ".cm-content": {
+        padding: "12px 0",
+        caretColor: colors.cursor,
+      },
+      ".cm-cursor, .cm-dropCursor": {
+        borderLeftColor: colors.cursor,
+        borderLeftWidth: "2px",
+      },
+      ".cm-gutters": {
+        backgroundColor: colors.inset,
+        borderRight: `1px solid ${colors.subtle}`,
+        color: colors.muted,
+        fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
         fontSize: "12px",
       },
-      "& > ul > li": {
-        padding: "4px 8px",
+      ".cm-lineNumbers": {
+        minWidth: "40px",
       },
-      "& > ul > li[aria-selected]": {
-        backgroundColor: "rgba(255, 97, 65, 0.15)",
+      ".cm-lineNumbers .cm-gutterElement": {
+        padding: "0 12px 0 8px",
+        textAlign: "right",
+      },
+      "&.cm-focused": {
+        outline: "none",
+      },
+      ".cm-activeLine": {
+        backgroundColor: "rgba(255, 97, 65, 0.05)",
+      },
+      ".cm-activeLineGutter": {
+        backgroundColor: "rgba(255, 97, 65, 0.05)",
+        color: colors.accent,
+      },
+      ".cm-selectionBackground, ::selection": {
+        backgroundColor: `${colors.selection} !important`,
+      },
+      "&.cm-focused .cm-selectionBackground": {
+        backgroundColor: `${colors.selection} !important`,
+      },
+      ".cm-matchingBracket": {
+        backgroundColor: "rgba(255, 97, 65, 0.30)",
+        color: colors.accent,
+        outline: "none",
+      },
+      ".cm-nonmatchingBracket": {
+        backgroundColor: "rgba(239, 83, 80, 0.30)",
+        color: colors.error,
+      },
+      ".cm-foldPlaceholder": {
+        backgroundColor: colors.inputbox,
+        color: colors.accent,
+        border: `1px solid ${colors.subtle}`,
+        padding: "0 6px",
+        borderRadius: "3px",
+        margin: "0 4px",
+      },
+      ".cm-foldGutter .cm-gutterElement": {
+        color: colors.muted,
+        cursor: "pointer",
+        transition: "color 0.15s",
+        "&:hover": {
+          color: colors.accent,
+        },
+      },
+      ".cm-tooltip": {
+        backgroundColor: colors.card,
+        border: `1px solid ${colors.subtle}`,
+        borderRadius: "6px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+      },
+      ".cm-tooltip-autocomplete": {
+        "& > ul": {
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: "12px",
+        },
+        "& > ul > li": {
+          padding: "4px 8px",
+        },
+        "& > ul > li[aria-selected]": {
+          backgroundColor: "rgba(255, 97, 65, 0.20) !important",
+          color: `${colors.text} !important`,
+        },
+      },
+      ".cm-completionIcon": {
+        color: colors.accent,
+      },
+      ".cm-completionLabel": {
         color: colors.text,
       },
-    },
-    ".cm-completionIcon": {
-      color: colors.accent,
-    },
-    ".cm-completionLabel": {
-      color: colors.text,
-    },
-    ".cm-completionMatchedText": {
-      color: colors.accent,
-      fontWeight: "600",
-      textDecoration: "none",
-    },
-    ".cm-searchMatch": {
-      backgroundColor: "rgba(255, 97, 65, 0.25)",
-      outline: `1px solid ${colors.accent}`,
-    },
-    ".cm-searchMatch.cm-searchMatch-selected": {
-      backgroundColor: "rgba(255, 97, 65, 0.40)",
-    },
-    ".cm-lintRange-error": {
-      backgroundImage: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='3'><path d='m0 3 l2 -2 l1 0 l2 2 l1 0' stroke='%23ef5350' fill='none' stroke-width='1'/></svg>")`,
-    },
-    ".cm-lintRange-warning": {
-      backgroundImage: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='3'><path d='m0 3 l2 -2 l1 0 l2 2 l1 0' stroke='%23ffb74d' fill='none' stroke-width='1'/></svg>")`,
-    },
-    ".cm-lintRange-info": {
-      backgroundImage: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='3'><path d='m0 3 l2 -2 l1 0 l2 2 l1 0' stroke='%234fc3f7' fill='none' stroke-width='1'/></svg>")`,
-    },
-    ".cm-lint-marker-error": {
-      content: '""',
-    },
-    ".cm-lintPoint-error:after": {
-      borderBottomColor: colors.lintError,
-    },
-    ".cm-lintPoint-warning:after": {
-      borderBottomColor: colors.lintWarning,
-    },
-    ".cm-lintPoint-info:after": {
-      borderBottomColor: colors.lintInfo,
-    },
-    ".cm-diagnostic": {
-      padding: "4px 8px",
-      borderRadius: "4px",
-    },
-    ".cm-diagnostic-error": {
-      backgroundColor: "rgba(239, 83, 80, 0.15)",
-      borderLeft: `3px solid ${colors.lintError}`,
-    },
-    ".cm-diagnostic-warning": {
-      backgroundColor: "rgba(255, 183, 77, 0.15)",
-      borderLeft: `3px solid ${colors.lintWarning}`,
-    },
-    ".cm-diagnostic-info": {
-      backgroundColor: "rgba(79, 195, 247, 0.15)",
-      borderLeft: `3px solid ${colors.lintInfo}`,
-    },
-    ".cm-curl-key": { color: `${colors.property} !important` },
-    ".cm-curl-value": { color: `${colors.string} !important` },
-    ".cm-curl-json-key": { color: `${colors.property} !important` },
-    ".cm-curl-json-value": { color: `${colors.string} !important` },
+      ".cm-completionMatchedText": {
+        color: colors.accent,
+        fontWeight: "600",
+        textDecoration: "none",
       },
-      { dark: !window.matchMedia("(prefers-color-scheme: light)").matches },
-    );
+      ".cm-searchMatch": {
+        backgroundColor: "rgba(255, 97, 65, 0.25)",
+        outline: `1px solid ${colors.accent}`,
+      },
+      ".cm-searchMatch.cm-searchMatch-selected": {
+        backgroundColor: "rgba(255, 97, 65, 0.40)",
+      },
+      ".cm-lintRange-error": {
+        backgroundImage: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='3'><path d='m0 3 l2 -2 l1 0 l2 2 l1 0' stroke='%23ef5350' fill='none' stroke-width='1'/></svg>")`,
+      },
+      ".cm-lintRange-warning": {
+        backgroundImage: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='3'><path d='m0 3 l2 -2 l1 0 l2 2 l1 0' stroke='%23ffb74d' fill='none' stroke-width='1'/></svg>")`,
+      },
+      ".cm-lintRange-info": {
+        backgroundImage: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='3'><path d='m0 3 l2 -2 l1 0 l2 2 l1 0' stroke='%234fc3f7' fill='none' stroke-width='1'/></svg>")`,
+      },
+      ".cm-lint-marker-error": {
+        content: '""',
+      },
+      ".cm-lintPoint-error:after": {
+        borderBottomColor: colors.lintError,
+      },
+      ".cm-lintPoint-warning:after": {
+        borderBottomColor: colors.lintWarning,
+      },
+      ".cm-lintPoint-info:after": {
+        borderBottomColor: colors.lintInfo,
+      },
+      ".cm-diagnostic": {
+        padding: "4px 8px",
+        borderRadius: "4px",
+      },
+      ".cm-diagnostic-error": {
+        backgroundColor: "rgba(239, 83, 80, 0.15)",
+        borderLeft: `3px solid ${colors.lintError}`,
+      },
+      ".cm-diagnostic-warning": {
+        backgroundColor: "rgba(255, 183, 77, 0.15)",
+        borderLeft: `3px solid ${colors.lintWarning}`,
+      },
+      ".cm-diagnostic-info": {
+        backgroundColor: "rgba(79, 195, 247, 0.15)",
+        borderLeft: `3px solid ${colors.lintInfo}`,
+      },
+      ".cm-curl-key": { color: `${colors.property} !important` },
+      ".cm-curl-value": { color: `${colors.string} !important` },
+      ".cm-curl-json-key": { color: `${colors.property} !important` },
+      ".cm-curl-json-value": { color: `${colors.string} !important` },
+    },
+    { dark: !window.matchMedia("(prefers-color-scheme: light)").matches },
+  );
 };
 
 export const createMandyHighlighting = () => {
@@ -248,4 +248,7 @@ export const createMandyHighlighting = () => {
   return syntaxHighlighting(mandyHighlightStyle);
 };
 
-export const getMandyExtension = () => [createMandyTheme(), createMandyHighlighting()];
+export const getMandyExtension = () => [
+  createMandyTheme(),
+  createMandyHighlighting(),
+];

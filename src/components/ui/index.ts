@@ -4,6 +4,7 @@ export type { DropdownItem } from "./Dropdown";
 export { ContextMenu } from "./ContextMenu";
 export type { MenuItem } from "./ContextMenu";
 export { HoverPopover } from "./HoverPopover";
+export { Tooltip } from "./Tooltip";
 export { ToastContainer } from "./Toast";
 export { EnvInput, UrlInput } from "./Input";
 export { Dialog } from "./Dialog";

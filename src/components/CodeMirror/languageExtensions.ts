@@ -14,7 +14,8 @@ export type Language =
   | "go"
   | "rust"
   | "java"
-  | "php";
+  | "php"
+  | "graphql";
 
 export const languageExtensions: Record<string, () => Promise<Extension[]>> = {
   json: async () => {
@@ -69,4 +70,8 @@ export const languageExtensions: Record<string, () => Promise<Extension[]>> = {
     return [StreamLanguage.define(shell)];
   },
   text: async () => [],
+  graphql: async () => {
+    const { graphql } = await import("cm6-graphql");
+    return [graphql()];
+  },
 };

@@ -7,6 +7,7 @@ import {
   TbArrowLeft,
   TbChevronRight,
 } from "react-icons/tb";
+import { commands } from "../../bindings";
 import { SiSwagger, SiPostman, SiInsomnia } from "react-icons/si";
 import { Logo } from "./Logo";
 
@@ -107,9 +108,9 @@ export function ImportModal({
         onImportOpenAPI(spec);
         handleClose();
       } else if (selectedSource === "openapi-url") {
-        const response = await fetch(urlInput);
-        if (!response.ok) throw new Error("Failed to fetch URL");
-        const spec = await response.json();
+        const result = await commands.fetchUrl(urlInput);
+        if (result.status === "error") throw new Error(result.error);
+        const spec = JSON.parse(result.data.body);
         onImportOpenAPI(spec);
         handleClose();
       } else if (selectedSource === "postman") {
@@ -283,12 +284,31 @@ export function ImportModal({
                   }`}
                 >
                   {source.isLogo ? (
-                    <Logo width={16} height={16} className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`} />
+                    <Logo
+                      width={16}
+                      height={16}
+                      className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`}
+                    />
                   ) : (
                     <>
-                      {source.id === "openapi" && <SiSwagger size={16} className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`} />}
-                      {source.id === "postman" && <SiPostman size={16} className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`} />}
-                      {source.id === "insomnia" && <SiInsomnia size={16} className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`} />}
+                      {source.id === "openapi" && (
+                        <SiSwagger
+                          size={16}
+                          className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`}
+                        />
+                      )}
+                      {source.id === "postman" && (
+                        <SiPostman
+                          size={16}
+                          className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`}
+                        />
+                      )}
+                      {source.id === "insomnia" && (
+                        <SiInsomnia
+                          size={16}
+                          className={`${source.available ? "text-white/40 group-hover:text-white/80" : "text-white/20"} transition-colors`}
+                        />
+                      )}
                     </>
                   )}
                   <span

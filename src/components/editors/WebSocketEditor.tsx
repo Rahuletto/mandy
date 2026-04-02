@@ -1,8 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useWebSocket } from "../../hooks/useWebSocket";
+import { TbPlugConnected } from "react-icons/tb";
+import {
+  useExclusiveWebSocketOwnerId,
+  useWebSocket,
+} from "../../hooks/useWebSocket";
 import type { AuthType } from "../../bindings";
 import type { WebSocketFile, WebSocketKeyValue } from "../../types/project";
 import { KeyValueTable, type KeyValueItem } from "../KeyValueTable";
+import { Tooltip } from "../ui/Tooltip";
 import { AuthEditor } from "./AuthEditor";
 import { WebSocketOverview } from "./WebSocketOverview";
 import { WebSocketMessageList } from "./WebSocketMessageList";
@@ -14,6 +19,9 @@ interface WebSocketEditorProps {
   availableVariables?: string[];
   projectAuth?: AuthType;
   onOpenProjectSettings?: () => void;
+  onStartLoading?: (id: string) => void;
+  onStopLoading?: (id: string) => void;
+  resolveVariables?: (text: string) => string;
 }
 
 type WsTab =
@@ -50,9 +58,31 @@ export function WebSocketEditor({
   availableVariables,
   projectAuth,
   onOpenProjectSettings,
+  onStartLoading,
+  onStopLoading,
+  resolveVariables,
 }: WebSocketEditorProps) {
+  const resolve = resolveVariables ?? ((t: string) => t);
+
+  const handleTreeActivity = useCallback(
+    (active: boolean) => {
+      if (active) onStartLoading?.(ws.id);
+      else onStopLoading?.(ws.id);
+    },
+    [ws.id, onStartLoading, onStopLoading],
+  );
+
+  const exclusiveOwnerId = useExclusiveWebSocketOwnerId();
+  const blockedByOtherWs =
+    exclusiveOwnerId !== null && exclusiveOwnerId !== ws.id;
+
   const { status, connect, disconnect, sendMessage, clearMessages } =
-    useWebSocket({ ws, onUpdate });
+    useWebSocket({
+      ws,
+      onUpdate,
+      resolveVariables: resolve,
+      onTreeActivity: handleTreeActivity,
+    });
 
   const [url, setUrl] = useState(ws.url);
   const [activeTab, setActiveTab] = useState<WsTab>("overview");
@@ -111,12 +141,23 @@ export function WebSocketEditor({
 
   const isOverview = activeTab === "overview";
 
+  const headerConnectTooltip = !url
+    ? "Enter a WebSocket URL to connect"
+    : blockedByOtherWs
+      ? "Only one WebSocket can be active at a time. Disconnect the other WebSocket first, then connect here."
+      : status === "connecting"
+        ? "Connecting..."
+        : undefined;
+
+  const headerConnectDisabled =
+    !url || status === "connecting" || blockedByOtherWs;
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex gap-4 border-b border-text/15 p-4">
         <div className="flex-1 flex items-center bg-inputbox rounded-lg overflow-hidden">
-          <span className="px-4 py-2.5 text-sm font-bold font-mono text-emerald-400">
-            WS
+          <span className="px-4 py-2.5 flex items-center text-emerald-400">
+            <TbPlugConnected size={18} />
           </span>
           <div className="w-px h-5 bg-white/10" />
           <input
@@ -131,25 +172,29 @@ export function WebSocketEditor({
         {status === "connected" ? (
           <button
             onClick={disconnect}
-            className="px-6 py-2 bg-red hover:bg-red/90 rounded-full text-background font-semibold transition-all"
+            className="px-6 py-2 bg-red hover:bg-red/90 rounded-full text-background font-semibold transition-all cursor-pointer"
           >
             Disconnect
           </button>
         ) : (
-          <button
-            onClick={() => connect(url)}
-            disabled={!url || status === "connecting"}
-            className="px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 rounded-full text-background font-semibold transition-all"
-          >
-            Connect
-          </button>
+          <Tooltip content={headerConnectTooltip} position="bottom">
+            <button
+              onClick={() => connect(url)}
+              disabled={headerConnectDisabled}
+              className="px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-full text-background font-semibold transition-all cursor-pointer"
+            >
+              Connect
+            </button>
+          </Tooltip>
         )}
       </div>
 
-      <div ref={splitContainerRef} className="flex flex-1 overflow-hidden">
+      <div ref={splitContainerRef} className="flex-1 flex overflow-hidden">
         <div
           className="flex p-2 pl-4 flex-col overflow-hidden"
-          style={{ width: isOverview ? "100%" : `${splitPercent}%` }}
+          style={{
+            width: !isOverview ? `${splitPercent}%` : "100%",
+          }}
         >
           <div className="flex items-center gap-1 py-2 shrink-0">
             {tabs.map((tab) => (
@@ -172,21 +217,19 @@ export function WebSocketEditor({
             ))}
           </div>
 
-          <div className="flex-1 overflow-auto relative">
+          <div className="flex-1 overflow-auto relative min-h-0">
             {activeTab === "overview" && (
               <WebSocketOverview
                 ws={ws}
                 onUpdate={onUpdate}
                 onConnect={() => connect(url)}
                 status={status}
+                blockedByOtherConnection={blockedByOtherWs}
               />
             )}
 
             {activeTab === "message" && (
-              <WebSocketMessageComposer
-                status={status}
-                onSend={sendMessage}
-              />
+              <WebSocketMessageComposer status={status} onSend={sendMessage} />
             )}
 
             {activeTab === "params" && (
@@ -206,9 +249,7 @@ export function WebSocketEditor({
             {activeTab === "authorization" && (
               <AuthEditor
                 auth={ws.auth || "None"}
-                onChange={(auth) =>
-                  onUpdate((prev) => ({ ...prev, auth }))
-                }
+                onChange={(auth) => onUpdate((prev) => ({ ...prev, auth }))}
                 availableVariables={availableVariables}
                 projectAuth={projectAuth}
                 isInherited={ws.useInheritedAuth ?? true}
@@ -264,11 +305,13 @@ export function WebSocketEditor({
               <div className="w-px h-full group-hover:bg-accent/50 transition-colors" />
             </div>
 
-            <WebSocketMessageList
-              messages={ws.messages}
-              status={status}
-              onClear={clearMessages}
-            />
+            <div className="flex-1 flex flex-col overflow-hidden bg-inset border-l border-white/10 min-h-0">
+              <WebSocketMessageList
+                messages={ws.messages}
+                status={status}
+                onClear={clearMessages}
+              />
+            </div>
           </>
         )}
       </div>
