@@ -1,4 +1,5 @@
 export { Checkbox } from "./Checkbox";
+export { AutocompleteInput } from "./AutocompleteInput";
 export { Dropdown, MoreButton } from "./Dropdown";
 export type { DropdownItem } from "./Dropdown";
 export { ContextMenu } from "./ContextMenu";
@@ -16,4 +17,3 @@ export { TypeLabel } from "./TypeLabel";
 export { ErrorBoundary } from "./ErrorBoundary";
 export { NewProjectModal } from "./NewProjectModal";
 export { Logo } from "./Logo";
-
