@@ -251,3 +251,54 @@ pub struct GraphQLIntrospectResponse {
     pub schema_json: Option<String>,
     pub error: Option<String>,
 }
+
+// ─── Socket.IO types ────────────────────────────────────────────────────────
+
+/// Sent from the frontend to open a new Socket.IO connection.
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct SioConnectRequest {
+    /// Unique connection ID chosen by the caller.
+    pub connection_id: String,
+    /// The Socket.IO server URL (http:// or https://).
+    pub url: String,
+    /// Optional namespace to connect to (defaults to "/").
+    pub namespace: Option<String>,
+    /// Optional extra headers.
+    pub headers: HashMap<String, String>,
+    /// Optional auth payload sent during the handshake.
+    pub auth: Option<String>,
+}
+
+/// Response returned from `sio_connect`.
+#[derive(Serialize, Deserialize, Type)]
+pub struct SioConnectResponse {
+    pub connection_id: String,
+    pub url: String,
+    pub namespace: String,
+    pub error: Option<String>,
+}
+
+/// Pushed as a Tauri event for every message received.
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct SioIncomingMessage {
+    pub connection_id: String,
+    pub id: String,
+    pub event: String,
+    pub data: String,
+    pub timestamp_ms: f64,
+}
+
+/// Pushed as a Tauri event when the connection is closed.
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct SioDisconnectedEvent {
+    pub connection_id: String,
+    pub reason: String,
+}
+
+/// Sent from the frontend to emit an event.
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct SioEmitRequest {
+    pub connection_id: String,
+    pub event: String,
+    pub data: String,
+}
