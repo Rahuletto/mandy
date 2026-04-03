@@ -7,6 +7,7 @@ import {
   TbWorld,
   TbPlugConnected,
   TbBrandGraphql,
+  TbBolt,
 } from "react-icons/tb";
 import { Logo } from "./ui";
 import { getShortMethod } from "../utils/methodConstants";
@@ -15,6 +16,7 @@ interface WelcomePageProps {
   onNewRequest: () => void;
   onNewWebSocket: () => void;
   onNewGraphQL: () => void;
+  onNewSocketIO: () => void;
   onNewFolder: () => void;
   onImportClick: () => void;
   recentRequests: Array<{
@@ -50,6 +52,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
   onNewRequest,
   onNewWebSocket,
   onNewGraphQL,
+  onNewSocketIO,
   onNewFolder,
   onImportClick,
   recentRequests,
@@ -103,6 +106,12 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
       icon: <TbBrandGraphql size={16} />,
       color: "text-fuchsia-400",
       onClick: onNewGraphQL,
+    },
+    {
+      label: "Socket.IO",
+      icon: <TbBolt size={16} />,
+      color: "text-amber-400",
+      onClick: onNewSocketIO,
     },
   ];
 

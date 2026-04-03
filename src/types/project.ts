@@ -90,6 +90,37 @@ export interface GraphQLFile {
   response: ApiResponse | null;
 }
 
+export interface SocketIOKeyValue {
+  id: string;
+  key: string;
+  value: string;
+  description: string;
+  enabled: boolean;
+}
+
+export interface SocketIOFile {
+  id: string;
+  type: "socketio";
+  name: string;
+  description?: string;
+  url: string;
+  namespace?: string;
+  messages: SocketIOMessage[];
+  headers: Record<string, string>;
+  headerItems?: SocketIOKeyValue[];
+  auth?: import("../bindings").AuthType;
+  authPayload?: string;
+  useInheritedAuth?: boolean;
+}
+
+export interface SocketIOMessage {
+  id: string;
+  direction: "send" | "receive" | "system";
+  event: string;
+  data: string;
+  timestamp: number;
+}
+
 export interface RecentRequest {
   requestId: string;
   name: string;
@@ -102,7 +133,7 @@ export interface Folder {
   id: string;
   type: "folder";
   name: string;
-  children: (Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile)[];
+  children: (Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile | SocketIOFile)[];
   expanded?: boolean;
 }
 
@@ -120,6 +151,6 @@ export interface Project {
   recentRequests: RecentRequest[];
 }
 
-export type TreeItem = Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile;
+export type TreeItem = Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile | SocketIOFile;
 
 export type SortMode = "manual" | "method" | "alphabetical";

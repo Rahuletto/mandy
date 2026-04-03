@@ -514,6 +514,32 @@ const FolderSection = React.memo(function FolderSection({
               );
             }
 
+            if (child.type === "socketio") {
+              const prev = folder.children[index - 1];
+              const next = folder.children[index + 1];
+              return (
+                <button
+                  key={child.id}
+                  onClick={() => onSelectRequest(child.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all hover:bg-white/5 cursor-pointer ${
+                    !prev || prev.type !== "socketio" ? "rounded-t-xl" : ""
+                  } ${!next || next.type !== "socketio" ? "rounded-b-xl" : ""} bg-white/[0.02] border-b border-white/5 last:border-0`}
+                >
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">
+                    SIO
+                  </span>
+                  <span className="text-sm text-white/80 truncate">
+                    {child.name}
+                  </span>
+                  {child.url && (
+                    <span className="text-[11px] text-white/20 truncate ml-auto">
+                      {child.url}
+                    </span>
+                  )}
+                </button>
+              );
+            }
+
             const prev = folder.children[index - 1];
             const next = folder.children[index + 1];
             const isFirstInGroup = !prev || prev.type !== "request";

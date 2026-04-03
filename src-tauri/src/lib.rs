@@ -8,6 +8,7 @@ mod types;
 mod window;
 
 use helpers::websocket::WsRegistry;
+use helpers::socketio::SioRegistry;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -28,6 +29,12 @@ pub fn run() {
         .typ::<types::WsIncomingMessage>()
         .typ::<types::WsClosedEvent>()
         .typ::<types::WsSendRequest>()
+        // ── Socket.IO types ─────────────────────────────────────────────────
+        .typ::<types::SioConnectRequest>()
+        .typ::<types::SioConnectResponse>()
+        .typ::<types::SioIncomingMessage>()
+        .typ::<types::SioDisconnectedEvent>()
+        .typ::<types::SioEmitRequest>()
         // ── GraphQL types ────────────────────────────────────────────────────
         .typ::<types::GraphQLIntrospectRequest>()
         .typ::<types::GraphQLIntrospectResponse>()
@@ -41,6 +48,9 @@ pub fn run() {
             helpers::websocket::ws_send,
             helpers::websocket::ws_disconnect,
             helpers::graphql::graphql_introspect,
+            helpers::socketio::sio_connect,
+            helpers::socketio::sio_emit,
+            helpers::socketio::sio_disconnect,
         ]);
 
     #[cfg(debug_assertions)]
@@ -49,13 +59,15 @@ pub fn run() {
         .expect("Failed to export typescript bindings");
 
     let ws_registry = Arc::new(WsRegistry::new());
+    let sio_registry = Arc::new(SioRegistry::new());
 
     let mut tauri_builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_liquid_glass::init())
-        .manage(ws_registry);
+        .manage(ws_registry)
+        .manage(sio_registry);
 
     #[cfg(target_os = "macos")]
     {

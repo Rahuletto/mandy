@@ -58,24 +58,26 @@ export const WebSocketMessageComposer = ({
           }
         />
       </div>
-      <Tooltip
-        content={
-          status !== "connected"
-            ? "Connect to a WebSocket server first"
-            : !messageInput.trim()
-              ? "Enter a message to send"
-              : undefined
-        }
-        wrapperClassName="absolute right-4 bottom-4 z-20"
-      >
-        <button
-          onClick={handleSend}
-          disabled={!messageInput.trim() || status !== "connected"}
-          className="p-2.5 bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-full text-background transition-all cursor-pointer"
+      <div className="absolute right-4 bottom-4 z-20 inline-flex w-fit h-fit">
+        <Tooltip
+          content={
+            status !== "connected"
+              ? "Connect to a WebSocket server first"
+              : !messageInput.trim()
+                ? "Enter a message to send"
+                : undefined
+          }
+          wrapperClassName="inline-flex w-fit h-fit"
         >
-          <TbSend size={16} />
-        </button>
-      </Tooltip>
+          <button
+            onClick={handleSend}
+            disabled={!messageInput.trim() || status !== "connected"}
+            className="p-2.5 bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-full text-background transition-all cursor-pointer"
+          >
+            <TbSend size={16} />
+          </button>
+        </Tooltip>
+      </div>
     </div>
   );
 };

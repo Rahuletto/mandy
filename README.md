@@ -77,4 +77,7 @@ Mandy supports importing from popular API tools:
 - [x] Workflows
 - [ ] GraphQL Support
 - [x] WebSockets
-- [ ] SocketIO
+- [x] SocketIO
+- [ ] MQTT
+- [ ] SSE (Server-Sent Events)
+- [ ] gRPC

@@ -3,7 +3,7 @@ import type { Project, SortMode } from "../types/project";
 import { FileTree } from "./FileTree";
 import { ContextMenu, MenuItem, IconPicker, getIconComponent } from "./ui";
 import { FaFolder, FaPlus } from "react-icons/fa6";
-import { TbPlugConnected, TbWorld, TbBrandGraphql } from "react-icons/tb";
+import { TbPlugConnected, TbWorld, TbBrandGraphql, TbBolt } from "react-icons/tb";
 import { VscTypeHierarchySub } from "react-icons/vsc";
 
 interface SidebarProps {
@@ -12,12 +12,13 @@ interface SidebarProps {
   unsavedIds: Set<string>;
   onSelect: (
     id: string,
-    type: "folder" | "request" | "workflow" | "websocket" | "graphql",
+    type: "folder" | "request" | "workflow" | "websocket" | "graphql" | "socketio",
   ) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
   onAddWebSocket: (folderId: string) => void;
   onAddGraphQL: (folderId: string) => void;
+  onAddSocketIO: (folderId: string) => void;
   onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -45,6 +46,7 @@ interface SidebarProps {
   completedRequests?: Set<string>;
   loadingWebSockets?: Set<string>;
   loadingGraphQLs?: Set<string>;
+  loadingSocketIOs?: Set<string>;
 }
 
 export function Sidebar({
@@ -56,6 +58,7 @@ export function Sidebar({
   onAddRequest,
   onAddWebSocket,
   onAddGraphQL,
+  onAddSocketIO,
   onAddWorkflow,
   onAddFolder,
   onRename,
@@ -79,6 +82,7 @@ export function Sidebar({
   completedRequests = new Set(),
   loadingWebSockets = new Set(),
   loadingGraphQLs = new Set(),
+  loadingSocketIOs = new Set(),
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isResizing, setIsResizing] = useState(false);
@@ -131,18 +135,23 @@ export function Sidebar({
     ? [
         {
           label: "REST Request",
-          icon: <TbWorld size={14} />,
+          icon: <TbWorld size={14} className="text-emerald-400 opacity-100" />,
           onClick: () => onAddRequest(activeProject.root.id),
         },
         {
           label: "WebSocket",
-          icon: <TbPlugConnected size={14} />,
+          icon: <TbPlugConnected size={14} className="text-sky-400 opacity-100" />,
           onClick: () => onAddWebSocket(activeProject.root.id),
         },
         {
           label: "GraphQL",
-          icon: <TbBrandGraphql size={14} />,
+          icon: <TbBrandGraphql size={14} className="text-fuchsia-400 opacity-100" />,
           onClick: () => onAddGraphQL(activeProject.root.id),
+        },
+        {
+          label: "Socket.IO",
+          icon: <TbBolt size={14} className="text-amber-400 opacity-100" />,
+          onClick: () => onAddSocketIO(activeProject.root.id),
         },
         { label: "", onClick: () => {}, divider: true },
         {
@@ -236,6 +245,7 @@ export function Sidebar({
             onAddRequest={onAddRequest}
             onAddWebSocket={onAddWebSocket}
             onAddGraphQL={onAddGraphQL}
+            onAddSocketIO={onAddSocketIO}
             onAddWorkflow={onAddWorkflow}
             onAddFolder={onAddFolder}
             onRename={onRename}
@@ -254,6 +264,7 @@ export function Sidebar({
             completedRequests={completedRequests}
             loadingWebSockets={loadingWebSockets}
             loadingGraphQLs={loadingGraphQLs}
+            loadingSocketIOs={loadingSocketIOs}
           />
         </>
       ) : (

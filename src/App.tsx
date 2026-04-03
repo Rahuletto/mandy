@@ -21,6 +21,7 @@ import { BodyEditor } from "./components/editors/BodyEditor";
 import { AuthEditor } from "./components/editors/AuthEditor";
 import { WebSocketEditor } from "./components/editors/WebSocketEditor";
 import { GraphQLEditor } from "./components/editors/GraphQLEditor";
+import { SocketIOEditor } from "./components/editors/SocketIOEditor";
 import { Sidebar } from "./components/Sidebar";
 import {
   Dropdown,
@@ -87,6 +88,7 @@ function App() {
     addRequest,
     addWebSocket,
     addGraphQL,
+    addSocketIO,
     addWorkflow,
     addFolder,
     renameItem,
@@ -99,6 +101,7 @@ function App() {
     updateWorkflow,
     updateWebSocket,
     updateGraphQL,
+    updateSocketIO,
     setRequestResponse,
     markSaved,
     activeWorkflowId,
@@ -107,6 +110,8 @@ function App() {
     setActiveWebSocketId,
     activeGraphQLId,
     setActiveGraphQLId,
+    activeSocketIOId,
+    setActiveSocketIOId,
     clipboard,
     copyToClipboard,
     cutToClipboard,
@@ -129,7 +134,8 @@ function App() {
       state.activeRequestId ||
       state.activeWorkflowId ||
       state.activeWebSocketId ||
-      state.activeGraphQLId;
+      state.activeGraphQLId ||
+      state.activeSocketIOId;
     if (!activeId) return null;
 
     const findItem = (root: any, itemId: string): any => {
@@ -151,6 +157,7 @@ function App() {
   const activeWorkflow = activeItem?.type === "workflow" ? activeItem : null;
   const activeWebSocket = activeItem?.type === "websocket" ? activeItem : null;
   const activeGraphQL = activeItem?.type === "graphql" ? activeItem : null;
+  const activeSocketIO = activeItem?.type === "socketio" ? activeItem : null;
 
   const { addToast } = useToastStore();
 
@@ -164,6 +171,9 @@ function App() {
     new Set(),
   );
   const [loadingGraphQLs, setLoadingGraphQLs] = useState<Set<string>>(
+    new Set(),
+  );
+  const [loadingSocketIOs, setLoadingSocketIOs] = useState<Set<string>>(
     new Set(),
   );
   const loading = activeRequest ? loadingRequests.has(activeRequest.id) : false;
@@ -263,6 +273,18 @@ function App() {
     });
   }, []);
 
+  const startSioLoading = useCallback((sioId: string) => {
+    setLoadingSocketIOs((prev) => new Set(prev).add(sioId));
+  }, []);
+
+  const stopSioLoading = useCallback((sioId: string) => {
+    setLoadingSocketIOs((prev) => {
+      const next = new Set(prev);
+      next.delete(sioId);
+      return next;
+    });
+  }, []);
+
   const handleNewWebSocket = () => {
     if (activeProject) {
       addWebSocket(activeProject.root.id);
@@ -274,6 +296,14 @@ function App() {
   const handleNewGraphQL = () => {
     if (activeProject) {
       addGraphQL(activeProject.root.id);
+    } else {
+      setShowNewProjectModal(true);
+    }
+  };
+
+  const handleNewSocketIO = () => {
+    if (activeProject) {
+      addSocketIO(activeProject.root.id);
     } else {
       setShowNewProjectModal(true);
     }
@@ -406,7 +436,8 @@ function App() {
           activeRequestId ||
           activeWebSocketId ||
           activeWorkflowId ||
-          activeGraphQLId;
+          activeGraphQLId ||
+          activeSocketIOId;
         if (idToSave) {
           markSaved(idToSave);
         }
@@ -1316,6 +1347,9 @@ function App() {
               } else if (type === "graphql") {
                 setActiveGraphQLId(id);
                 setShowProjectOverview(false);
+              } else if (type === "socketio") {
+                setActiveSocketIOId(id);
+                setShowProjectOverview(false);
               }
             }}
             selectedItemId={
@@ -1324,12 +1358,14 @@ function App() {
                 : activeRequestId ||
                   activeWorkflowId ||
                   activeWebSocketId ||
-                  activeGraphQLId
+                  activeGraphQLId ||
+                  activeSocketIOId
             }
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
             onAddWebSocket={addWebSocket}
             onAddGraphQL={addGraphQL}
+            onAddSocketIO={addSocketIO}
             onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
@@ -1361,6 +1397,7 @@ function App() {
             completedRequests={completedRequests}
             loadingWebSockets={loadingWebSockets}
             loadingGraphQLs={loadingGraphQLs}
+            loadingSocketIOs={loadingSocketIOs}
           />
         </div>
 
@@ -1390,6 +1427,9 @@ function App() {
               } else if (type === "graphql") {
                 setActiveGraphQLId(id);
                 setShowProjectOverview(false);
+              } else if (type === "socketio") {
+                setActiveSocketIOId(id);
+                setShowProjectOverview(false);
               }
             }}
             selectedItemId={
@@ -1398,12 +1438,14 @@ function App() {
                 : activeRequestId ||
                   activeWorkflowId ||
                   activeWebSocketId ||
-                  activeGraphQLId
+                  activeGraphQLId ||
+                  activeSocketIOId
             }
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
             onAddWebSocket={addWebSocket}
             onAddGraphQL={addGraphQL}
+            onAddSocketIO={addSocketIO}
             onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
@@ -1435,6 +1477,7 @@ function App() {
             completedRequests={completedRequests}
             loadingWebSockets={loadingWebSockets}
             loadingGraphQLs={loadingGraphQLs}
+            loadingSocketIOs={loadingSocketIOs}
           />
         </div>
 
@@ -1787,10 +1830,23 @@ function App() {
                 setShowProjectOverview(true);
               }}
             />
+          ) : activeSocketIO && !showProjectOverview ? (
+            <SocketIOEditor
+              key={activeSocketIO.id}
+              sio={activeSocketIO}
+              onUpdate={(updater) => updateSocketIO(activeSocketIO.id, updater)}
+              availableVariables={getActiveEnvironmentVariables().map(
+                (v) => v.key,
+              )}
+              resolveVariables={resolveVariables}
+              onStartLoading={startSioLoading}
+              onStopLoading={stopSioLoading}
+            />
           ) : !activeRequest &&
             !activeWorkflow &&
             !activeWebSocket &&
             !activeGraphQL &&
+            !activeSocketIO &&
             !showProjectOverview ? (
             <WelcomePage
               onNewRequest={() => {
@@ -1806,6 +1862,7 @@ function App() {
               }}
               onNewWebSocket={handleNewWebSocket}
               onNewGraphQL={handleNewGraphQL}
+              onNewSocketIO={handleNewSocketIO}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");
@@ -2417,6 +2474,7 @@ function App() {
               }}
               onNewWebSocket={handleNewWebSocket}
               onNewGraphQL={handleNewGraphQL}
+              onNewSocketIO={handleNewSocketIO}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");

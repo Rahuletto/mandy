@@ -78,6 +78,30 @@ async graphqlIntrospect(req: GraphQLIntrospectRequest) : Promise<Result<GraphQLI
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async sioConnect(req: SioConnectRequest) : Promise<Result<SioConnectResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sio_connect", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async sioEmit(req: SioEmitRequest) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sio_emit", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async sioDisconnect(connectionId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sio_disconnect", { connectionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -120,6 +144,46 @@ export type MultipartValue = { Text: string } | { File: { data: number[]; filena
 export type ProxyConfig = { url: string; username: string | null; password: string | null }
 export type RedirectEntry = { url: string; status: number }
 export type ResponseRenderer = "Raw" | "Json" | "Xml" | "Html" | "HtmlPreview" | "Image" | "Audio" | "Video" | "Pdf"
+/**
+ * Sent from the frontend to open a new Socket.IO connection.
+ */
+export type SioConnectRequest = { 
+/**
+ * Unique connection ID chosen by the caller.
+ */
+connection_id: string; 
+/**
+ * The Socket.IO server URL (http:// or https://).
+ */
+url: string; 
+/**
+ * Optional namespace to connect to (defaults to "/").
+ */
+namespace: string | null; 
+/**
+ * Optional extra headers.
+ */
+headers: Partial<{ [key in string]: string }>; 
+/**
+ * Optional auth payload sent during the handshake.
+ */
+auth: string | null }
+/**
+ * Response returned from `sio_connect`.
+ */
+export type SioConnectResponse = { connection_id: string; url: string; namespace: string; error: string | null }
+/**
+ * Pushed as a Tauri event when the connection is closed.
+ */
+export type SioDisconnectedEvent = { connection_id: string; reason: string }
+/**
+ * Sent from the frontend to emit an event.
+ */
+export type SioEmitRequest = { connection_id: string; event: string; data: string }
+/**
+ * Pushed as a Tauri event for every message received.
+ */
+export type SioIncomingMessage = { connection_id: string; id: string; event: string; data: string; timestamp_ms: number }
 export type SizeInfo = { headers_bytes: number; body_bytes: number; total_bytes: number }
 export type TimingInfo = { total_ms: number; dns_lookup_ms: number; tcp_handshake_ms: number; tls_handshake_ms: number; transfer_start_ms: number; ttfb_ms: number; content_download_ms: number }
 /**

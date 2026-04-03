@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { VscChevronRight, VscChevronDown, VscAdd } from "react-icons/vsc";
 import { FaFolder, FaFolderOpen, FaPlus } from "react-icons/fa6";
 import { HiDownload } from "react-icons/hi";
-import { TbPlugConnected, TbWorld, TbBrandGraphql } from "react-icons/tb";
+import { TbPlugConnected, TbWorld, TbBrandGraphql, TbBolt } from "react-icons/tb";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
 
 import { ContextMenu, MenuItem } from "./ui";
@@ -32,12 +32,13 @@ interface FileTreeProps {
   selectedItemId: string | null;
   onSelect: (
     id: string,
-    type: "folder" | "request" | "workflow" | "websocket" | "graphql",
+    type: "folder" | "request" | "workflow" | "websocket" | "graphql" | "socketio",
   ) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
   onAddWebSocket: (folderId: string) => void;
   onAddGraphQL: (folderId: string) => void;
+  onAddSocketIO: (folderId: string) => void;
   onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -60,6 +61,7 @@ interface FileTreeProps {
   completedRequests?: Set<string>;
   loadingWebSockets?: Set<string>;
   loadingGraphQLs?: Set<string>;
+  loadingSocketIOs?: Set<string>;
 }
 
 import {
@@ -242,6 +244,13 @@ function SortableItem({
             className="inline-block align-[-2px] relative top-[1px]"
           />
         </span>
+      ) : item.type === "socketio" ? (
+        <span className="text-amber-400 shrink-0 mr-2 w-10 text-right">
+          <TbBolt
+            size={14}
+            className="inline-block align-[-2px] relative top-[1px]"
+          />
+        </span>
       ) : (
         <span
           className="font-mono text-[11px] font-bold shrink-0 mr-2 w-10 text-right"
@@ -370,6 +379,7 @@ export function FileTree({
   onAddRequest,
   onAddWebSocket,
   onAddGraphQL,
+  onAddSocketIO,
   onAddWorkflow,
   onAddFolder,
   onRename,
@@ -388,6 +398,7 @@ export function FileTree({
   completedRequests = new Set(),
   loadingWebSockets = new Set(),
   loadingGraphQLs = new Set(),
+  loadingSocketIOs = new Set(),
 }: FileTreeProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -721,18 +732,23 @@ export function FileTree({
       return [
         {
           label: "REST Request",
-          icon: <TbWorld size={14} />,
+          icon: <TbWorld size={14} className="text-emerald-400" />,
           onClick: () => onAddRequest(item.id),
         },
         {
           label: "WebSocket",
-          icon: <TbPlugConnected size={14} />,
+          icon: <TbPlugConnected size={14} className="text-sky-400" />,
           onClick: () => onAddWebSocket(item.id),
         },
         {
           label: "GraphQL",
-          icon: <TbBrandGraphql size={14} />,
+          icon: <TbBrandGraphql size={14} className="text-fuchsia-400" />,
           onClick: () => onAddGraphQL(item.id),
+        },
+        {
+          label: "Socket.IO",
+          icon: <TbBolt size={14} className="text-amber-400" />,
+          onClick: () => onAddSocketIO(item.id),
         },
         { label: "", onClick: () => {}, divider: true },
         {
@@ -801,7 +817,8 @@ export function FileTree({
               isLoading={
                 (item.type === "request" && loadingRequests.has(item.id)) ||
                 (item.type === "websocket" && loadingWebSockets.has(item.id)) ||
-                (item.type === "graphql" && loadingGraphQLs.has(item.id))
+                (item.type === "graphql" && loadingGraphQLs.has(item.id)) ||
+                (item.type === "socketio" && loadingSocketIOs.has(item.id))
               }
               isCompleted={completedRequests.has(item.id)}
             />

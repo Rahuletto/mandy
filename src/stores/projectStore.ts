@@ -6,6 +6,7 @@ import type {
   RequestFile,
   WebSocketFile,
   GraphQLFile,
+  SocketIOFile,
   TreeItem,
   SortMode,
   Environment,
@@ -129,6 +130,17 @@ function cloneTreeItem(item: TreeItem): TreeItem {
       response: null,
     };
   }
+  if (item.type === "socketio") {
+    return {
+      ...item,
+      id: generateId(),
+      name: `${item.name} (copy)`,
+      headers: { ...item.headers },
+      headerItems: item.headerItems ? JSON.parse(JSON.stringify(item.headerItems)) : undefined,
+      auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
+      messages: [],
+    };
+  }
   if (item.type === "workflow") {
     return {
       ...item,
@@ -188,6 +200,7 @@ interface ProjectState {
   activeWorkflowId: string | null;
   activeWebSocketId: string | null;
   activeGraphQLId: string | null;
+  activeSocketIOId: string | null;
   selectedItemId: string | null;
   unsavedChanges: Set<string>;
 
@@ -250,6 +263,13 @@ interface ProjectState {
     updater: (gql: GraphQLFile) => GraphQLFile,
   ) => void;
   getActiveGraphQL: () => GraphQLFile | null;
+  setActiveSocketIOId: (id: string | null) => void;
+  addSocketIO: (parentFolderId: string, name?: string) => string;
+  updateSocketIO: (
+    sioId: string,
+    updater: (sio: SocketIOFile) => SocketIOFile,
+  ) => void;
+  getActiveSocketIO: () => SocketIOFile | null;
   renameItem: (itemId: string, newName: string) => void;
   deleteItem: (itemId: string) => void;
   duplicateItem: (itemId: string) => void;
@@ -306,6 +326,7 @@ export const useProjectStore = create<ProjectState>()(
       activeWorkflowId: null,
       activeWebSocketId: null,
       activeGraphQLId: null,
+      activeSocketIOId: null,
       selectedItemId: null,
       unsavedChanges: new Set(),
       clipboard: null,
@@ -543,19 +564,22 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       setActiveRequestId: (id) => {
-        set({ activeRequestId: id, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null });
+        set({ activeRequestId: id, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null });
         if (id) {
           get().addToRecentRequests(id);
         }
       },
       setActiveWorkflowId: (id) => {
-        set({ activeWorkflowId: id, activeRequestId: null, activeWebSocketId: null, activeGraphQLId: null });
+        set({ activeWorkflowId: id, activeRequestId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null });
       },
       setActiveWebSocketId: (id) => {
-        set({ activeWebSocketId: id, activeRequestId: null, activeWorkflowId: null, activeGraphQLId: null });
+        set({ activeWebSocketId: id, activeRequestId: null, activeWorkflowId: null, activeGraphQLId: null, activeSocketIOId: null });
       },
       setActiveGraphQLId: (id) => {
-        set({ activeGraphQLId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null });
+        set({ activeGraphQLId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeSocketIOId: null });
+      },
+      setActiveSocketIOId: (id) => {
+        set({ activeSocketIOId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null });
       },
       setSelectedItem: (id) => set({ selectedItemId: id }),
 
@@ -1219,6 +1243,79 @@ export const useProjectStore = create<ProjectState>()(
         return item?.type === "graphql" ? item : null;
       },
 
+      addSocketIO: (parentFolderId, name = "New Socket.IO") => {
+        const newId = generateId();
+        const sio: SocketIOFile = {
+          id: newId,
+          type: "socketio",
+          name,
+          url: "",
+          messages: [],
+          headers: {},
+          headerItems: [],
+          auth: "None",
+          useInheritedAuth: true,
+        };
+
+        set((state) => ({
+          ...state,
+          projects: state.projects.map((p) => {
+            if (p.id !== state.activeProjectId) return p;
+
+            const addChildToFolder = (folder: Folder): Folder => {
+              if (folder.id === parentFolderId) {
+                return { ...folder, children: [...folder.children, sio] };
+              }
+              return {
+                ...folder,
+                children: folder.children.map((child) =>
+                  child.type === "folder" ? addChildToFolder(child) : child
+                ),
+              };
+            };
+
+            return { ...p, root: addChildToFolder(p.root) };
+          }),
+          activeSocketIOId: newId,
+          activeRequestId: null,
+          activeWorkflowId: null,
+          activeWebSocketId: null,
+          activeGraphQLId: null,
+        }));
+        return newId;
+      },
+
+      updateSocketIO: (sioId, updater) => {
+        set((state) => {
+          const project = state.projects.find(
+            (p) => p.id === state.activeProjectId,
+          );
+          if (!project) return state;
+          const item = findItem(project.root, sioId);
+          if (item && item.type === "socketio") {
+            const updated = updater(item);
+            Object.assign(item, updated);
+            const newUnsaved = new Set(state.unsavedChanges);
+            newUnsaved.add(sioId);
+            return {
+              projects: [...state.projects],
+              unsavedChanges: newUnsaved,
+            };
+          }
+          return state;
+        });
+      },
+
+      getActiveSocketIO: () => {
+        const state = get();
+        const project = state.projects.find(
+          (p) => p.id === state.activeProjectId,
+        );
+        if (!project || !state.activeSocketIOId) return null;
+        const item = findItem(project.root, state.activeSocketIOId);
+        return item?.type === "socketio" ? item : null;
+      },
+
       markSaved: (requestId) => {
         set((state) => {
           const newUnsaved = new Set(state.unsavedChanges);
@@ -1365,6 +1462,7 @@ export const useProjectStore = create<ProjectState>()(
         activeWorkflowId: state.activeWorkflowId,
         activeWebSocketId: state.activeWebSocketId,
         activeGraphQLId: state.activeGraphQLId,
+        activeSocketIOId: state.activeSocketIOId,
         selectedItemId: state.selectedItemId,
         selectedLanguage: state.selectedLanguage,
       }),

@@ -290,6 +290,11 @@ export const WebSocketMessageList = ({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<MessageFilter>("all");
+  const [followOutput, setFollowOutput] = useState(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const followOutputRef = useRef(true);
+  const isAtBottomRef = useRef(true);
+  const followScrollInFlightRef = useRef(false);
   const listRef = useListRef(null);
   const {
     ref: listContainerRef,
@@ -331,6 +336,11 @@ export const WebSocketMessageList = ({
   const handleClear = () => {
     onClear();
     setExpandedMessages(new Set());
+    setFollowOutput(true);
+    setIsAtBottom(true);
+    followOutputRef.current = true;
+    isAtBottomRef.current = true;
+    followScrollInFlightRef.current = false;
   };
 
   const rowProps: VirtualListRowProps = useMemo(
@@ -353,7 +363,16 @@ export const WebSocketMessageList = ({
   });
 
   useEffect(() => {
-    if (filteredMessages.length === 0) return;
+    followOutputRef.current = followOutput;
+  }, [followOutput]);
+
+  useEffect(() => {
+    isAtBottomRef.current = isAtBottom;
+  }, [isAtBottom]);
+
+  useEffect(() => {
+    if (!followOutput || filteredMessages.length === 0) return;
+    followScrollInFlightRef.current = true;
     const last = filteredMessages.length - 1;
     const id = requestAnimationFrame(() => {
       listRef.current?.scrollToRow({
@@ -362,8 +381,58 @@ export const WebSocketMessageList = ({
         behavior: "smooth",
       });
     });
-    return () => cancelAnimationFrame(id);
-  }, [messages.length]);
+    const timeoutId = window.setTimeout(() => {
+      followScrollInFlightRef.current = false;
+    }, 350);
+    return () => {
+      cancelAnimationFrame(id);
+      window.clearTimeout(timeoutId);
+    };
+  }, [filteredMessages.length, followOutput, listRef, messages.length]);
+
+  const jumpToLatest = useCallback(() => {
+    if (filteredMessages.length === 0) return;
+    setFollowOutput(true);
+    setIsAtBottom(true);
+    followOutputRef.current = true;
+    isAtBottomRef.current = true;
+    followScrollInFlightRef.current = true;
+    listRef.current?.scrollToRow({
+      index: filteredMessages.length - 1,
+      align: "end",
+      behavior: "smooth",
+    });
+    window.setTimeout(() => {
+      followScrollInFlightRef.current = false;
+    }, 350);
+  }, [filteredMessages.length, listRef]);
+
+  const handleRowsRendered = useCallback(
+    (visibleRows: { startIndex: number; stopIndex: number }) => {
+      const nextAtBottom =
+        filteredMessages.length === 0 ||
+        visibleRows.stopIndex >= filteredMessages.length - 1;
+
+      if (nextAtBottom !== isAtBottomRef.current) {
+        isAtBottomRef.current = nextAtBottom;
+        setIsAtBottom(nextAtBottom);
+      }
+
+      if (nextAtBottom && followScrollInFlightRef.current) {
+        followScrollInFlightRef.current = false;
+      }
+
+      if (followScrollInFlightRef.current) {
+        return;
+      }
+
+      if (!nextAtBottom && followOutputRef.current) {
+        followOutputRef.current = false;
+        setFollowOutput(false);
+      }
+    },
+    [filteredMessages.length],
+  );
 
   const statusLabel = {
     disconnected: "Disconnected",
@@ -432,10 +501,11 @@ export const WebSocketMessageList = ({
           <button
             type="button"
             onClick={handleClear}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/40 hover:text-white/70 transition-colors rounded-md hover:bg-white/5 cursor-pointer"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 cursor-pointer"
+            aria-label="Clear messages"
+            title="Clear"
           >
             <TbTrash size={13} />
-            Clear
           </button>
         )}
       </div>
@@ -450,18 +520,34 @@ export const WebSocketMessageList = ({
               : "No messages match your filter"}
           </div>
         ) : (
-          <div ref={listContainerRef} className="min-h-0 w-full min-w-0 flex-1 py-3">
+          <div
+            ref={listContainerRef}
+            className="relative min-h-0 w-full min-w-0 flex-1 py-3"
+          >
             {listWidth > 0 && listHeight > 0 ? (
-              <List<VirtualListRowProps>
-                listRef={listRef}
-                className="pb-0"
-                style={{ height: listHeight, width: listWidth }}
-                rowCount={filteredMessages.length}
-                rowHeight={dynamicRowHeight}
-                rowComponent={VirtualListRow}
-                rowProps={rowProps}
-                overscanCount={8}
-              />
+              <>
+                <List<VirtualListRowProps>
+                  listRef={listRef}
+                  className="pb-0"
+                  style={{ height: listHeight, width: listWidth }}
+                  rowCount={filteredMessages.length}
+                  rowHeight={dynamicRowHeight}
+                  rowComponent={VirtualListRow}
+                  rowProps={rowProps}
+                  overscanCount={8}
+                  onRowsRendered={handleRowsRendered}
+                />
+                {!isAtBottom && (
+                  <button
+                    type="button"
+                    onClick={jumpToLatest}
+                    className="absolute bottom-4 left-1/2 z-10 inline-flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-background/90 text-white/80 shadow-lg backdrop-blur transition-colors hover:bg-background hover:text-white"
+                    aria-label="Jump to latest messages"
+                  >
+                    <TbArrowDown size={18} />
+                  </button>
+                )}
+              </>
             ) : null}
           </div>
         )}
