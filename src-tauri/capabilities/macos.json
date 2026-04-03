@@ -15,6 +15,7 @@
     "core:window:allow-start-dragging",
     "fs:allow-write-text-file",
     "macos-haptics:default",
-    "liquid-glass:default"
+    "liquid-glass:default",
+    "notification:default"
   ]
 }

@@ -1,7 +1,7 @@
 ![Banner](assets/banner.png)
 
 Mandy provides a cleaner way to test APIs.
-
+Now supports Liquid Glass, MQTT, WebSockets, SocketIO!
 
 With Mandy you can:
 - Generate API documentation automatically as you test
@@ -42,8 +42,10 @@ With Mandy you can:
 
 ## Screenshots
 
+![Glass](assets/glass.png)
 ![Request Interface](assets/app.png)
 ![Timing Analysis](assets/timing.png)
+![Notifications](assets/notification.png)
 
 ## Getting Started
 
@@ -75,9 +77,14 @@ Mandy supports importing from popular API tools:
 
 - [x] REST API Testing
 - [x] Workflows
-- [ ] GraphQL Support
+- [x] GraphQL Support
 - [x] WebSockets
 - [x] SocketIO
-- [ ] MQTT
-- [ ] SSE (Server-Sent Events)
+- [x] MQTT
+- [ ] SSE
 - [ ] gRPC
+
+### More Screenshots
+
+![GQL](assets/gql.png)
+![MQTT](assets/mqtt.png)
