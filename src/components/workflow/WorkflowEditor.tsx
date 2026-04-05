@@ -15,7 +15,14 @@ import {
 	useNodesState,
 	useReactFlow,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type MutableRefObject,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import "@xyflow/react/dist/style.css";
 import { HiOutlineCursorClick } from "react-icons/hi";
 import { VscCode } from "react-icons/vsc";
@@ -69,6 +76,12 @@ interface WorkflowEditorProps {
 	isRunning: boolean;
 	onExecuteRequest?: WorkflowExecuteRequestHandler;
 	projectRoot?: Folder;
+	/** When set, assigned to a function that force-kills a running workflow (header activity menu). */
+	forceKillRef?: MutableRefObject<(() => void) | null>;
+	/** Fired when run state changes so the shell can show the running workflow in the activity UI. */
+	onRunningWorkflowMetaChange?: (
+		meta: { id: string; name: string } | null,
+	) => void;
 }
 
 function WorkflowEditorInner({
@@ -78,6 +91,8 @@ function WorkflowEditorInner({
 	isRunning,
 	onExecuteRequest,
 	projectRoot,
+	forceKillRef,
+	onRunningWorkflowMetaChange,
 }: WorkflowEditorProps) {
 	const reactFlowWrapper = useRef<HTMLDivElement>(null);
 	const { screenToFlowPosition } = useReactFlow();
@@ -513,6 +528,22 @@ function WorkflowEditorInner({
 		addToast("Workflow force killed", "info");
 		haptic("levelChange");
 	}, [onRunWorkflow, resetNodeStatuses, addToast]);
+
+	useEffect(() => {
+		if (!forceKillRef) return;
+		forceKillRef.current = () => {
+			if (isRunning) forceKillWorkflow();
+		};
+		return () => {
+			forceKillRef.current = null;
+		};
+	}, [forceKillRef, isRunning, forceKillWorkflow]);
+
+	useEffect(() => {
+		onRunningWorkflowMetaChange?.(
+			isRunning ? { id: workflow.id, name: workflow.name } : null,
+		);
+	}, [isRunning, workflow.id, workflow.name, onRunningWorkflowMetaChange]);
 
 	const inferLoopBodyEdgeIds = useCallback(
 		(allEdges: Edge[], allNodes: Node<WorkflowNodeData>[]): Set<string> => {
@@ -999,20 +1030,20 @@ function WorkflowEditorInner({
 	}, [setNodes, beginUserAction, getViewportCenter]);
 
 	return (
-		<div className="flex flex-col h-full bg-background">
-			<div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+		<div className="flex h-full flex-col bg-background">
+			<div className="flex items-center gap-2 border-white/10 border-b px-4 py-3">
 				<input
 					type="text"
 					value={workflow.name}
 					onChange={(e) => handleNameChange(e.target.value)}
-					className="bg-transparent text-white font-medium text-sm border-none outline-none focus:ring-1 focus:ring-accent/50 rounded-md px-2 py-1"
+					className="rounded-md border-none bg-transparent px-2 py-1 font-medium text-sm text-white outline-none focus:ring-1 focus:ring-accent/50"
 				/>
 				<div className="flex-1" />
 				{activeTab === "editor" && (
 					<button
 						type="button"
 						onClick={handleRunWorkflow}
-						className={`flex items-center rounded-full px-6 py-2 text-sm font-semibold text-card transition-colors ${
+						className={`flex items-center rounded-full px-6 py-2 font-semibold text-card text-sm transition-colors ${
 							isRunning
 								? isStopping
 									? "bg-yellow hover:bg-red"
@@ -1025,15 +1056,15 @@ function WorkflowEditorInner({
 				)}
 			</div>
 
-			<div className="flex items-center gap-1 px-4 py-2 shrink-0">
+			<div className="flex shrink-0 items-center gap-1 px-4 py-2">
 				{(["overview", "editor"] as const).map((tab) => (
 					<button
 						key={tab}
 						type="button"
 						onClick={() => setActiveTab(tab)}
-						className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${
+						className={`cursor-pointer rounded-md px-2 py-0.5 font-medium text-xs transition-colors ${
 							activeTab === tab
-								? "text-accent bg-accent/10"
+								? "bg-accent/10 text-accent"
 								: "text-white/80 hover:text-white/60"
 						}`}
 					>
@@ -1057,8 +1088,8 @@ function WorkflowEditorInner({
 				/>
 			) : (
 				<>
-					<div className="flex-1 flex overflow-hidden relative">
-						<div ref={reactFlowWrapper} className="flex-1 relative">
+					<div className="relative flex flex-1 overflow-hidden">
+						<div ref={reactFlowWrapper} className="relative flex-1">
 							<WorkflowNodeOutputsContext.Provider value={nodeOutputs}>
 								<ReactFlow
 									nodes={nodes.map((node) => ({
@@ -1090,7 +1121,7 @@ function WorkflowEditorInner({
 								</ReactFlow>
 							</WorkflowNodeOutputsContext.Provider>
 
-							<div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-card/95 backdrop-blur-sm px-2 py-2 rounded-full border border-white/10">
+							<div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-card/95 px-2 py-2 backdrop-blur-sm">
 								{projectRoot && (
 									<button
 										type="button"
@@ -1099,7 +1130,7 @@ function WorkflowEditorInner({
 											setRequestPopover({ x: rect.left, y: rect.top });
 											setNodeTypePopover(null);
 										}}
-										className="flex items-center gap-1.5 px-4 py-2 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors"
+										className="flex items-center gap-1.5 rounded-full bg-white/5 px-4 py-2 text-white/80 text-xs transition-colors hover:bg-white/10 hover:text-white"
 									>
 										<HiOutlineCursorClick size={14} />
 										Request
@@ -1112,7 +1143,7 @@ function WorkflowEditorInner({
 										setNodeTypePopover({ x: rect.left, y: rect.top });
 										setRequestPopover(null);
 									}}
-									className="flex items-center gap-1.5 px-4 py-2 text-xs text-white/80 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors"
+									className="flex items-center gap-1.5 rounded-full bg-white/5 px-4 py-2 text-white/80 text-xs transition-colors hover:bg-white/10 hover:text-white"
 								>
 									<VscCode size={14} />
 									Logic

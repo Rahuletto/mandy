@@ -36,7 +36,7 @@ export const WebSocketOverview = ({
 		<>
 			{(ws.params || []).filter((p) => p.enabled && p.key).length > 0 && (
 				<div className="mt-4">
-					<h3 className="text-sm font-semibold text-white/70 mb-2">
+					<h3 className="mb-2 font-semibold text-sm text-white/70">
 						Query Parameters
 					</h3>
 					<div className="space-y-1">
@@ -45,13 +45,13 @@ export const WebSocketOverview = ({
 							.map((p) => (
 								<div
 									key={p.id}
-									className="py-2 border-b border-white/5 last:border-0"
+									className="border-white/5 border-b py-2 last:border-0"
 								>
 									<div className="flex items-center gap-3">
-										<span className="text-xs font-mono text-white font-medium">
+										<span className="font-medium font-mono text-white text-xs">
 											{p.key}
 										</span>
-										<span className="text-[10px] lowercase font-mono text-emerald-400/60">
+										<span className="font-mono text-[10px] text-emerald-400/60 lowercase">
 											string
 										</span>
 									</div>
@@ -68,17 +68,17 @@ export const WebSocketOverview = ({
 
 			{(ws.headerItems || []).filter((h) => h.enabled && h.key).length > 0 && (
 				<div className="mt-4">
-					<h3 className="text-sm font-semibold text-white/70 mb-2">Headers</h3>
+					<h3 className="mb-2 font-semibold text-sm text-white/70">Headers</h3>
 					<div className="space-y-1">
 						{(ws.headerItems || [])
 							.filter((h) => h.enabled && h.key)
 							.map((h) => (
 								<div
 									key={h.id}
-									className="py-2 border-b border-white/5 last:border-0"
+									className="border-white/5 border-b py-2 last:border-0"
 								>
 									<div className="flex items-center gap-3">
-										<span className="text-xs font-mono text-white font-medium">
+										<span className="font-medium font-mono text-white text-xs">
 											{h.key}
 										</span>
 									</div>
@@ -134,7 +134,7 @@ export const WebSocketOverview = ({
 									? "Already connected"
 									: undefined
 					}
-					className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20 disabled:opacity-50 disabled:cursor-not-allowed"
+					className="absolute right-4 bottom-4 z-20 flex cursor-pointer items-center gap-2 rounded-full bg-accent px-4 py-1.5 font-semibold text-background text-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					Connect
 				</button>

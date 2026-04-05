@@ -134,29 +134,29 @@ function MqttVirtualRow({
 		<div
 			{...ariaAttributes}
 			style={style}
-			className="box-border w-full min-w-0 overflow-hidden border-b border-white/5"
+			className="box-border w-full min-w-0 overflow-hidden border-white/5 border-b"
 		>
 			<div className="px-4 py-2">
 				<button
 					type="button"
 					onClick={() => toggleExpanded(message.id)}
-					className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.02]"
+					className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/2"
 				>
 					<span className="shrink-0">{getMessageIcon(message)}</span>
 					{message.direction !== "system" && (
 						<span
-							className="max-w-[180px] shrink-0 truncate rounded-full px-2 py-0.5 font-mono text-[10px] font-bold"
+							className="max-w-[180px] shrink-0 truncate rounded-full px-2 py-0.5 font-bold font-mono text-[10px]"
 							style={getTopicBadgeStyle(message.topic)}
 						>
 							{message.topic}
 						</span>
 					)}
 					{message.retain && (
-						<span className="shrink-0 rounded-full bg-yellow/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-yellow">
+						<span className="shrink-0 rounded-full bg-yellow/15 px-1.5 py-0.5 font-bold font-mono text-[10px] text-yellow">
 							RETAIN
 						</span>
 					)}
-					<span className="min-w-0 flex-1 truncate font-mono text-xs text-white/80">
+					<span className="min-w-0 flex-1 truncate font-mono text-white/80 text-xs">
 						{message.data}
 					</span>
 					<span className="shrink-0 font-mono text-[10px] text-white/30 tabular-nums">
@@ -174,14 +174,14 @@ function MqttVirtualRow({
 
 				{isExpanded && (
 					<div
-						className="min-h-0 space-y-4 overflow-y-auto px-2 pb-2 pt-1"
+						className="min-h-0 space-y-4 overflow-y-auto px-2 pt-1 pb-2"
 						style={{ maxHeight: MQTT_LIST_EXPANDED_MAX_PX }}
 					>
 						{(() => {
 							try {
 								const parsed = JSON.parse(message.data);
 								return (
-									<div className="overflow-hidden rounded-xl border border-white/6 bg-white/[0.02] text-[11px]">
+									<div className="overflow-hidden rounded-xl border border-white/6 bg-white/2 text-[11px]">
 										<CodeViewer
 											code={JSON.stringify(parsed, null, 2)}
 											language="json"
@@ -190,8 +190,8 @@ function MqttVirtualRow({
 								);
 							} catch {
 								return (
-									<div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
-										<pre className="whitespace-pre-wrap break-all font-mono text-xs text-white/70">
+									<div className="rounded-xl border border-white/6 bg-white/2 p-3">
+										<pre className="whitespace-pre-wrap break-all font-mono text-white/70 text-xs">
 											{message.data}
 										</pre>
 									</div>
@@ -487,13 +487,13 @@ function ChartTooltipOverlay({ tooltip }: { tooltip: ChartTooltip | null }) {
 
 	return (
 		<div
-			className="pointer-events-none absolute z-30 max-w-[min(92vw,320px)] -translate-x-1/2 animate-in fade-in zoom-in-95 duration-100"
+			className="fade-in zoom-in-95 pointer-events-none absolute z-30 max-w-[min(92vw,320px)] -translate-x-1/2 animate-in duration-100"
 			style={{ left: tooltip.x, top: tooltip.y - 10 }}
 		>
-			<div className="rounded-lg border border-white/10 bg-card px-2.5 py-1.5 shadow-xl shadow-black/40">
+			<div className="rounded-lg border border-white/10 bg-card px-2.5 py-1.5 shadow-black/40 shadow-xl">
 				{showRange && tooltip.range ? (
 					<>
-						<p className="mb-1.5 border-b border-white/8 pb-1 font-mono text-[10px] leading-snug text-white/45">
+						<p className="mb-1.5 border-white/8 border-b pb-1 font-mono text-[10px] text-white/45 leading-snug">
 							<span className="text-white/55">
 								{formatChartTick(tooltip.range.startTimestamp)}
 							</span>
@@ -525,7 +525,7 @@ function ChartTooltipOverlay({ tooltip }: { tooltip: ChartTooltip | null }) {
 												{row.label}
 											</span>
 										</div>
-										<div className="pl-4 font-mono text-[10px] tabular-nums text-white/55">
+										<div className="pl-4 font-mono text-[10px] text-white/55 tabular-nums">
 											{formatChartNumber(row.startValue)}
 											<span className="mx-1 text-white/25">→</span>
 											{formatChartNumber(row.endValue)}
@@ -541,7 +541,7 @@ function ChartTooltipOverlay({ tooltip }: { tooltip: ChartTooltip | null }) {
 					</>
 				) : (
 					<>
-						<p className="mb-1.5 border-b border-white/8 pb-1 font-mono text-[10px] text-white/45">
+						<p className="mb-1.5 border-white/8 border-b pb-1 font-mono text-[10px] text-white/45">
 							{formatChartTick(tooltip.timestamp)}
 						</p>
 						<div className="space-y-1">
@@ -554,7 +554,7 @@ function ChartTooltipOverlay({ tooltip }: { tooltip: ChartTooltip | null }) {
 									<span className="min-w-0 flex-1 truncate font-mono text-[10px] text-white/70">
 										{entry.label}
 									</span>
-									<span className="font-mono text-xs font-semibold text-white tabular-nums">
+									<span className="font-mono font-semibold text-white text-xs tabular-nums">
 										{formatChartNumber(entry.value)}
 									</span>
 								</div>
@@ -1487,11 +1487,11 @@ function TopicChart({
 	const hasData = chartSeries.some((entry) => entry.points.length > 0);
 
 	return (
-		<div className="rounded-xl border border-white/6 bg-background/30 overflow-hidden">
-			<div className="flex items-center justify-between border-b border-white/5 px-3 py-2">
+		<div className="overflow-hidden rounded-xl border border-white/6 bg-background/30">
+			<div className="flex items-center justify-between border-white/5 border-b px-3 py-2">
 				<div className="flex items-center gap-2">
 					<span
-						className="shrink-0 truncate rounded-full px-2 py-0.5 font-mono text-[10px] font-bold"
+						className="shrink-0 truncate rounded-full px-2 py-0.5 font-bold font-mono text-[10px]"
 						style={getTopicBadgeStyle(topic)}
 					>
 						{topic}
@@ -1505,7 +1505,7 @@ function TopicChart({
 						type="button"
 						onClick={() => setChartType("line")}
 						title="Line chart"
-						className={`flex h-6 w-6 items-center justify-center rounded transition-colors cursor-pointer ${
+						className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded transition-colors ${
 							chartType === "line"
 								? "bg-accent/15 text-accent"
 								: "text-white/35 hover:text-white/60"
@@ -1529,7 +1529,7 @@ function TopicChart({
 						type="button"
 						onClick={() => setChartType("bar")}
 						title="Bar chart"
-						className={`flex h-6 w-6 items-center justify-center rounded transition-colors cursor-pointer ${
+						className={`flex h-6 w-6 cursor-pointer items-center justify-center rounded transition-colors ${
 							chartType === "bar"
 								? "bg-accent/15 text-accent"
 								: "text-white/35 hover:text-white/60"
@@ -1555,14 +1555,14 @@ function TopicChart({
 			</div>
 
 			{!hasData ? (
-				<div className="flex items-center justify-center px-4 py-8 text-center text-xs text-white/30">
+				<div className="flex items-center justify-center px-4 py-8 text-center text-white/30 text-xs">
 					No numeric JSON fields to chart yet. Nested keys, numeric arrays, and
 					arrays of objects are supported (object arrays also get a{" "}
 					<span className="font-mono text-white/45">[].field</span> mean
 					series).
 				</div>
 			) : filteredChartSeries.length === 0 ? (
-				<div className="flex min-h-56 items-center justify-center px-4 py-8 text-center text-xs text-white/40">
+				<div className="flex min-h-56 items-center justify-center px-4 py-8 text-center text-white/40 text-xs">
 					All series are hidden. Turn one on in the legend below.
 				</div>
 			) : (
@@ -1591,7 +1591,7 @@ function TopicChart({
 			)}
 
 			{chartSeries.length > 0 && (
-				<div className="flex flex-wrap items-center gap-2 border-t border-white/5 px-3 py-2 text-[11px] text-white/45">
+				<div className="flex flex-wrap items-center gap-2 border-white/5 border-t px-3 py-2 text-[11px] text-white/45">
 					{chartSeries.map((entry) => {
 						const on = seriesVisible[entry.key];
 						return (
@@ -1604,10 +1604,10 @@ function TopicChart({
 										[entry.key]: !prev[entry.key],
 									}))
 								}
-								className={`inline-flex max-w-[min(100%,240px)] items-center gap-1.5 rounded-md border px-2 py-1 transition-colors cursor-pointer ${
+								className={`inline-flex max-w-[min(100%,240px)] cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 transition-colors ${
 									on
-										? "border-white/10 bg-white/[0.04] text-white/80 hover:bg-white/[0.07]"
-										: "border-white/6 bg-transparent text-white/35 hover:bg-white/[0.03]"
+										? "border-white/10 bg-white/4 text-white/80 hover:bg-white/7"
+										: "border-white/6 bg-transparent text-white/35 hover:bg-white/3"
 								}`}
 								title={on ? "Hide from chart" : "Show on chart"}
 							>
@@ -1629,7 +1629,7 @@ function TopicChart({
 									style={{ backgroundColor: entry.color }}
 								/>
 								<span
-									className={`min-w-0 truncate font-mono ${on ? "text-white/80" : "line-through text-white/35"}`}
+									className={`min-w-0 truncate font-mono ${on ? "text-white/80" : "text-white/35 line-through"}`}
 								>
 									{entry.label}
 								</span>
@@ -1678,7 +1678,7 @@ function MqttVisualization({
 	}
 
 	return (
-		<div className="min-h-0 flex-1 overflow-auto px-4 py-4 space-y-4">
+		<div className="min-h-0 flex-1 space-y-4 overflow-auto px-4 py-4">
 			{topics.map((topic) => {
 				const topicMessages = topicGroups.get(topic) || [];
 				if (topicMessages.length === 0) return null;
@@ -1861,7 +1861,7 @@ export function MQTTMessageList({
 
 	return (
 		<div className="flex h-full min-h-0 flex-col bg-inset">
-			<div className="flex items-center gap-4 p-2 px-4 border-b border-white/5 shrink-0">
+			<div className="flex shrink-0 items-center gap-4 border-white/5 border-b p-2 px-4">
 				<TabView
 					tabs={[
 						{ id: "messages", label: "Messages" },
@@ -1876,7 +1876,7 @@ export function MQTTMessageList({
 				/>
 				<div className="flex-1" />
 				<div
-					className={`px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1.5 ${
+					className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-semibold text-[11px] ${
 						status === "connected"
 							? "bg-green/15 text-green"
 							: status === "connecting"
@@ -1885,11 +1885,11 @@ export function MQTTMessageList({
 					}`}
 				>
 					<div
-						className={`w-1.5 h-1.5 rounded-full ${
+						className={`h-1.5 w-1.5 rounded-full ${
 							status === "connected"
 								? "bg-green"
 								: status === "connecting"
-									? "bg-yellow animate-pulse"
+									? "animate-pulse bg-yellow"
 									: "bg-white/20"
 						}`}
 					/>
@@ -1902,7 +1902,7 @@ export function MQTTMessageList({
 			</div>
 
 			{paneTab === "messages" && (
-				<div className="border-b border-white/5 px-4 py-2 shrink-0">
+				<div className="shrink-0 border-white/5 border-b px-4 py-2">
 					<div className="flex items-center gap-2">
 						<div className="flex min-w-0 flex-1 items-center rounded-lg bg-inputbox px-3">
 							<TbSearch size={14} className="shrink-0 text-white/35" />
@@ -1916,7 +1916,7 @@ export function MQTTMessageList({
 								renderSuggestion={(suggestion) => (
 									<div className="flex min-w-0 items-center gap-2">
 										<span
-											className="truncate rounded-full px-2 py-0.5 font-mono text-[10px] font-bold"
+											className="truncate rounded-full px-2 py-0.5 font-bold font-mono text-[10px]"
 											style={getTopicBadgeStyle(suggestion)}
 										>
 											{suggestion}
@@ -1931,7 +1931,7 @@ export function MQTTMessageList({
 						<button
 							type="button"
 							onClick={cycleFilter}
-							className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/50 hover:text-white/70 transition-colors rounded-md hover:bg-white/5 cursor-pointer"
+							className="flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] text-white/50 transition-colors hover:bg-white/5 hover:text-white/70"
 						>
 							<TbFilter size={13} />
 							{filter === "all"

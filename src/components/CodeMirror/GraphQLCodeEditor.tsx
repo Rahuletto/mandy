@@ -206,13 +206,13 @@ export function GraphQLCodeEditor({
 	}, [code]);
 
 	return (
-		<div className="h-full w-full overflow-hidden relative group">
+		<div className="group relative h-full w-full overflow-hidden">
 			<div ref={containerRef} className="h-full w-full" />
-			<div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+			<div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 transition-all group-hover:opacity-100">
 				<button
 					type="button"
 					onClick={handleCopy}
-					className="p-1.5 rounded bg-white/10 text-white/50 hover:bg-white/20 hover:text-white/80 transition-all"
+					className="rounded bg-white/10 p-1.5 text-white/50 transition-all hover:bg-white/20 hover:text-white/80"
 					title="Copy to clipboard"
 				>
 					{copied ? (

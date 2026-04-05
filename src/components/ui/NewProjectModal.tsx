@@ -128,16 +128,16 @@ export function NewProjectModal({
 	return (
 		<div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
 			<div
-				className="absolute inset-0 bg-black/60 animate-in fade-in duration-300"
+				className="fade-in absolute inset-0 animate-in bg-black/60 duration-300"
 				onClick={handleClose}
 			/>
 
 			<div
 				ref={modalRef}
-				className="relative w-full max-w-[320px] bg-card border border-border rounded-xl shadow-2xl animate-in zoom-in-95 fade-in duration-300"
+				className="zoom-in-95 fade-in relative w-full max-w-[320px] animate-in rounded-xl border border-border bg-card shadow-2xl duration-300"
 				onClick={(e) => e.stopPropagation()}
 			>
-				<div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+				<div className="flex items-center justify-between border-white/5 border-b px-4 py-3">
 					{selectedSource && (
 						<button
 							type="button"
@@ -147,13 +147,13 @@ export function NewProjectModal({
 								setProjectName("");
 								setError("");
 							}}
-							className="absolute left-3 top-3 text-white/30 hover:text-white transition-colors cursor-pointer"
+							className="absolute top-3 left-3 cursor-pointer text-white/30 transition-colors hover:text-white"
 						>
 							<TbArrowLeft size={16} />
 						</button>
 					)}
 					<div className="flex-1 text-center">
-						<h2 className="text-sm font-semibold text-white">
+						<h2 className="font-semibold text-sm text-white">
 							{selectedSource === "blank"
 								? "New Project"
 								: selectedSource
@@ -164,14 +164,14 @@ export function NewProjectModal({
 					<button
 						type="button"
 						onClick={handleClose}
-						className="absolute right-3 top-3 text-white/30 hover:text-white transition-colors cursor-pointer"
+						className="absolute top-3 right-3 cursor-pointer text-white/30 transition-colors hover:text-white"
 					>
 						<HiX size={16} />
 					</button>
 				</div>
 
 				{!selectedSource ? (
-					<div className="p-2 space-y-1">
+					<div className="space-y-1 p-2">
 						{sources.map((source) => {
 							const Icon = source.icon;
 							return (
@@ -179,13 +179,13 @@ export function NewProjectModal({
 									type="button"
 									key={source.id}
 									onClick={() => setSelectedSource(source.id)}
-									className="w-full flex items-center gap-3 p-2.5 px-3 rounded-lg transition-colors text-left group hover:bg-white/5 cursor-pointer"
+									className="group flex w-full cursor-pointer items-center gap-3 rounded-lg p-2.5 px-3 text-left transition-colors hover:bg-white/5"
 								>
 									<Icon
 										size={16}
-										className="text-white/40 group-hover:text-white/80 transition-colors"
+										className="text-white/40 transition-colors group-hover:text-white/80"
 									/>
-									<span className="flex-1 text-sm text-white/70 group-hover:text-white transition-colors">
+									<span className="flex-1 text-sm text-white/70 transition-colors group-hover:text-white">
 										{source.label}
 									</span>
 									<TbChevronRight
@@ -197,10 +197,10 @@ export function NewProjectModal({
 						})}
 					</div>
 				) : (
-					<div className="p-4 space-y-4">
+					<div className="space-y-4 p-4">
 						{selectedSource === "blank" ? (
 							<div>
-								<label className="block text-[11px] font-medium text-white/40 mb-2 pl-1">
+								<label className="mb-2 block pl-1 font-medium text-[11px] text-white/40">
 									Project Name
 								</label>
 								<input
@@ -211,7 +211,7 @@ export function NewProjectModal({
 										if (e.key === "Enter" && projectName.trim()) handleCreate();
 									}}
 									placeholder="My awesome project"
-									className="w-full bg-inset border border-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 transition-all"
+									className="w-full rounded-lg border border-border bg-inset px-3 py-2 text-sm text-white transition-all placeholder:text-white/20 focus:border-white/20 focus:outline-none"
 								/>
 							</div>
 						) : (
@@ -226,14 +226,14 @@ export function NewProjectModal({
 								<button
 									type="button"
 									onClick={() => fileInputRef.current?.click()}
-									className={`w-full flex flex-col items-center gap-2 p-6 border border-dashed transition-all rounded-lg group ${
+									className={`group flex w-full flex-col items-center gap-2 rounded-lg border border-dashed p-6 transition-all ${
 										fileContent
 											? "border-accent/40 bg-accent/5"
-											: "border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]"
+											: "border-white/10 bg-white/2 hover:border-white/20 hover:bg-white/4"
 									}`}
 								>
 									<div
-										className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+										className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
 											fileContent
 												? "bg-accent/20"
 												: "bg-white/5 group-hover:bg-white/10"
@@ -245,7 +245,7 @@ export function NewProjectModal({
 										/>
 									</div>
 									<div className="text-center">
-										<div className="text-sm font-medium text-white/70">
+										<div className="font-medium text-sm text-white/70">
 											{fileContent ? "File Selected" : "Select File"}
 										</div>
 										<div className="text-[10px] text-white/30">
@@ -257,9 +257,9 @@ export function NewProjectModal({
 						)}
 
 						{error && (
-							<div className="p-3 bg-red/10 border border-red/10 rounded-lg">
-								<p className="text-xs text-red flex items-center gap-2">
-									<span className="w-1 h-1 bg-red rounded-full" />
+							<div className="rounded-lg border border-red/10 bg-red/10 p-3">
+								<p className="flex items-center gap-2 text-red text-xs">
+									<span className="h-1 w-1 rounded-full bg-red" />
 									{error}
 								</p>
 							</div>
@@ -274,10 +274,10 @@ export function NewProjectModal({
 									? !projectName.trim()
 									: !fileContent)
 							}
-							className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium bg-white text-black hover:bg-white/90 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+							className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 font-medium text-black text-sm transition-all hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{loading ? (
-								<div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+								<div className="h-3 w-3 animate-spin rounded-full border-2 border-black/30 border-t-black" />
 							) : (
 								<span>
 									{selectedSource === "blank"

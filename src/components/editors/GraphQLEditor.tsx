@@ -6,6 +6,7 @@ import type { AuthType } from "../../bindings";
 import { commands } from "../../bindings";
 import type { GraphQLFile } from "../../types/project";
 import { formatBytes, getStatusColor, STATUS_TEXT } from "../../utils/format";
+import { playSuccessChime } from "../../utils/sounds";
 import { CodeEditor, CodeViewer, GraphQLCodeEditor } from "../CodeMirror";
 import { KeyValueTable } from "../KeyValueTable";
 import { SizePopover } from "../popovers/SizePopover";
@@ -233,6 +234,7 @@ export function GraphQLEditor({
 					schema: sdl,
 					schemaLastFetched: Date.now(),
 				}));
+				playSuccessChime();
 			} catch (err: any) {
 				setSchemaError(err.message || "Failed to fetch schema");
 			} finally {
@@ -326,7 +328,7 @@ export function GraphQLEditor({
 	};
 
 	return (
-		<div className="flex flex-col h-full">
+		<div className="flex h-full flex-col">
 			<EditorRequestBar
 				loading={!!loading}
 				leading={<ProtocolEditorLeading type="graphql" />}
@@ -356,9 +358,9 @@ export function GraphQLEditor({
 				}
 			/>
 
-			<div ref={splitContainerRef} className="flex-1 flex overflow-hidden">
+			<div ref={splitContainerRef} className="flex flex-1 overflow-hidden">
 				<div
-					className="flex p-2 pl-4 flex-col overflow-hidden min-w-0"
+					className="flex min-w-0 flex-col overflow-hidden p-2 pl-4"
 					style={{
 						width: isOverview
 							? "100%"
@@ -367,7 +369,7 @@ export function GraphQLEditor({
 								: "100%",
 					}}
 				>
-					<div className="flex items-center gap-1 py-2 shrink-0">
+					<div className="flex shrink-0 items-center gap-1 py-2">
 						{tabs.map((tab) => (
 							<button
 								key={tab}
@@ -380,9 +382,9 @@ export function GraphQLEditor({
 						))}
 					</div>
 
-					<div className="flex-1 overflow-auto relative min-h-0">
+					<div className="relative min-h-0 flex-1 overflow-auto">
 						{loading && activeTab !== "overview" && (
-							<div className="absolute inset-0 z-10 bg-background/30 cursor-not-allowed" />
+							<div className="absolute inset-0 z-10 cursor-not-allowed bg-background/30" />
 						)}
 
 						{activeTab === "overview" && (
@@ -400,14 +402,14 @@ export function GraphQLEditor({
 						{activeTab === "query" && (
 							<div
 								ref={queryColumnRef}
-								className="flex flex-col h-full overflow-hidden"
+								className="flex h-full flex-col overflow-hidden"
 							>
 								{/* Query editor */}
 								<div
-									className="min-h-0 flex flex-col"
+									className="flex min-h-0 flex-col"
 									style={{ height: `${schemaSplitY}%` }}
 								>
-									<div className="flex-1 min-h-0">
+									<div className="min-h-0 flex-1">
 										<GraphQLCodeEditor
 											code={gql.query}
 											onChange={(value) =>
@@ -420,7 +422,7 @@ export function GraphQLEditor({
 
 								{/* Drag handle */}
 								<div
-									className="h-[3px] cursor-row-resize shrink-0 bg-white/5 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+									className="h-[3px] shrink-0 cursor-row-resize bg-white/5 transition-colors hover:bg-accent/40 active:bg-accent/60"
 									onMouseDown={(e) => {
 										e.preventDefault();
 										setIsResizingSchema(true);
@@ -433,27 +435,27 @@ export function GraphQLEditor({
 									style={{ height: `${100 - schemaSplitY}%` }}
 								>
 									{/* Header: filter left, reload + Pretty/Raw right */}
-									<div className="flex w-full flex-row shrink-0 border-y border-white/10">
-										<span className="text-xs font-bold px-3 py-2 flex items-center gap-1.5 bg-fuchsia-500/20 text-fuchsia-400">
+									<div className="flex w-full shrink-0 flex-row border-white/10 border-y">
+										<span className="flex items-center gap-1.5 bg-fuchsia-500/20 px-3 py-2 font-bold text-fuchsia-400 text-xs">
 											SCHEMA
 										</span>
-										<div className="flex flex-1 items-center gap-2 px-3 py-1.5 bg-inset min-w-0">
+										<div className="flex min-w-0 flex-1 items-center gap-2 bg-inset px-3 py-1.5">
 											<input
 												type="text"
 												value={schemaFilter}
 												onChange={(e) => setSchemaFilter(e.target.value)}
 												placeholder="Filter types and fields..."
-												className="flex-1 bg-transparent w-full text-xs text-white outline-none placeholder:text-white/20 min-w-0"
+												className="w-full min-w-0 flex-1 bg-transparent text-white text-xs outline-none placeholder:text-white/20"
 											/>
 
-											<div className="flex items-center gap-1 shrink-0">
+											<div className="flex shrink-0 items-center gap-1">
 												{/* Reload button */}
 												<button
 													type="button"
 													onClick={() => fetchSchema()}
 													disabled={schemaLoading || !gql.url}
 													title="Reload schema"
-													className="p-0.5 rounded transition-colors text-white/40 hover:text-white/80 disabled:opacity-30"
+													className="rounded p-0.5 text-white/40 transition-colors hover:text-white/80 disabled:opacity-30"
 												>
 													<TbRefresh
 														size={13}
@@ -461,7 +463,7 @@ export function GraphQLEditor({
 													/>
 												</button>
 
-												<div className="w-px h-3 bg-white/10 mx-0.5" />
+												<div className="mx-0.5 h-3 w-px bg-white/10" />
 
 												{/* Pretty / Raw — same style as response renderer buttons */}
 												{(["pretty", "raw"] as const).map((mode) => (
@@ -469,9 +471,9 @@ export function GraphQLEditor({
 														key={mode}
 														type="button"
 														onClick={() => setSchemaViewMode(mode)}
-														className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${
+														className={`rounded-md px-2 py-0.5 font-medium text-xs transition-colors ${
 															schemaViewMode === mode
-																? "text-accent bg-accent/10"
+																? "bg-accent/10 text-accent"
 																: "text-white/60 hover:text-white/50"
 														}`}
 													>
@@ -483,15 +485,15 @@ export function GraphQLEditor({
 									</div>
 
 									{/* Schema body */}
-									<div className="flex-1 min-h-0 overflow-auto bg-card">
+									<div className="min-h-0 flex-1 overflow-auto bg-card">
 										{schemaError && (
-											<div className="m-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
+											<div className="m-2 rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-400 text-xs">
 												{schemaError}
 											</div>
 										)}
 
 										{!graphqlSchema && !schemaError && (
-											<div className="flex flex-col items-center justify-center h-full text-white/20 text-xs gap-2">
+											<div className="flex h-full flex-col items-center justify-center gap-2 text-white/20 text-xs">
 												<p>No schema loaded</p>
 												<p className="text-white/10">
 													Enter a GraphQL endpoint URL to auto-fetch
@@ -570,21 +572,21 @@ export function GraphQLEditor({
 				{showResponsePanel && response && (
 					<>
 						<div
-							className="w-2 cursor-col-resize flex items-center justify-center shrink-0 group"
+							className="group flex w-2 shrink-0 cursor-col-resize items-center justify-center"
 							onMouseDown={(e) => {
 								e.preventDefault();
 								setIsResizing(true);
 							}}
 						>
-							<div className="w-px h-full group-hover:bg-accent/50 transition-colors" />
+							<div className="h-full w-px transition-colors group-hover:bg-accent/50" />
 						</div>
 
 						<div
 							ref={responsePanelRef}
-							className="flex-1 flex flex-col overflow-hidden bg-inset border-l border-white/10"
+							className="flex flex-1 flex-col overflow-hidden border-white/10 border-l bg-inset"
 						>
-							<div className="flex items-center justify-between p-2 px-4 shrink-0">
-								<span className="text-xs font-medium text-white">Response</span>
+							<div className="flex shrink-0 items-center justify-between p-2 px-4">
+								<span className="font-medium text-white text-xs">Response</span>
 							</div>
 
 							<div
@@ -596,10 +598,10 @@ export function GraphQLEditor({
 								</div>
 							</div>
 
-							<div className="flex items-center justify-between bg-inset border-y border-white/10 shrink-0 pr-2">
+							<div className="flex shrink-0 items-center justify-between border-white/10 border-y bg-inset pr-2">
 								<div className="flex items-center gap-1">
 									<span
-										className="text-xs font-bold px-3 py-2 flex items-center gap-1.5"
+										className="flex items-center gap-1.5 px-3 py-2 font-bold text-xs"
 										style={{
 											color: getStatusColor(response.status),
 											backgroundColor: `${getStatusColor(response.status)}20`,
@@ -616,7 +618,7 @@ export function GraphQLEditor({
 												type="button"
 												onMouseEnter={handleTimingEnter}
 												onMouseLeave={handleTimingLeave}
-												className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+												className="cursor-default rounded px-2 py-1 text-[11px] text-white/50 transition-colors hover:bg-white/5 hover:text-white/80"
 											>
 												{(() => {
 													const ms = response.timing?.total_ms ?? 0;
@@ -635,7 +637,7 @@ export function GraphQLEditor({
 											type="button"
 											onMouseEnter={handleSizeEnter}
 											onMouseLeave={handleSizeLeave}
-											className="text-[11px] text-white/50 hover:text-white/80 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-default"
+											className="cursor-default rounded px-2 py-1 text-[11px] text-white/50 transition-colors hover:bg-white/5 hover:text-white/80"
 										>
 											{formatBytes(response.response_size.total_bytes || 0)}
 										</button>
@@ -667,7 +669,7 @@ export function GraphQLEditor({
 							)}
 
 							<div
-								className="h-[1px] bg-white/10 cursor-row-resize transition-colors shrink-0"
+								className="h-[1px] shrink-0 cursor-row-resize bg-white/10 transition-colors"
 								onMouseDown={handleResponseMouseDown}
 							/>
 
@@ -675,13 +677,13 @@ export function GraphQLEditor({
 								className="flex flex-col overflow-hidden bg-card"
 								style={{ height: `${100 - responseSplitY}%` }}
 							>
-								<div className="flex items-center gap-1 p-2 shrink-0">
+								<div className="flex shrink-0 items-center gap-1 p-2">
 									<button
 										type="button"
 										onClick={() => setResponseDetailTab("headers")}
-										className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
+										className={`rounded-md px-2 py-0.5 font-medium text-xs transition-colors ${
 											responseDetailTab === "headers"
-												? "text-accent bg-accent/10"
+												? "bg-accent/10 text-accent"
 												: "text-white/60 hover:text-white/50"
 										}`}
 									>
@@ -690,9 +692,9 @@ export function GraphQLEditor({
 									<button
 										type="button"
 										onClick={() => setResponseDetailTab("cookies")}
-										className={`text-xs px-2 py-0.5 rounded-md font-medium transition-colors ${
+										className={`rounded-md px-2 py-0.5 font-medium text-xs transition-colors ${
 											responseDetailTab === "cookies"
-												? "text-accent bg-accent/10"
+												? "bg-accent/10 text-accent"
 												: "text-white/60 hover:text-white/50"
 										}`}
 									>
@@ -702,20 +704,20 @@ export function GraphQLEditor({
 
 								<div className="flex-1 overflow-auto">
 									{responseDetailTab === "headers" && (
-										<div className="flex-1 min-h-0">
-											<table className="w-full text-xs font-mono border-collapse">
+										<div className="min-h-0 flex-1">
+											<table className="w-full border-collapse font-mono text-xs">
 												<tbody>
 													{Object.entries(
 														(response.headers || {}) as Record<string, string>,
 													).map(([k, v]) => (
 														<tr
 															key={k}
-															className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+															className="border-white/5 border-b transition-colors hover:bg-white/2"
 														>
-															<td className="px-3 py-2 text-white/40 border-r border-white/5 w-1/3 min-w-[120px] align-top">
+															<td className="w-1/3 min-w-[120px] border-white/5 border-r px-3 py-2 align-top text-white/40">
 																{k}
 															</td>
-															<td className="px-3 py-2 text-white/60 break-all align-top whitespace-pre-wrap">
+															<td className="whitespace-pre-wrap break-all px-3 py-2 align-top text-white/60">
 																{v ?? ""}
 															</td>
 														</tr>
@@ -725,7 +727,7 @@ export function GraphQLEditor({
 										</div>
 									)}
 									{responseDetailTab === "cookies" && (
-										<div className="flex-1 min-h-0">
+										<div className="min-h-0 flex-1">
 											{response.cookies && response.cookies.length > 0 ? (
 												<KeyValueTable
 													items={response.cookies.map(
@@ -751,7 +753,7 @@ export function GraphQLEditor({
 													showDescription={false}
 												/>
 											) : (
-												<div className="p-3 text-xs text-white/30">
+												<div className="p-3 text-white/30 text-xs">
 													No cookies
 												</div>
 											)}

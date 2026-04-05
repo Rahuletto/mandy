@@ -34,16 +34,16 @@ export const SocketIOOverview = ({
 	const leftFooter = (
 		<>
 			<div className="mt-4">
-				<h3 className="text-sm font-semibold text-white/70 mb-2">Connection</h3>
+				<h3 className="mb-2 font-semibold text-sm text-white/70">Connection</h3>
 				<div className="space-y-1">
-					<div className="py-2 border-b border-white/5">
-						<span className="text-xs text-white/40">URL</span>
-						<p className="text-xs font-mono text-white/80 mt-1 break-all">
+					<div className="border-white/5 border-b py-2">
+						<span className="text-white/40 text-xs">URL</span>
+						<p className="mt-1 break-all font-mono text-white/80 text-xs">
 							{sio.url || "Not set"}
 						</p>
 					</div>
-					<div className="py-2 border-b border-white/5">
-						<span className="text-xs text-white/40">Namespace</span>
+					<div className="border-white/5 border-b py-2">
+						<span className="text-white/40 text-xs">Namespace</span>
 						<input
 							type="text"
 							value={sio.namespace || "/"}
@@ -51,7 +51,7 @@ export const SocketIOOverview = ({
 								const next = e.target.value;
 								onUpdate((prev) => ({ ...prev, namespace: next || "/" }));
 							}}
-							className="w-full mt-1 bg-inputbox rounded px-2 py-1.5 text-xs font-mono text-white outline-none placeholder:text-white/20"
+							className="mt-1 w-full rounded bg-inputbox px-2 py-1.5 font-mono text-white text-xs outline-none placeholder:text-white/20"
 							placeholder="/"
 							disabled={status !== "disconnected"}
 						/>
@@ -61,15 +61,15 @@ export const SocketIOOverview = ({
 
 			{enabledHeaders.length > 0 && (
 				<div className="mt-4">
-					<h3 className="text-sm font-semibold text-white/70 mb-2">Headers</h3>
+					<h3 className="mb-2 font-semibold text-sm text-white/70">Headers</h3>
 					<div className="space-y-1">
 						{enabledHeaders.map((h) => (
 							<div
 								key={h.id}
-								className="py-2 border-b border-white/5 last:border-0"
+								className="border-white/5 border-b py-2 last:border-0"
 							>
 								<div className="flex items-center gap-3">
-									<span className="text-xs font-mono text-white font-medium">
+									<span className="font-medium font-mono text-white text-xs">
 										{h.key}
 									</span>
 								</div>
@@ -115,7 +115,7 @@ export const SocketIOOverview = ({
 					type="button"
 					onClick={onConnect}
 					disabled={!sio.url || status !== "disconnected"}
-					className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20 disabled:opacity-50 disabled:cursor-not-allowed"
+					className="absolute right-4 bottom-4 z-20 flex cursor-pointer items-center gap-2 rounded-full bg-accent px-4 py-1.5 font-semibold text-background text-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					Connect
 				</button>

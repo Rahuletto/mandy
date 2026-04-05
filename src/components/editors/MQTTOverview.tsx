@@ -30,23 +30,23 @@ export function MQTTOverview({
 
 	const leftFooter = (
 		<div className="mt-4">
-			<h3 className="mb-2 text-sm font-semibold text-white/70">Connection</h3>
+			<h3 className="mb-2 font-semibold text-sm text-white/70">Connection</h3>
 			<div className="space-y-1">
-				<div className="border-b border-white/5 py-2">
-					<span className="text-xs text-white/40">Broker URL</span>
-					<p className="mt-1 break-all font-mono text-xs text-white/80">
+				<div className="border-white/5 border-b py-2">
+					<span className="text-white/40 text-xs">Broker URL</span>
+					<p className="mt-1 break-all font-mono text-white/80 text-xs">
 						{mqtt.url || "Not set"}
 					</p>
 				</div>
-				<div className="border-b border-white/5 py-2">
-					<span className="text-xs text-white/40">Client ID</span>
-					<p className="mt-1 break-all font-mono text-xs text-white/80">
+				<div className="border-white/5 border-b py-2">
+					<span className="text-white/40 text-xs">Client ID</span>
+					<p className="mt-1 break-all font-mono text-white/80 text-xs">
 						{mqtt.clientId || "Auto-generated"}
 					</p>
 				</div>
-				<div className="border-b border-white/5 py-2">
-					<span className="text-xs text-white/40">Subscriptions</span>
-					<p className="mt-1 break-all font-mono text-xs text-white/80">
+				<div className="border-white/5 border-b py-2">
+					<span className="text-white/40 text-xs">Subscriptions</span>
+					<p className="mt-1 break-all font-mono text-white/80 text-xs">
 						{mqtt.subscriptions.length > 0
 							? mqtt.subscriptions
 									.map((sub) => `${sub.topic} (QoS ${sub.qos})`)
@@ -87,7 +87,7 @@ export function MQTTOverview({
 					type="button"
 					onClick={onConnect}
 					disabled={!mqtt.url || status !== "disconnected"}
-					className="absolute bottom-4 right-4 z-20 flex cursor-pointer items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-background transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+					className="absolute right-4 bottom-4 z-20 flex cursor-pointer items-center gap-2 rounded-full bg-accent px-4 py-1.5 font-semibold text-background text-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					Connect
 				</button>

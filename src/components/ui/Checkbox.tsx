@@ -16,14 +16,12 @@ export function Checkbox({
 			type="button"
 			onClick={() => !disabled && onChange(!checked)}
 			disabled={disabled}
-			className={`
-        w-4 h-4 rounded border flex items-center justify-center transition-all
-        ${
-					checked
-						? "bg-accent border-accent"
-						: "border-white/20 bg-transparent hover:border-white/40"
-				}
-        ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+			className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+				checked
+					? "border-accent bg-accent"
+					: "border-white/20 bg-transparent hover:border-white/40"
+			}
+        ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
       `}
 		>
 			{checked && <BsCheck size={18} className="text-background" />}

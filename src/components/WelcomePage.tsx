@@ -35,7 +35,7 @@ function RecentTypeIcon({ method }: { method: string }) {
 	}
 	return (
 		<span
-			className="font-mono text-[11px] font-bold shrink-0 text-right"
+			className="shrink-0 text-right font-bold font-mono text-[11px]"
 			style={{ color: getMethodColor(method) }}
 		>
 			{getShortMethod(method)}
@@ -58,6 +58,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 	const [showRequestTypes, setShowRequestTypes] = useState(false);
 	const activeProject = projects.find((p) => p.id === activeProjectId);
 	const requestDropdownRef = useRef<HTMLDivElement>(null);
+	const projectSelectorRef = useRef<HTMLDivElement>(null);
 
 	const requestTypeEntries = useMemo(
 		() =>
@@ -90,35 +91,59 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 		};
 	}, [showRequestTypes]);
 
+	useEffect(() => {
+		if (!showProjectSelector) return;
+		const handleClick = (e: MouseEvent) => {
+			if (
+				projectSelectorRef.current &&
+				!projectSelectorRef.current.contains(e.target as Node)
+			) {
+				setShowProjectSelector(false);
+			}
+		};
+		const handleEsc = (e: KeyboardEvent) => {
+			if (e.key === "Escape") setShowProjectSelector(false);
+		};
+		document.addEventListener("mousedown", handleClick);
+		document.addEventListener("keydown", handleEsc);
+		return () => {
+			document.removeEventListener("mousedown", handleClick);
+			document.removeEventListener("keydown", handleEsc);
+		};
+	}, [showProjectSelector]);
+
 	return (
-		<div className="flex-1 flex flex-col items-center justify-center text-white/30 select-none font-sans overflow-auto py-20 h-full">
-			<div className="flex flex-col items-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+		<div className="flex h-full flex-1 select-none flex-col items-center justify-center overflow-auto py-20 font-sans text-white/30">
+			<div className="fade-in slide-in-from-bottom-4 mb-10 flex animate-in flex-col items-center duration-1000">
 				<div className="relative mb-2">
-					<Logo className="w-16 h-16 opacity-[0.3]" />
+					<Logo className="h-16 w-16 opacity-[0.3]" />
 				</div>
 
 				<div className="relative mt-4">
-					<button
-						type="button"
-						onClick={() => setShowProjectSelector(!showProjectSelector)}
-						className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] text-white/30 cursor-pointer bg-white/2 hover:text-white/40 hover:bg-white/5 transition-all outline-none"
-					>
-						<span className="font-medium">
-							{activeProject?.name || "Select Project"}
-						</span>
-						<TbChevronDown
-							size={12}
-							className={`opacity-30 transition-transform ${showProjectSelector ? "rotate-180" : ""}`}
-						/>
-					</button>
-
 					{showProjectSelector && (
-						<>
-							<div
-								className="fixed inset-0 z-40"
-								onClick={() => setShowProjectSelector(false)}
+						<div
+							className="fixed inset-0 z-40"
+							aria-hidden
+							onClick={() => setShowProjectSelector(false)}
+						/>
+					)}
+					<div ref={projectSelectorRef} className="relative z-50">
+						<button
+							type="button"
+							onClick={() => setShowProjectSelector(!showProjectSelector)}
+							className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-white/2 px-3 py-1.5 text-[13px] text-white/30 outline-none transition-all hover:bg-white/5 hover:text-white/40"
+						>
+							<span className="font-medium">
+								{activeProject?.name || "Select Project"}
+							</span>
+							<TbChevronDown
+								size={12}
+								className={`opacity-30 transition-transform ${showProjectSelector ? "rotate-180" : ""}`}
 							/>
-							<div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-card border border-border rounded-xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-200">
+						</button>
+
+						{showProjectSelector && (
+							<div className="fade-in zoom-in-95 absolute top-full left-1/2 z-50 mt-2 w-48 -translate-x-1/2 animate-in rounded-xl border border-border bg-card py-1.5 shadow-2xl duration-200">
 								{projects.map((p) => (
 									<button
 										type="button"
@@ -127,34 +152,34 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 											onSelectProject(p.id);
 											setShowProjectSelector(false);
 										}}
-										className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] text-left transition-colors ${
+										className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] transition-colors ${
 											p.id === activeProjectId
-												? "text-accent bg-accent/10"
-												: "text-white/60 hover:text-white hover:bg-white/5"
+												? "bg-accent/10 text-accent"
+												: "text-white/60 hover:bg-white/5 hover:text-white"
 										}`}
 									>
 										<span className="truncate">{p.name}</span>
 									</button>
 								))}
-								<div className="h-px bg-white/5 my-1 mx-2" />
+								<div className="mx-2 my-1 h-px bg-white/5" />
 								<button
 									type="button"
 									onClick={() => {
 										onNewProject();
 										setShowProjectSelector(false);
 									}}
-									className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-left text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+									className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-white/40 transition-colors hover:bg-white/5 hover:text-white"
 								>
 									<TbPlus size={14} className="opacity-50" />
 									<span>Create Project</span>
 								</button>
 							</div>
-						</>
-					)}
+						)}
+					</div>
 				</div>
 			</div>
 
-			<div className="w-full max-w-[320px] space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+			<div className="fade-in slide-in-from-bottom-8 w-full max-w-[320px] animate-in space-y-8 delay-200 duration-700">
 				<div className="space-y-3">
 					<h2 className="text-white/40 text-xs">New</h2>
 					<div className="space-y-3.5">
@@ -162,16 +187,16 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 							<button
 								type="button"
 								onClick={() => setShowRequestTypes(!showRequestTypes)}
-								className={`group flex cursor-pointer items-center gap-3 text-white transition-all duration-200 text-left w-full ${
+								className={`group flex w-full cursor-pointer items-center gap-3 text-left text-white transition-all duration-200 ${
 									showRequestTypes
 										? "opacity-90"
 										: "opacity-50 hover:opacity-80"
 								}`}
 							>
-								<div className="flex items-center justify-center w-4 h-4">
+								<div className="flex h-4 w-4 items-center justify-center">
 									<TbPlus size={18} />
 								</div>
-								<span className="text-[14px] font-medium">New Request</span>
+								<span className="font-medium text-[14px]">New Request</span>
 								<TbChevronDown
 									size={12}
 									className={`ml-auto opacity-30 transition-transform duration-200 ${showRequestTypes ? "rotate-180" : ""}`}
@@ -179,7 +204,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 							</button>
 
 							{showRequestTypes && (
-								<div className="absolute min-w-[200px] z-50 mt-2 ml-7 bg-card border border-border rounded-xl shadow-2xl py-1.5 animate-in fade-in slide-in-from-top-2 zoom-in-95 duration-200 origin-top">
+								<div className="fade-in slide-in-from-top-2 zoom-in-95 absolute z-50 mt-2 ml-7 min-w-[200px] origin-top animate-in rounded-xl border border-border bg-card py-1.5 shadow-2xl duration-200">
 									{requestTypeEntries.map((rt) => (
 										<button
 											type="button"
@@ -188,10 +213,10 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 												onNewItem(rt.type);
 												setShowRequestTypes(false);
 											}}
-											className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+											className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-white/60 transition-colors hover:bg-white/5 hover:text-white"
 										>
 											<span className="shrink-0">{rt.icon}</span>
-											<span className="text-[13px] font-medium">
+											<span className="font-medium text-[13px]">
 												{rt.label}
 											</span>
 										</button>
@@ -203,37 +228,37 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 						<button
 							type="button"
 							onClick={onNewFolder}
-							className={`group flex items-center gap-3 cursor-pointer text-white transition-all duration-200 text-left w-full ${
+							className={`group flex w-full cursor-pointer items-center gap-3 text-left text-white transition-all duration-200 ${
 								showRequestTypes
-									? "opacity-20 pointer-events-none"
+									? "pointer-events-none opacity-20"
 									: "opacity-50 hover:opacity-80"
 							}`}
 						>
-							<div className="flex items-center justify-center w-4 h-4">
+							<div className="flex h-4 w-4 items-center justify-center">
 								<FaFolder size={14} />
 							</div>
-							<span className="text-[14px] font-medium">New Folder</span>
+							<span className="font-medium text-[14px]">New Folder</span>
 						</button>
 						<button
 							type="button"
 							onClick={onImportClick}
-							className={`group flex items-center gap-3 text-white cursor-pointer transition-all duration-200 text-left w-full ${
+							className={`group flex w-full cursor-pointer items-center gap-3 text-left text-white transition-all duration-200 ${
 								showRequestTypes
-									? "opacity-20 pointer-events-none"
+									? "pointer-events-none opacity-20"
 									: "opacity-50 hover:opacity-80"
 							}`}
 						>
-							<div className="flex items-center justify-center w-4 h-4">
+							<div className="flex h-4 w-4 items-center justify-center">
 								<BiFile size={16} />
 							</div>
-							<span className="text-[14px] font-medium">Import from file</span>
+							<span className="font-medium text-[14px]">Import from file</span>
 						</button>
 					</div>
 				</div>
 
 				<div
 					className={`space-y-5 transition-opacity duration-200 ${
-						showRequestTypes ? "opacity-20 pointer-events-none" : ""
+						showRequestTypes ? "pointer-events-none opacity-20" : ""
 					}`}
 				>
 					<h2 className="text-white/40 text-xs">Recents</h2>
@@ -244,18 +269,18 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 									type="button"
 									key={req.requestId}
 									onClick={() => onSelectRecent(req.requestId)}
-									className="group flex items-center gap-3 text-white/40 hover:text-white/80 transition-all duration-200 text-left w-full"
+									className="group flex w-full items-center gap-3 text-left text-white/40 transition-all duration-200 hover:text-white/80"
 								>
-									<div className="flex w-10 shrink-0 items-center justify-end opacity-80 group-hover:opacity-100 transition-opacity [&_svg]:max-h-[14px] [&_svg]:max-w-[14px]">
+									<div className="flex w-10 shrink-0 items-center justify-end opacity-80 transition-opacity group-hover:opacity-100 [&_svg]:max-h-[14px] [&_svg]:max-w-[14px]">
 										<RecentTypeIcon method={req.method} />
 									</div>
-									<span className="text-[14px] font-medium truncate">
+									<span className="truncate font-medium text-[14px]">
 										{req.name}
 									</span>
 								</button>
 							))
 						) : (
-							<div className="text-[13px] text-white/5 italic pl-10">
+							<div className="pl-10 text-[13px] text-white/5 italic">
 								No recent requests
 							</div>
 						)}

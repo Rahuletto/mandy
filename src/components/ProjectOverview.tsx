@@ -166,46 +166,46 @@ const RequestDetails = React.memo(function RequestDetails({
 
 	return (
 		<div
-			className={`group/card flex flex-col bg-white/[0.02] border-x border-b first:border-t border-white/5 ${borderRadiusClasses} overflow-hidden hover:bg-white/[0.04] transition-all relative ${isLoading ? "shimmer-loading opacity-80" : ""}`}
+			className={`group/card flex flex-col border-white/5 border-x border-b bg-white/2 first:border-t ${borderRadiusClasses} relative overflow-hidden transition-all hover:bg-white/4 ${isLoading ? "shimmer-loading opacity-80" : ""}`}
 		>
 			{isLoading ? (
 				<div className="absolute inset-0 z-10 bg-background/30" aria-hidden />
 			) : null}
 			<div
-				className={`absolute left-0 top-0 bottom-0 w-1 ${colors.bg.replace("/10", "/40")} `}
+				className={`absolute top-0 bottom-0 left-0 w-1 ${colors.bg.replace("/10", "/40")} `}
 			/>
 
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
-				className="w-full flex items-stretch cursor-pointer text-left overflow-hidden h-10"
+				className="flex h-10 w-full cursor-pointer items-stretch overflow-hidden text-left"
 			>
 				<div
-					className={`flex items-center justify-start px-4 ${colors.bg} ${colors.text} shrink-0 min-w-[69px] transition-colors`}
+					className={`flex items-center justify-start px-4 ${colors.bg} ${colors.text} min-w-[69px] shrink-0 transition-colors`}
 				>
-					<span className="text-xs font-semibold font-mono text-left">
+					<span className="text-left font-mono font-semibold text-xs">
 						{request.request.method}
 					</span>
 				</div>
-				<div className="flex-1 flex items-center justify-between px-4 min-w-0">
+				<div className="flex min-w-0 flex-1 items-center justify-between px-4">
 					<div className="flex flex-col">
-						<span className="text-sm text-white/90 font-semibold truncate">
+						<span className="truncate font-semibold text-sm text-white/90">
 							{request.name}
 						</span>
 					</div>
-					<div className="flex items-center gap-3 shrink-0 ml-4">
-						<span className="text-[10px] text-white/40 font-mono truncate max-w-[200px] group-hover/card:text-white/60 transition-colors">
+					<div className="ml-4 flex shrink-0 items-center gap-3">
+						<span className="max-w-[200px] truncate font-mono text-[10px] text-white/40 transition-colors group-hover/card:text-white/60">
 							{request.request.url || "/"}
 						</span>
 						{expanded ? (
 							<HiChevronDown
 								size={14}
-								className="text-white/20 group-hover/card:text-white/50 transition-colors"
+								className="text-white/20 transition-colors group-hover/card:text-white/50"
 							/>
 						) : (
 							<HiChevronRight
 								size={14}
-								className="text-white/20 group-hover/card:text-white/50 transition-colors"
+								className="text-white/20 transition-colors group-hover/card:text-white/50"
 							/>
 						)}
 					</div>
@@ -213,12 +213,12 @@ const RequestDetails = React.memo(function RequestDetails({
 			</button>
 
 			{expanded && (
-				<div className="border-t border-white/5 bg-white/[0.01]">
+				<div className="border-white/5 border-t bg-white/1">
 					<div className="flex flex-col md:flex-row">
-						<div className="flex flex-col flex-1 p-4 border-b md:border-b-0 md:border-r border-white/5 space-y-4">
+						<div className="flex flex-1 flex-col space-y-4 border-white/5 border-b p-4 md:border-r md:border-b-0">
 							<div className="flex-1 space-y-8">
 								<div className="flex-1 space-y-2">
-									<h3 className="text-xl font-bold text-white">
+									<h3 className="font-bold text-white text-xl">
 										{request.name}
 									</h3>
 									<p className="text-sm text-white/50 italic">
@@ -227,19 +227,19 @@ const RequestDetails = React.memo(function RequestDetails({
 								</div>
 								{queryParams.length > 0 && (
 									<div>
-										<h4 className="text-xs font-semibold text-white/70 mb-2">
+										<h4 className="mb-2 font-semibold text-white/70 text-xs">
 											Query Parameters
 										</h4>
 										<div className="space-y-1.5 font-mono">
 											{queryParams.map(([key, value]) => (
 												<div key={key} className="flex items-baseline gap-2">
-													<span className="text-sm text-white/90 font-medium">
+													<span className="font-medium text-sm text-white/90">
 														{key}
 													</span>
 													<span className="text-[10px] text-blue-400">
 														string
 													</span>
-													<span className="text-white/40 text-[10px] truncate">
+													<span className="truncate text-[10px] text-white/40">
 														{value || "—"}
 													</span>
 												</div>
@@ -249,13 +249,13 @@ const RequestDetails = React.memo(function RequestDetails({
 								)}
 								{bodyProperties.length > 0 && (
 									<div>
-										<h4 className="text-xs font-semibold text-white/70 mb-2">
+										<h4 className="mb-2 font-semibold text-white/70 text-xs">
 											Request Body
 										</h4>
 										<div className="space-y-1.5 font-mono">
 											{bodyProperties.map(([key, value]) => (
 												<div key={key} className="flex items-baseline gap-2">
-													<span className="text-sm text-white/90 font-medium">
+													<span className="font-medium text-sm text-white/90">
 														{key}
 													</span>
 													<TypeLabel type={getValueType(value)} />
@@ -271,12 +271,12 @@ const RequestDetails = React.memo(function RequestDetails({
 									e.stopPropagation();
 									onSelect();
 								}}
-								className="text-xs text-accent text-left hover:text-accent/80 font-medium cursor-pointer pt-2"
+								className="cursor-pointer pt-2 text-left font-medium text-accent text-xs hover:text-accent/80"
 							>
 								Open Request →
 							</button>
 						</div>
-						<div className="flex-1 flex flex-col min-h-[200px] relative">
+						<div className="relative flex min-h-[200px] flex-1 flex-col">
 							<div className="absolute inset-0 overflow-auto">
 								<CodeViewer code={snippetCode} language={currentLang} />
 							</div>
@@ -287,7 +287,7 @@ const RequestDetails = React.memo(function RequestDetails({
 										e.stopPropagation();
 										onRun();
 									}}
-									className="absolute bottom-3 right-3 px-4 py-1.5 bg-accent hover:bg-accent/90 text-background text-xs font-semibold rounded-lg transition-colors cursor-pointer z-10"
+									className="absolute right-3 bottom-3 z-10 cursor-pointer rounded-lg bg-accent px-4 py-1.5 font-semibold text-background text-xs transition-colors hover:bg-accent/90"
 								>
 									Run
 								</button>
@@ -333,39 +333,39 @@ const ProtocolOverviewCard = React.memo(function ProtocolOverviewCard({
 
 	return (
 		<div
-			className={`group/card flex flex-col bg-white/[0.02] border-x border-b first:border-t border-white/5 ${borderRadiusClasses} overflow-hidden hover:bg-white/[0.04] transition-all relative ${isLoading ? "shimmer-loading opacity-80" : ""}`}
+			className={`group/card flex flex-col border-white/5 border-x border-b bg-white/2 first:border-t ${borderRadiusClasses} relative overflow-hidden transition-all hover:bg-white/4 ${isLoading ? "shimmer-loading opacity-80" : ""}`}
 		>
 			{isLoading ? (
 				<div className="absolute inset-0 z-10 bg-background/30" aria-hidden />
 			) : null}
 			<div
-				className={`absolute left-0 top-0 bottom-0 w-1 ${cfg.overviewStripeClass ?? ""}`}
+				className={`absolute top-0 bottom-0 left-0 w-1 ${cfg.overviewStripeClass ?? ""}`}
 			/>
-			<div className="w-full flex items-stretch h-10">
+			<div className="flex h-10 w-full items-stretch">
 				<div
-					className={`flex items-center justify-center px-4 shrink-0 min-w-[69px] ${cfg.overviewSidebarCellClass ?? ""}`}
+					className={`flex min-w-[69px] shrink-0 items-center justify-center px-4 ${cfg.overviewSidebarCellClass ?? ""}`}
 				>
 					<RequestTypeIcon type={item.type} size={18} />
 				</div>
-				<div className="flex-1 flex items-center justify-between px-4 min-w-0">
-					<span className="text-sm text-white/90 font-semibold truncate">
+				<div className="flex min-w-0 flex-1 items-center justify-between px-4">
+					<span className="truncate font-semibold text-sm text-white/90">
 						{item.name}
 					</span>
-					<div className="flex items-center gap-3 shrink-0 ml-4">
-						<span className="text-[10px] text-white/40 font-mono truncate max-w-[200px] group-hover/card:text-white/60 transition-colors">
+					<div className="ml-4 flex shrink-0 items-center gap-3">
+						<span className="max-w-[200px] truncate font-mono text-[10px] text-white/40 transition-colors group-hover/card:text-white/60">
 							{item.url || "/"}
 						</span>
 					</div>
 				</div>
 			</div>
-			<div className="border-t border-white/5 bg-white/[0.01] px-4 py-3 flex items-center justify-between gap-4">
-				<p className="text-sm text-white/40 italic min-w-0">
+			<div className="flex items-center justify-between gap-4 border-white/5 border-t bg-white/1 px-4 py-3">
+				<p className="min-w-0 text-sm text-white/40 italic">
 					{item.description || "No description"}
 				</p>
 				<button
 					type="button"
 					onClick={onSelect}
-					className="text-xs text-accent text-left hover:text-accent/80 font-medium cursor-pointer shrink-0"
+					className="shrink-0 cursor-pointer text-left font-medium text-accent text-xs hover:text-accent/80"
 				>
 					{`Open ${cfg.label} →`}
 				</button>
@@ -399,36 +399,36 @@ const WorkflowCard = React.memo(function WorkflowCard({
 
 	return (
 		<div
-			className={`group/card flex flex-col bg-white/[0.02] border-x border-b first:border-t border-white/5 ${borderRadiusClasses} overflow-hidden hover:bg-white/[0.04] transition-all relative`}
+			className={`group/card flex flex-col border-white/5 border-x border-b bg-white/2 first:border-t ${borderRadiusClasses} relative overflow-hidden transition-all hover:bg-white/4`}
 		>
 			<div
-				className={`absolute left-0 top-0 bottom-0 w-1 ${wfCfg.overviewStripeClass ?? ""}`}
+				className={`absolute top-0 bottom-0 left-0 w-1 ${wfCfg.overviewStripeClass ?? ""}`}
 			/>
-			<div className="w-full flex items-stretch h-10">
+			<div className="flex h-10 w-full items-stretch">
 				<div
-					className={`flex items-center justify-center px-4 shrink-0 min-w-[69px] ${wfCfg.overviewSidebarCellClass ?? ""}`}
+					className={`flex min-w-[69px] shrink-0 items-center justify-center px-4 ${wfCfg.overviewSidebarCellClass ?? ""}`}
 				>
 					<RequestTypeIcon type="workflow" size={18} />
 				</div>
-				<div className="flex-1 flex items-center justify-between px-4 min-w-0">
-					<span className="text-sm text-white/90 font-semibold truncate">
+				<div className="flex min-w-0 flex-1 items-center justify-between px-4">
+					<span className="truncate font-semibold text-sm text-white/90">
 						{workflow.name}
 					</span>
-					<div className="flex items-center gap-3 shrink-0 ml-4">
-						<span className="text-[10px] text-white/40 font-mono">
+					<div className="ml-4 flex shrink-0 items-center gap-3">
+						<span className="font-mono text-[10px] text-white/40">
 							{nodeCount} node{nodeCount !== 1 ? "s" : ""}
 						</span>
 					</div>
 				</div>
 			</div>
-			<div className="border-t border-white/5 bg-white/[0.01] px-4 py-3 flex items-center justify-between">
+			<div className="flex items-center justify-between border-white/5 border-t bg-white/1 px-4 py-3">
 				<p className="text-sm text-white/40 italic">
 					{workflow.description || "No description"}
 				</p>
 				<button
 					type="button"
 					onClick={onSelect}
-					className="text-xs text-accent text-left hover:text-accent/80 font-medium cursor-pointer shrink-0 ml-4"
+					className="ml-4 shrink-0 cursor-pointer text-left font-medium text-accent text-xs hover:text-accent/80"
 				>
 					Open Workflow →
 				</button>
@@ -471,30 +471,30 @@ const FolderSection = React.memo(function FolderSection({
 			<button
 				type="button"
 				onClick={() => toggleFolder(folder.id)}
-				className="w-full px-2 py-2 flex items-center gap-2 hover:bg-white/5 rounded transition-colors cursor-pointer text-left mt-3 mb-1 group"
+				className="group mt-3 mb-1 flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left transition-colors hover:bg-white/5"
 			>
 				{isExpanded ? (
 					<HiChevronDown
 						size={14}
-						className="text-white/20 group-hover:text-white/40 shrink-0"
+						className="shrink-0 text-white/20 group-hover:text-white/40"
 					/>
 				) : (
 					<HiChevronRight
 						size={14}
-						className="text-white/20 group-hover:text-white/40 shrink-0"
+						className="shrink-0 text-white/20 group-hover:text-white/40"
 					/>
 				)}
-				<span className="text-xs font-medium text-white/50 group-hover:text-white/70 truncate">
+				<span className="truncate font-medium text-white/50 text-xs group-hover:text-white/70">
 					{depth === 0 ? "/ (root)" : folder.name}
 				</span>
-				<span className="text-[10px] text-white/20 ml-auto shrink-0 font-medium group-hover:text-white/40 pr-1">
+				<span className="ml-auto shrink-0 pr-1 font-medium text-[10px] text-white/20 group-hover:text-white/40">
 					{folder.children.length}
 				</span>
 			</button>
 
 			{isExpanded && (
 				<div
-					className={`flex flex-col gap-2 ${depth > 0 ? "ml-3 border-l border-white/10 pl-4 mb-1 mt-1" : ""}`}
+					className={`flex flex-col gap-2 ${depth > 0 ? "mt-1 mb-1 ml-3 border-white/10 border-l pl-4" : ""}`}
 				>
 					{folder.children.map((child, index) => {
 						if (child.type === "folder") {
@@ -724,17 +724,17 @@ export function ProjectOverview({
 	];
 
 	return (
-		<div className="h-full flex flex-col overflow-hidden">
+		<div className="flex h-full flex-col overflow-hidden">
 			<div>
 				<div
-					className="flex items-center gap-4 border-b border-white/5 pb-3 p-4"
+					className="flex items-center gap-4 border-white/5 border-b p-4 pb-3"
 					data-tauri-drag-region
 				>
 					<button
 						type="button"
 						ref={iconButtonRef}
 						onClick={() => setShowIconPicker(true)}
-						className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+						className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg transition-colors"
 						style={{
 							color: project.iconColor || "rgba(255, 255, 255, 0.6)",
 							backgroundColor: project.iconColor
@@ -745,34 +745,34 @@ export function ProjectOverview({
 						<IconComponent size={24} />
 					</button>
 
-					<div className="flex-1 min-w-0">
+					<div className="min-w-0 flex-1">
 						<h1 className="font-semibold">{project.name}</h1>
 					</div>
 
 					<div className="flex items-center gap-2">
 						<div
-							className={`relative transition-all duration-300 ease-out origin-right ${
+							className={`relative origin-right transition-all duration-300 ease-out ${
 								isLangSelectorSticky
-									? "opacity-100 scale-100 w-auto"
-									: "opacity-0 scale-95 w-0 overflow-hidden"
+									? "w-auto scale-100 opacity-100"
+									: "w-0 scale-95 overflow-hidden opacity-0"
 							}`}
 						>
 							<button
 								type="button"
 								onClick={() => setShowLangDropdown(!showLangDropdown)}
-								className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/5 rounded-lg text-xs text-white/50 hover:text-white/90 transition-all cursor-pointer group whitespace-nowrap"
+								className="group flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1 text-white/50 text-xs transition-all hover:bg-white/5 hover:text-white/90"
 							>
 								<span>
 									{LANGUAGES.find((l) => l.id === selectedLanguage)?.label}
 								</span>
 								<HiChevronDown
 									size={14}
-									className="text-white/20 group-hover:text-white/40 transition-colors mt-0.5"
+									className="mt-0.5 text-white/20 transition-colors group-hover:text-white/40"
 								/>
 							</button>
 							{showLangDropdown && (
 								<Dropdown
-									className="right-0 top-full mt-1"
+									className="top-full right-0 mt-1"
 									onClose={() => setShowLangDropdown(false)}
 									width="min-w-[180px]"
 									items={LANGUAGES.map((lang) => ({
@@ -786,7 +786,7 @@ export function ProjectOverview({
 						<button
 							type="button"
 							onClick={onExport}
-							className="px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+							className="cursor-pointer rounded-lg bg-white/5 px-3 py-1.5 font-medium text-white/60 text-xs transition-colors hover:bg-white/10 hover:text-white"
 						>
 							Export
 						</button>
@@ -822,10 +822,10 @@ export function ProjectOverview({
 				{activeTab === "overview" && (
 					<div className="space-y-6 p-3">
 						<div className="flex items-start justify-between">
-							<div className="flex-1 min-w-0">
+							<div className="min-w-0 flex-1">
 								{editingName ? (
 									<input
-										className="text-2xl font-bold bg-transparent border-none outline-none text-white w-full"
+										className="w-full border-none bg-transparent font-bold text-2xl text-white outline-none"
 										value={name}
 										onChange={(e) => setName(e.target.value)}
 										onBlur={handleNameBlur}
@@ -833,7 +833,7 @@ export function ProjectOverview({
 									/>
 								) : (
 									<h1
-										className="text-2xl font-bold text-white cursor-text hover:text-white/90"
+										className="cursor-text font-bold text-2xl text-white hover:text-white/90"
 										onClick={() => setEditingName(true)}
 									>
 										{project.name}
@@ -842,7 +842,7 @@ export function ProjectOverview({
 
 								{editingDescription ? (
 									<textarea
-										className="text-sm text-white/50 bg-transparent border-none outline-none w-full mt-2 resize-none"
+										className="mt-2 w-full resize-none border-none bg-transparent text-sm text-white/50 outline-none"
 										value={description}
 										onChange={(e) => setDescription(e.target.value)}
 										onBlur={handleDescriptionBlur}
@@ -857,7 +857,7 @@ export function ProjectOverview({
 									/>
 								) : (
 									<p
-										className="text-sm text-white/40 mt-2 whitespace-pre-wrap cursor-text hover:text-white/60"
+										className="mt-2 cursor-text whitespace-pre-wrap text-sm text-white/40 hover:text-white/60"
 										onClick={() => setEditingDescription(true)}
 									>
 										{project.description || "Add a description..."}
@@ -866,9 +866,9 @@ export function ProjectOverview({
 							</div>
 
 							<div
-								className={`flex flex-col items-end shrink-0 relative transition-all duration-300 ease-out ${
+								className={`relative flex shrink-0 flex-col items-end transition-all duration-300 ease-out ${
 									isLangSelectorSticky
-										? "opacity-0 pointer-events-none"
+										? "pointer-events-none opacity-0"
 										: "opacity-100"
 								}`}
 								ref={langSelectorRef}
@@ -876,19 +876,19 @@ export function ProjectOverview({
 								<button
 									type="button"
 									onClick={() => setShowLangDropdown(!showLangDropdown)}
-									className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/5 rounded-lg text-xs text-white/50 hover:text-white/90 transition-all cursor-pointer group"
+									className="group flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-white/50 text-xs transition-all hover:bg-white/5 hover:text-white/90"
 								>
 									<span>
 										{LANGUAGES.find((l) => l.id === selectedLanguage)?.label}
 									</span>
 									<HiChevronDown
 										size={14}
-										className="text-white/20 group-hover:text-white/40 transition-colors mt-0.5"
+										className="mt-0.5 text-white/20 transition-colors group-hover:text-white/40"
 									/>
 								</button>
 								{showLangDropdown && (
 									<Dropdown
-										className="right-0 top-full mt-1"
+										className="top-full right-0 mt-1"
 										onClose={() => setShowLangDropdown(false)}
 										width="min-w-[180px]"
 										items={LANGUAGES.map((lang) => ({
@@ -918,7 +918,7 @@ export function ProjectOverview({
 							/>
 
 							{allRequests.length === 0 && (
-								<div className="text-center py-12 text-white/30 text-sm">
+								<div className="py-12 text-center text-sm text-white/30">
 									No requests yet. Create one to get started.
 								</div>
 							)}
@@ -927,9 +927,9 @@ export function ProjectOverview({
 				)}
 
 				{activeTab === "configuration" && (
-					<div className="space-y-6 max-w-xl">
+					<div className="max-w-xl space-y-6">
 						<div>
-							<label className="block text-xs font-medium text-white/50 mb-2">
+							<label className="mb-2 block font-medium text-white/50 text-xs">
 								Base URL
 							</label>
 							<input
@@ -938,22 +938,22 @@ export function ProjectOverview({
 								onChange={(e) => setBaseUrl(e.target.value)}
 								onBlur={() => onUpdateProject({ baseUrl })}
 								placeholder="https://api.example.com"
-								className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-accent/50"
+								className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-accent/50 focus:outline-none"
 							/>
-							<p className="text-[10px] text-white/30 mt-1">
+							<p className="mt-1 text-[10px] text-white/30">
 								Prepended to relative URLs
 							</p>
 						</div>
 
-						<div className="pt-6 border-t border-white/5">
-							<label className="block text-xs font-medium text-white/50 mb-2">
+						<div className="border-white/5 border-t pt-6">
+							<label className="mb-2 block font-medium text-white/50 text-xs">
 								Project Authorization
 							</label>
-							<p className="text-[10px] text-white/30 mb-4">
+							<p className="mb-4 text-[10px] text-white/30">
 								Set default authorization for all requests in this project.
 								Requests can inherit this auth or override it with their own.
 							</p>
-							<div className="bg-white/[0.02] border border-white/10 rounded-xl overflow-hidden">
+							<div className="overflow-hidden rounded-xl border border-white/10 bg-white/2">
 								<AuthEditor
 									auth={project.authorization || "None"}
 									onChange={(auth: AuthType) =>
@@ -969,18 +969,18 @@ export function ProjectOverview({
 							</div>
 						</div>
 
-						<div className="pt-6 border-t border-white/5">
-							<h3 className="text-sm font-semibold text-white mb-1">
+						<div className="border-white/5 border-t pt-6">
+							<h3 className="mb-1 font-semibold text-sm text-white">
 								Danger Zone
 							</h3>
-							<p className="text-xs text-white/30 mb-4">
+							<p className="mb-4 text-white/30 text-xs">
 								Once you delete a project, there is no going back. Please be
 								certain.
 							</p>
 							<button
 								type="button"
 								onClick={() => setShowDeleteConfirm(true)}
-								className="px-4 py-2 bg-red/10 hover:bg-red/20 text-red text-xs font-semibold rounded-lg border border-red/20 transition-all cursor-pointer"
+								className="cursor-pointer rounded-lg border border-red/20 bg-red/10 px-4 py-2 font-semibold text-red text-xs transition-all hover:bg-red/20"
 							>
 								Delete Project
 							</button>
@@ -990,20 +990,20 @@ export function ProjectOverview({
 
 				{activeTab === "variables" && (
 					<div className="space-y-4">
-						<div className="flex gap-2 w-full">
+						<div className="flex w-full gap-2">
 							<input
 								type="text"
 								value={newEnvName}
 								onChange={(e) => setNewEnvName(e.target.value)}
 								onKeyDown={(e) => e.key === "Enter" && handleAddEnv()}
 								placeholder="Add new environment..."
-								className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-accent/50"
+								className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-accent/50 focus:outline-none"
 							/>
 							<button
 								type="button"
 								onClick={handleAddEnv}
 								disabled={!newEnvName.trim()}
-								className="px-6 py-2.5 text-sm font-bold bg-accent hover:bg-accent/90 disabled:opacity-50 text-background rounded-full transition-all cursor-pointer"
+								className="cursor-pointer rounded-full bg-accent px-6 py-2.5 font-bold text-background text-sm transition-all hover:bg-accent/90 disabled:opacity-50"
 							>
 								Create
 							</button>
@@ -1013,16 +1013,16 @@ export function ProjectOverview({
 							{project.environments.map((env) => (
 								<div
 									key={env.id}
-									className={`border rounded-xl overflow-hidden transition-all ${env.id === project.activeEnvironmentId ? "border-accent/30" : "border-white/10"}`}
+									className={`overflow-hidden rounded-xl border transition-all ${env.id === project.activeEnvironmentId ? "border-accent/30" : "border-white/10"}`}
 								>
 									<div
-										className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${env.id === project.activeEnvironmentId ? "bg-accent/5" : "hover:bg-white/5"}`}
+										className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors ${env.id === project.activeEnvironmentId ? "bg-accent/5" : "hover:bg-white/5"}`}
 										onClick={() =>
 											setExpandedEnvId(expandedEnvId === env.id ? null : env.id)
 										}
 									>
 										<span
-											className={`text-[10px] w-4 ${env.id === project.activeEnvironmentId ? "text-accent" : "text-white/30"}`}
+											className={`w-4 text-[10px] ${env.id === project.activeEnvironmentId ? "text-accent" : "text-white/30"}`}
 										>
 											{expandedEnvId === env.id ? "▼" : "▶"}
 										</span>
@@ -1045,11 +1045,11 @@ export function ProjectOverview({
 											onKeyDown={(e) =>
 												e.key === "Enter" && handleEnvRename(env.id)
 											}
-											className={`text-sm flex-1 bg-transparent border-none focus:outline-none transition-colors px-1 py-0.5 rounded focus:bg-white/5 ${env.id === project.activeEnvironmentId ? "text-accent font-semibold" : "text-white/70"}`}
+											className={`flex-1 rounded border-none bg-transparent px-1 py-0.5 text-sm transition-colors focus:bg-white/5 focus:outline-none ${env.id === project.activeEnvironmentId ? "font-semibold text-accent" : "text-white/70"}`}
 										/>
 
 										<span
-											className={`text-xs ml-1 mr-auto font-medium ${env.id === project.activeEnvironmentId ? "text-accent/60" : "text-white/20"}`}
+											className={`mr-auto ml-1 font-medium text-xs ${env.id === project.activeEnvironmentId ? "text-accent/60" : "text-white/20"}`}
 										>
 											({env.variables.length})
 										</span>
@@ -1062,7 +1062,7 @@ export function ProjectOverview({
 												type="button"
 												onClick={() => onDeleteEnvironment?.(env.id)}
 												disabled={project.environments.length <= 1}
-												className="p-1.5 rounded text-white/20 hover:text-red hover:bg-red/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+												className="cursor-pointer rounded p-1.5 text-white/20 transition-colors hover:bg-red/10 hover:text-red disabled:cursor-not-allowed disabled:opacity-30"
 											>
 												<HiTrash size={14} />
 											</button>
@@ -1070,7 +1070,7 @@ export function ProjectOverview({
 									</div>
 
 									{expandedEnvId === env.id && (
-										<div className="border-t border-white/5">
+										<div className="border-white/5 border-t">
 											<KeyValueTable
 												items={env.variables
 													.filter((v) => v.key.trim() || v.value.trim())
@@ -1127,7 +1127,7 @@ export function ProjectOverview({
 								</div>
 							))}
 							{project.environments.length === 0 && (
-								<div className="text-center py-12 text-white/20 text-sm border border-dashed border-white/10 rounded-lg">
+								<div className="rounded-lg border border-white/10 border-dashed py-12 text-center text-sm text-white/20">
 									No environments defined. Add one above.
 								</div>
 							)}
@@ -1139,7 +1139,7 @@ export function ProjectOverview({
 			<Dialog
 				isOpen={showDeleteConfirm}
 				title="Delete Project"
-				description={`Are you sure you want to delete "${project.name}" ? All requests, folders, and environments will be permanently removed.This action cannot be undone.`}
+				description={`Are you sure you want to delete "${project.name}" ? All requests, folders, and environments will be permanently removed. This action cannot be undone.`}
 				confirmLabel="Delete Project"
 				isDestructive
 				onConfirm={() => {

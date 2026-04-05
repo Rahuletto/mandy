@@ -35,7 +35,7 @@ export function Tooltip({
 				onMouseEnter={() => setOpen(true)}
 				onMouseLeave={() => setOpen(false)}
 				position={position}
-				className={`!px-2.5 !py-1.5 !rounded-lg max-w-[min(18rem,calc(100vw-1rem))] text-left text-xs leading-snug text-white bg-card whitespace-normal ${className}`}
+				className={`!px-2.5 !py-1.5 !rounded-lg max-w-[min(18rem,calc(100vw-1rem))] whitespace-normal bg-card text-left text-white text-xs leading-snug ${className}`}
 			>
 				{content}
 			</HoverPopover>

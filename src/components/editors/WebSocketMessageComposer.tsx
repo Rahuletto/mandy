@@ -30,15 +30,15 @@ export const WebSocketMessageComposer = ({
 
 	return (
 		<div className="relative flex h-full min-h-0 w-full min-w-0 flex-col">
-			<div className="flex items-center gap-2 px-2 py-2 border-b border-white/5">
+			<div className="flex items-center gap-2 border-white/5 border-b px-2 py-2">
 				{(["json", "text"] as const).map((ct) => (
 					<button
 						key={ct}
 						type="button"
 						onClick={() => setMessageContentType(ct)}
-						className={`px-2 py-0.5 text-[11px] cursor-pointer font-medium rounded transition-colors ${
+						className={`cursor-pointer rounded px-2 py-0.5 font-medium text-[11px] transition-colors ${
 							messageContentType === ct
-								? "text-accent bg-accent/10"
+								? "bg-accent/10 text-accent"
 								: "text-white/50 hover:text-white/70"
 						}`}
 					>
@@ -58,7 +58,7 @@ export const WebSocketMessageComposer = ({
 					}
 				/>
 			</div>
-			<div className="absolute right-4 bottom-4 z-20 inline-flex w-fit h-fit">
+			<div className="absolute right-4 bottom-4 z-20 inline-flex h-fit w-fit">
 				<Tooltip
 					content={
 						status !== "connected"
@@ -73,7 +73,7 @@ export const WebSocketMessageComposer = ({
 						type="button"
 						onClick={handleSend}
 						disabled={!messageInput.trim() || status !== "connected"}
-						className="p-2.5 bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-full text-background transition-all cursor-pointer"
+						className="cursor-pointer rounded-full bg-accent p-2.5 text-background transition-all hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						<TbSend size={16} />
 					</button>

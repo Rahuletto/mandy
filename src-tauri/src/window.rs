@@ -12,9 +12,9 @@ use crate::macos_appearance::system_prefers_dark;
 use window_vibrancy::apply_mica;
 
 #[cfg(target_os = "macos")]
-const LIQUID_GLASS_TINT_DARK: &str = "#231F1F99";
+const LIQUID_GLASS_TINT_DARK: &str = "#231F1F66";
 #[cfg(target_os = "macos")]
-const LIQUID_GLASS_TINT_LIGHT: &str = "#FAFAFA99";
+const LIQUID_GLASS_TINT_LIGHT: &str = "#FAFAFA66";
 
 #[cfg(target_os = "macos")]
 fn liquid_glass_tint_for_system_appearance() -> String {

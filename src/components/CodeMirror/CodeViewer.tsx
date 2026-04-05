@@ -132,12 +132,12 @@ export function CodeViewer({
 	}, [themeCompartment]);
 
 	return (
-		<div className="h-full w-full overflow-hidden rounded relative group">
+		<div className="group relative h-full w-full overflow-hidden rounded">
 			<div ref={containerRef} className="h-full w-full" />
 			<button
 				type="button"
 				onClick={handleCopy}
-				className="absolute top-2 right-2 p-1.5 rounded bg-white/10 text-white/50 hover:bg-white/20 hover:text-white/80 transition-all opacity-0 group-hover:opacity-100 z-10"
+				className="absolute top-2 right-2 z-10 rounded bg-white/10 p-1.5 text-white/50 opacity-0 transition-all hover:bg-white/20 hover:text-white/80 group-hover:opacity-100"
 				title="Copy to clipboard"
 			>
 				{copied ? (

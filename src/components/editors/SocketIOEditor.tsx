@@ -14,6 +14,7 @@ import {
 } from "../../realtime/globalRealtimeBridge";
 import { subscribeSocketIoRemoteDisconnect } from "../../realtime/realtimeUiBus";
 import type { KeyValueItem, SocketIOFile } from "../../types/project";
+import { playSuccessChime } from "../../utils/sounds";
 import { CodeEditor } from "../CodeMirror";
 import { KeyValueTable } from "../KeyValueTable";
 import {
@@ -237,6 +238,7 @@ export function SocketIOEditor({
 			pushSystemMessage(
 				`Connected to ${result.data.url}${result.data.namespace || "/"}`,
 			);
+			playSuccessChime();
 		} catch (error: any) {
 			releaseRealtimeBridge(sio.id);
 			pushSystemMessage(error?.message || "Failed to connect");
@@ -382,7 +384,7 @@ export function SocketIOEditor({
 		"w-full rounded bg-inputbox px-3 py-2 text-sm text-white outline-none placeholder:text-white/20 disabled:opacity-50";
 
 	return (
-		<div className="flex flex-col h-full">
+		<div className="flex h-full flex-col">
 			<EditorRequestBar
 				loading={isConnecting}
 				accentDivider={isConnected}
@@ -425,15 +427,15 @@ export function SocketIOEditor({
 
 			<div
 				ref={splitContainerRef}
-				className="flex-1 min-h-0 flex overflow-hidden"
+				className="flex min-h-0 flex-1 overflow-hidden"
 			>
 				<div
-					className="flex p-2 pl-4 flex-col overflow-hidden min-h-0"
+					className="flex min-h-0 flex-col overflow-hidden p-2 pl-4"
 					style={{
 						width: isOverview ? "100%" : `${splitPercent}%`,
 					}}
 				>
-					<div className="flex items-center gap-1 py-2 shrink-0">
+					<div className="flex shrink-0 items-center gap-1 py-2">
 						{(
 							[
 								"overview",
@@ -460,7 +462,7 @@ export function SocketIOEditor({
 						))}
 					</div>
 
-					<div className="flex-1 overflow-auto relative min-h-0">
+					<div className="relative min-h-0 flex-1 overflow-auto">
 						{activeTab === "overview" && (
 							<SocketIOOverview
 								sio={sio}
@@ -478,8 +480,8 @@ export function SocketIOEditor({
 
 						{activeTab === "emit" && (
 							<div className="relative flex h-full min-h-0 w-full min-w-0 flex-col">
-								<div className="px-4 pt-4 pb-2 border-b border-white/5">
-									<label className="block text-xs text-white/60 mb-2">
+								<div className="border-white/5 border-b px-4 pt-4 pb-2">
+									<label className="mb-2 block text-white/60 text-xs">
 										Event
 									</label>
 									<div className="rounded-lg bg-inputbox px-3">
@@ -493,12 +495,12 @@ export function SocketIOEditor({
 										/>
 									</div>
 									<div className="mt-3 flex items-center gap-4">
-										<label className="inline-flex items-center gap-2 text-xs font-semibold text-white/72">
+										<label className="inline-flex items-center gap-2 font-semibold text-white/72 text-xs">
 											<Checkbox checked={awaitAck} onChange={setAwaitAck} />
 											Await ack
 										</label>
 										<div className="flex items-center gap-2">
-											<span className="text-xs text-white/45">Timeout</span>
+											<span className="text-white/45 text-xs">Timeout</span>
 											<input
 												type="number"
 												min={100}
@@ -512,11 +514,11 @@ export function SocketIOEditor({
 												disabled={!awaitAck}
 												className="w-28 rounded bg-inputbox px-3 py-2 text-sm text-white outline-none disabled:opacity-50"
 											/>
-											<span className="text-xs text-white/35">ms</span>
+											<span className="text-white/35 text-xs">ms</span>
 										</div>
 									</div>
 								</div>
-								<div className="flex-1 min-h-0 overflow-auto">
+								<div className="min-h-0 flex-1 overflow-auto">
 									<CodeEditor
 										code={eventPayload}
 										language="json"
@@ -524,7 +526,7 @@ export function SocketIOEditor({
 										placeholder='{ "message": "Hello" }'
 									/>
 								</div>
-								<div className="absolute right-4 bottom-4 z-20 inline-flex w-fit h-fit">
+								<div className="absolute right-4 bottom-4 z-20 inline-flex h-fit w-fit">
 									<Tooltip
 										content={
 											!isConnected
@@ -575,10 +577,10 @@ export function SocketIOEditor({
 							<div className="space-y-4 p-4">
 								<section className={connectionSectionClass}>
 									<div className="space-y-1">
-										<h3 className="text-sm font-semibold text-white/78">
+										<h3 className="font-semibold text-sm text-white/78">
 											Auth Payload
 										</h3>
-										<p className="text-xs leading-5 text-white/38">
+										<p className="text-white/38 text-xs leading-5">
 											JSON sent during the Socket.IO handshake as the auth
 											payload.
 										</p>
@@ -600,10 +602,10 @@ export function SocketIOEditor({
 							<div className="space-y-4 p-4">
 								<section className={connectionSectionClass}>
 									<div className="space-y-1">
-										<h3 className="text-sm font-semibold text-white/78">
+										<h3 className="font-semibold text-sm text-white/78">
 											Endpoint
 										</h3>
-										<p className="text-xs leading-5 text-white/38">
+										<p className="text-white/38 text-xs leading-5">
 											Define the namespace, transport, and handshake path used
 											for the Socket.IO session.
 										</p>
@@ -611,7 +613,7 @@ export function SocketIOEditor({
 
 									<div className="grid grid-cols-2 gap-4">
 										<div>
-											<label className="mb-2 block text-xs text-white/60">
+											<label className="mb-2 block text-white/60 text-xs">
 												Namespace
 											</label>
 											<input
@@ -629,7 +631,7 @@ export function SocketIOEditor({
 											/>
 										</div>
 										<div>
-											<label className="mb-2 block text-xs text-white/60">
+											<label className="mb-2 block text-white/60 text-xs">
 												Path
 											</label>
 											<input
@@ -649,7 +651,7 @@ export function SocketIOEditor({
 									</div>
 
 									<div className="space-y-2">
-										<label className="block text-xs text-white/60">
+										<label className="block text-white/60 text-xs">
 											Transport
 										</label>
 										<div className="relative">
@@ -696,17 +698,17 @@ export function SocketIOEditor({
 
 								<section className={connectionSectionClass}>
 									<div className="space-y-1">
-										<h3 className="text-sm font-semibold text-white/78">
+										<h3 className="font-semibold text-sm text-white/78">
 											Session
 										</h3>
-										<p className="text-xs leading-5 text-white/38">
+										<p className="text-white/38 text-xs leading-5">
 											Tune reconnect behavior without changing the main request
 											shape.
 										</p>
 									</div>
 
 									<div className="grid grid-cols-2 gap-4">
-										<label className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-white/72">
+										<label className="inline-flex min-h-10 items-center gap-2 font-medium text-sm text-white/72">
 											<Checkbox
 												checked={sio.reconnect ?? true}
 												onChange={(checked) =>
@@ -715,7 +717,7 @@ export function SocketIOEditor({
 											/>
 											Reconnect
 										</label>
-										<label className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-white/72">
+										<label className="inline-flex min-h-10 items-center gap-2 font-medium text-sm text-white/72">
 											<Checkbox
 												checked={sio.reconnectOnDisconnect ?? false}
 												onChange={(checked) =>
@@ -731,7 +733,7 @@ export function SocketIOEditor({
 
 									<div className="grid grid-cols-3 gap-4">
 										<div>
-											<label className="mb-2 block text-xs text-white/60">
+											<label className="mb-2 block text-white/60 text-xs">
 												Reconnect Min (ms)
 											</label>
 											<input
@@ -752,7 +754,7 @@ export function SocketIOEditor({
 											/>
 										</div>
 										<div>
-											<label className="mb-2 block text-xs text-white/60">
+											<label className="mb-2 block text-white/60 text-xs">
 												Reconnect Max (ms)
 											</label>
 											<input
@@ -773,7 +775,7 @@ export function SocketIOEditor({
 											/>
 										</div>
 										<div>
-											<label className="mb-2 block text-xs text-white/60">
+											<label className="mb-2 block text-white/60 text-xs">
 												Max Attempts
 											</label>
 											<input
@@ -799,15 +801,15 @@ export function SocketIOEditor({
 								<section className={connectionSectionClass}>
 									<div className="flex items-start justify-between gap-4">
 										<div className="space-y-1">
-											<h3 className="text-sm font-semibold text-white/78">
+											<h3 className="font-semibold text-sm text-white/78">
 												Handshake Query
 											</h3>
-											<p className="text-xs leading-5 text-white/38">
+											<p className="text-white/38 text-xs leading-5">
 												These params are attached to the initial Socket.IO
 												connection URL.
 											</p>
 										</div>
-										<span className="shrink-0 rounded-full bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/35">
+										<span className="shrink-0 rounded-full bg-white/4 px-2.5 py-1 font-medium text-[11px] text-white/35">
 											{(sio.queryItems || []).length} configured
 										</span>
 									</div>
@@ -860,14 +862,14 @@ export function SocketIOEditor({
 
 									<div className="space-y-2">
 										{(sio.queryItems || []).length === 0 ? (
-											<div className="rounded-lg border border-dashed border-white/8 bg-white/[0.02] px-3 py-4 text-sm text-white/35">
+											<div className="rounded-lg border border-white/8 border-dashed bg-white/2 px-3 py-4 text-sm text-white/35">
 												No query params configured.
 											</div>
 										) : (
 											(sio.queryItems || []).map((item) => (
 												<div
 													key={item.id}
-													className="flex items-center gap-2 rounded-lg border border-white/6 bg-white/[0.02] p-2"
+													className="flex items-center gap-2 rounded-lg border border-white/6 bg-white/2 p-2"
 												>
 													<input
 														type="text"
@@ -932,15 +934,15 @@ export function SocketIOEditor({
 				{!isOverview && (
 					<>
 						<div
-							className="w-2 cursor-col-resize flex items-center justify-center shrink-0 group"
+							className="group flex w-2 shrink-0 cursor-col-resize items-center justify-center"
 							onMouseDown={(e) => {
 								e.preventDefault();
 								setIsResizing(true);
 							}}
 						>
-							<div className="w-px h-full group-hover:bg-accent/50 transition-colors" />
+							<div className="h-full w-px transition-colors group-hover:bg-accent/50" />
 						</div>
-						<div className="flex-1 min-w-0 overflow-auto bg-inset border-l border-white/10">
+						<div className="min-w-0 flex-1 overflow-auto border-white/10 border-l bg-inset">
 							<SocketIOMessageList
 								messages={sio.messages}
 								status={

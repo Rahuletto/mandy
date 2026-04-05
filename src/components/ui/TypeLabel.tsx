@@ -17,7 +17,7 @@ export const TypeLabel: React.FC<TypeLabelProps> = ({
 	return (
 		<Component
 			onClick={onClick}
-			className={`text-[10px] lowercase font-mono ${getTypeColor(type)} ${onClick ? "cursor-pointer hover:underline" : ""} ${className || ""}`}
+			className={`font-mono text-[10px] lowercase ${getTypeColor(type)} ${onClick ? "cursor-pointer hover:underline" : ""} ${className || ""}`}
 		>
 			{type}
 		</Component>

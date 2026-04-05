@@ -56,7 +56,7 @@ function HeaderSection({
 	if (!collapsible) {
 		return (
 			<div>
-				<div className="py-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+				<div className="py-2 font-semibold text-[11px] text-white/40 uppercase tracking-wide">
 					{title}
 				</div>
 				<div className="ml-1 space-y-1 font-mono text-xs">
@@ -75,13 +75,13 @@ function HeaderSection({
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
-				className="flex items-center gap-1 py-3.5 text-[11px] text-white/40 font-semibold cursor-pointer hover:text-white/60 transition-colors"
+				className="flex cursor-pointer items-center gap-1 py-3.5 font-semibold text-[11px] text-white/40 transition-colors hover:text-white/60"
 			>
 				{expanded ? <TbChevronDown size={12} /> : <TbChevronRight size={12} />}
 				{title}
 			</button>
 			{expanded && (
-				<div className="ml-4 mt-1.5 space-y-1 font-mono text-xs">
+				<div className="mt-1.5 ml-4 space-y-1 font-mono text-xs">
 					{entries.map(([key, value]) => (
 						<p key={key} className="text-white/60">
 							{key}: <span className="text-white/80">"{value}"</span>
@@ -106,11 +106,11 @@ function WebSocketRowContent({
 	const isSuccess = msg.type === "connection";
 
 	return (
-		<div className="text-xs h-full min-h-0 overflow-hidden flex flex-col">
+		<div className="flex h-full min-h-0 flex-col overflow-hidden text-xs">
 			<button
 				type="button"
 				onClick={onToggle}
-				className="flex w-full shrink-0 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.02] cursor-pointer"
+				className="flex w-full shrink-0 cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/2"
 			>
 				{isConnection ? (
 					isSuccess ? (
@@ -124,7 +124,7 @@ function WebSocketRowContent({
 					<TbArrowUp size={13} className="shrink-0 text-yellow" />
 				)}
 
-				<span className="min-w-0 flex-1 truncate font-mono text-xs text-white/80">
+				<span className="min-w-0 flex-1 truncate font-mono text-white/80 text-xs">
 					{msg.data}
 				</span>
 
@@ -144,12 +144,12 @@ function WebSocketRowContent({
 
 			{isExpanded && (
 				<div
-					className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-4 pt-1"
+					className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pt-1 pb-4"
 					style={{ maxHeight: VIRTUAL_MESSAGE_ROW_BODY_MAX_PX }}
 				>
 					{msg.handshake ? (
 						<div className="space-y-3">
-							<p className="text-[11px] text-white/40 font-semibold uppercase tracking-wide">
+							<p className="font-semibold text-[11px] text-white/40 uppercase tracking-wide">
 								Handshake Details
 							</p>
 							<div className="space-y-1.5 font-mono text-xs">
@@ -188,7 +188,7 @@ function WebSocketRowContent({
 							try {
 								const parsed = JSON.parse(msg.data);
 								return (
-									<div className="min-h-0 overflow-hidden rounded-md border border-white/5 bg-white/[0.02] text-[11px]">
+									<div className="min-h-0 overflow-hidden rounded-md border border-white/5 bg-white/2 text-[11px]">
 										<CodeViewer
 											code={JSON.stringify(parsed, null, 2)}
 											language="json"
@@ -197,8 +197,8 @@ function WebSocketRowContent({
 								);
 							} catch {
 								return (
-									<div className="rounded-md border border-white/5 bg-white/[0.02] p-3">
-										<pre className="whitespace-pre-wrap break-all font-mono text-xs text-white/70">
+									<div className="rounded-md border border-white/5 bg-white/2 p-3">
+										<pre className="whitespace-pre-wrap break-all font-mono text-white/70 text-xs">
 											{msg.data}
 										</pre>
 									</div>
@@ -233,7 +233,7 @@ function Row({
 		<div
 			{...ariaAttributes}
 			style={style}
-			className="box-border w-full min-w-0 overflow-hidden border-b border-white/5"
+			className="box-border w-full min-w-0 overflow-hidden border-white/5 border-b"
 		>
 			<WebSocketRowContent
 				msg={msg}
@@ -340,12 +340,12 @@ export const WebSocketMessageList = ({
 	}[status];
 
 	return (
-		<div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden">
-			<div className="flex items-center gap-2 p-2 px-4 border-b border-white/5 shrink-0">
-				<span className="text-xs font-medium text-white">Response</span>
+		<div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+			<div className="flex shrink-0 items-center gap-2 border-white/5 border-b p-2 px-4">
+				<span className="font-medium text-white text-xs">Response</span>
 				<div className="flex-1" />
 				<div
-					className={`px-2.5 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1.5 ${
+					className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-semibold text-[11px] ${
 						status === "connected"
 							? "bg-green/15 text-green"
 							: status === "error"
@@ -356,11 +356,11 @@ export const WebSocketMessageList = ({
 					}`}
 				>
 					<div
-						className={`w-1.5 h-1.5 rounded-full ${
+						className={`h-1.5 w-1.5 rounded-full ${
 							status === "connected"
 								? "bg-green"
 								: status === "connecting"
-									? "bg-yellow animate-pulse"
+									? "animate-pulse bg-yellow"
 									: status === "error"
 										? "bg-red"
 										: "bg-white/20"
@@ -370,22 +370,22 @@ export const WebSocketMessageList = ({
 				</div>
 			</div>
 
-			<div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 shrink-0">
-				<div className="flex items-center gap-2 flex-1 bg-white/[0.03] rounded-md px-2.5 py-1.5">
-					<TbSearch size={13} className="text-white/30 shrink-0" />
+			<div className="flex shrink-0 items-center gap-2 border-white/5 border-b px-4 py-2">
+				<div className="flex flex-1 items-center gap-2 rounded-md bg-white/3 px-2.5 py-1.5">
+					<TbSearch size={13} className="shrink-0 text-white/30" />
 					<input
 						type="text"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 						placeholder="Search"
-						className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-white/20"
+						className="flex-1 bg-transparent text-white text-xs outline-none placeholder:text-white/20"
 					/>
 				</div>
 
 				<button
 					type="button"
 					onClick={cycleFilter}
-					className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/50 hover:text-white/70 transition-colors rounded-md hover:bg-white/5 cursor-pointer"
+					className="flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] text-white/50 transition-colors hover:bg-white/5 hover:text-white/70"
 				>
 					<TbFilter size={13} />
 					{filter === "all"
@@ -399,7 +399,7 @@ export const WebSocketMessageList = ({
 					<button
 						type="button"
 						onClick={handleClear}
-						className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/5 hover:text-white/70 cursor-pointer"
+						className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/5 hover:text-white/70"
 						aria-label="Clear messages"
 						title="Clear"
 					>

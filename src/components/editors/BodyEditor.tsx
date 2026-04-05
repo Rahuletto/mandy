@@ -164,14 +164,14 @@ export function BodyEditor({
 	];
 
 	return (
-		<div className="flex flex-col h-full overflow-hidden">
-			<div className="flex items-center gap-4 px-4 py-3 border-b border-white/5 shrink-0">
-				<div className="text-xs text-white/30 ">Content Type</div>
+		<div className="flex h-full flex-col overflow-hidden">
+			<div className="flex shrink-0 items-center gap-4 border-white/5 border-b px-4 py-3">
+				<div className="text-white/30 text-xs">Content Type</div>
 				<div className="relative">
 					<button
 						type="button"
 						onClick={() => setShowSelector(!showSelector)}
-						className="flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 hover:bg-accent/15 transition-colors text-xs font-medium text-white/80"
+						className="flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 font-medium text-white/80 text-xs transition-colors hover:bg-accent/15"
 					>
 						<span className="text-accent">{TAB_MIME_MAP[activeTab]}</span>
 						<BiChevronDown
@@ -192,8 +192,8 @@ export function BodyEditor({
 
 			<div className="flex-1 overflow-auto">
 				{activeTab === "none" && (
-					<div className="h-full flex flex-col items-center justify-center p-8 text-center">
-						<div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-white/10 mb-4">
+					<div className="flex h-full flex-col items-center justify-center p-8 text-center">
+						<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-white/10">
 							<svg
 								width="32"
 								height="32"
@@ -206,10 +206,10 @@ export function BodyEditor({
 								<path d="M13 2v7h7" />
 							</svg>
 						</div>
-						<div className="text-sm font-medium text-white/60 mb-1">
+						<div className="mb-1 font-medium text-sm text-white/60">
 							This request does not have a body
 						</div>
-						<div className="text-xs text-white/30 max-w-[240px]">
+						<div className="max-w-[240px] text-white/30 text-xs">
 							Select a content type above if you want to send data with your
 							request.
 						</div>
@@ -293,29 +293,29 @@ export function BodyEditor({
 				)}
 
 				{activeTab === "binary" && (
-					<div className="h-full flex flex-col items-center justify-center p-8">
+					<div className="flex h-full flex-col items-center justify-center p-8">
 						{body !== "None" && "Binary" in body && body.Binary.filename ? (
-							<div className="flex bg-inset p-2 rounded-xl flex-col items-start max-w-sm w-full">
-								<div className="text-left p-4 pb-2">
-									<div className="text-sm font-semibold text-white truncate">
+							<div className="flex w-full max-w-sm flex-col items-start rounded-xl bg-inset p-2">
+								<div className="p-4 pb-2 text-left">
+									<div className="truncate font-semibold text-sm text-white">
 										{body.Binary.filename}
 									</div>
-									<div className="text-[12px] text-accent mt-1 font-mono">
+									<div className="mt-1 font-mono text-[12px] text-accent">
 										{(body.Binary.data.length / 1024).toFixed(2)} KB
 									</div>
 								</div>
-								<div className="flex gap-2 w-full mt-4">
+								<div className="mt-4 flex w-full gap-2">
 									<button
 										type="button"
 										onClick={handleFileSelect}
-										className="flex-1 cursor-pointer px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-semibold text-white/80 transition-all border border-white/5 active:scale-95"
+										className="flex-1 cursor-pointer rounded-lg border border-white/5 bg-white/5 px-4 py-2 font-semibold text-white/80 text-xs transition-all hover:bg-white/10 active:scale-95"
 									>
 										Change File
 									</button>
 									<button
 										type="button"
 										onClick={clearFile}
-										className="px-4 py-2 bg-red hover:bg-red/90 cursor-pointer text-background rounded-full text-xs font-semibold transition-all border border-red/10 flex items-center gap-1 active:scale-95"
+										className="flex cursor-pointer items-center gap-1 rounded-full border border-red/10 bg-red px-4 py-2 font-semibold text-background text-xs transition-all hover:bg-red/90 active:scale-95"
 									>
 										<BiX size={16} /> Remove
 									</button>
@@ -324,17 +324,17 @@ export function BodyEditor({
 						) : (
 							<div className="flex flex-col items-center gap-5">
 								<div className="text-center">
-									<div className="text-base font-semibold text-white/80">
+									<div className="font-semibold text-base text-white/80">
 										Binary Data
 									</div>
-									<div className="text-xs text-white/40 mt-1.5 max-w-[200px]">
+									<div className="mt-1.5 max-w-[200px] text-white/40 text-xs">
 										Select a file to send as the raw request body
 									</div>
 								</div>
 								<button
 									type="button"
 									onClick={handleFileSelect}
-									className="mt-3 px-6 cursor-pointer py-2 bg-accent hover:bg-accent/90 text-background rounded-full text-sm font-semibold transition-all active:scale-95"
+									className="mt-3 cursor-pointer rounded-full bg-accent px-6 py-2 font-semibold text-background text-sm transition-all hover:bg-accent/90 active:scale-95"
 								>
 									Select File
 								</button>

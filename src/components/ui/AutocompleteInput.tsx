@@ -132,7 +132,7 @@ export function AutocompleteInput({
 				autoComplete="off"
 			/>
 			{open && filteredSuggestions.length > 0 && (
-				<div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-white/10 bg-card shadow-2xl shadow-black/40">
+				<div className="absolute top-full right-0 left-0 z-30 mt-2 overflow-hidden rounded-xl border border-white/10 bg-card shadow-2xl shadow-black/40">
 					<div className="max-h-56 overflow-auto py-1">
 						{filteredSuggestions.map((suggestion, index) => (
 							<button
@@ -167,7 +167,7 @@ export function AutocompleteInput({
 				filteredSuggestions.length === 0 &&
 				value.trim() !== "" &&
 				suggestions.length > 0 && (
-					<div className="absolute left-0 right-0 top-full z-30 mt-2 rounded-xl border border-white/10 bg-card px-3 py-2 text-xs text-white/40 shadow-2xl shadow-black/40">
+					<div className="absolute top-full right-0 left-0 z-30 mt-2 rounded-xl border border-white/10 bg-card px-3 py-2 text-white/40 text-xs shadow-2xl shadow-black/40">
 						{emptyText}
 					</div>
 				)}

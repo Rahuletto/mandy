@@ -82,10 +82,20 @@ function VariableInput({
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	const allPaths = useMemo(() => {
-		const paths: { path: string; node: string; type: string }[] = [];
+		const paths: {
+			path: string;
+			node: string;
+			nodeId: string;
+			type: string;
+		}[] = [];
 		for (const v of variables) {
 			for (const p of v.paths) {
-				paths.push({ path: p.path, node: v.nodeName, type: p.type });
+				paths.push({
+					path: p.path,
+					node: v.nodeName,
+					nodeId: v.nodeId,
+					type: p.type,
+				});
 			}
 		}
 		return paths;
@@ -160,21 +170,21 @@ function VariableInput({
 					}
 				}}
 				placeholder={placeholder}
-				className="w-full bg-transparent text-white/80 font-mono placeholder:text-white/20 focus:outline-none"
+				className="w-full bg-transparent font-mono text-white/80 placeholder:text-white/20 focus:outline-none"
 			/>
 			{showSuggestions && filteredPaths.length > 0 && (
-				<div className="absolute top-full left-0 mt-1 z-50 w-64 max-h-48 overflow-auto bg-card border border-white/10 rounded-lg">
-					{filteredPaths.map((p, i) => (
+				<div className="absolute top-full left-0 z-50 mt-1 max-h-48 w-64 overflow-auto rounded-lg border border-white/10 bg-card">
+					{filteredPaths.map((p) => (
 						<button
-							key={`${p.path}-${i}`}
+							key={`${p.nodeId}-${p.path}`}
 							type="button"
 							onClick={() => handleSelect(p.path)}
-							className="w-full text-left px-3 py-1.5 hover:bg-white/5 transition-colors flex items-center justify-between"
+							className="flex w-full items-center justify-between px-3 py-1.5 text-left transition-colors hover:bg-white/5"
 						>
-							<span className="text-xs font-mono text-accent truncate">
+							<span className="truncate font-mono text-accent text-xs">
 								{p.path}
 							</span>
-							<span className="text-[10px] text-white/30 shrink-0 ml-2">
+							<span className="ml-2 shrink-0 text-[10px] text-white/30">
 								{p.type}
 							</span>
 						</button>
@@ -235,9 +245,9 @@ function ParamsTab({
 
 	if (existingParams.length === 0) {
 		return (
-			<div className="h-full flex flex-col items-center justify-center p-8 text-center">
-				<div className="text-sm text-white/60 mb-1">No query parameters</div>
-				<div className="text-xs text-white/30">
+			<div className="flex h-full flex-col items-center justify-center p-8 text-center">
+				<div className="mb-1 text-sm text-white/60">No query parameters</div>
+				<div className="text-white/30 text-xs">
 					This request has no query parameters to override
 				</div>
 			</div>
@@ -245,19 +255,19 @@ function ParamsTab({
 	}
 
 	return (
-		<div className="flex flex-col h-full">
+		<div className="flex h-full flex-col">
 			<div className="flex-1 overflow-auto">
 				<table className="w-full text-xs">
 					<thead className="sticky top-0 z-10 bg-card">
-						<tr className="border-b border-white/10">
-							<th className="w-10 px-3 py-2.5 border-r border-white/10" />
-							<th className="text-left px-3 py-2.5 font-medium text-white/40 border-r border-white/10 w-[140px]">
+						<tr className="border-white/10 border-b">
+							<th className="w-10 border-white/10 border-r px-3 py-2.5" />
+							<th className="w-[140px] border-white/10 border-r px-3 py-2.5 text-left font-medium text-white/40">
 								Key
 							</th>
-							<th className="text-left px-3 py-2.5 font-medium text-white/40 border-r border-white/10 w-[140px]">
+							<th className="w-[140px] border-white/10 border-r px-3 py-2.5 text-left font-medium text-white/40">
 								Original
 							</th>
-							<th className="text-left px-3 py-2.5 font-medium text-white/40">
+							<th className="px-3 py-2.5 text-left font-medium text-white/40">
 								Override Value
 							</th>
 						</tr>
@@ -268,18 +278,18 @@ function ParamsTab({
 							return (
 								<tr
 									key={key}
-									className={`border-b border-white/5 transition-colors ${override ? "bg-accent/5" : "hover:bg-white/[0.02]"}`}
+									className={`border-white/5 border-b transition-colors ${override ? "bg-accent/5" : "hover:bg-white/2"}`}
 								>
-									<td className="px-3 py-2 border-r border-white/5">
+									<td className="border-white/5 border-r px-3 py-2">
 										<Checkbox
 											checked={!!override}
 											onChange={() => toggleOverride(key)}
 										/>
 									</td>
-									<td className="px-3 py-2 border-r border-white/5 text-white/80">
+									<td className="border-white/5 border-r px-3 py-2 text-white/80">
 										{key}
 									</td>
-									<td className="px-3 py-2 border-r border-white/5 text-white/40 font-mono truncate">
+									<td className="truncate border-white/5 border-r px-3 py-2 font-mono text-white/40">
 										{value || "—"}
 									</td>
 									<td className="px-3 py-2">
@@ -397,19 +407,19 @@ function HeadersTab({
 	};
 
 	return (
-		<div className="flex flex-col h-full">
+		<div className="flex h-full flex-col">
 			<div className="flex-1 overflow-auto">
 				<table className="w-full text-xs">
 					<thead className="sticky top-0 z-10 bg-card">
-						<tr className="border-b border-white/10">
-							<th className="w-10 px-3 py-2.5 border-r border-white/10" />
-							<th className="text-left px-3 py-2.5 font-medium text-white/40 border-r border-white/10 w-[140px]">
+						<tr className="border-white/10 border-b">
+							<th className="w-10 border-white/10 border-r px-3 py-2.5" />
+							<th className="w-[140px] border-white/10 border-r px-3 py-2.5 text-left font-medium text-white/40">
 								Key
 							</th>
-							<th className="text-left px-3 py-2.5 font-medium text-white/40 border-r border-white/10 w-[140px]">
+							<th className="w-[140px] border-white/10 border-r px-3 py-2.5 text-left font-medium text-white/40">
 								Original
 							</th>
-							<th className="text-left px-3 py-2.5 font-medium text-white/40">
+							<th className="px-3 py-2.5 text-left font-medium text-white/40">
 								Override Value
 							</th>
 							<th className="w-10 px-3 py-2.5" />
@@ -421,18 +431,18 @@ function HeadersTab({
 							return (
 								<tr
 									key={key}
-									className={`border-b border-white/5 transition-colors ${override ? "bg-accent/5" : "hover:bg-white/[0.02]"}`}
+									className={`border-white/5 border-b transition-colors ${override ? "bg-accent/5" : "hover:bg-white/2"}`}
 								>
-									<td className="px-3 py-2 border-r border-white/5">
+									<td className="border-white/5 border-r px-3 py-2">
 										<Checkbox
 											checked={!!override}
 											onChange={() => toggleOverride(key)}
 										/>
 									</td>
-									<td className="px-3 py-2 border-r border-white/5 text-white/80">
+									<td className="border-white/5 border-r px-3 py-2 text-white/80">
 										{key}
 									</td>
-									<td className="px-3 py-2 border-r border-white/5 text-white/40 font-mono truncate max-w-[140px]">
+									<td className="max-w-[140px] truncate border-white/5 border-r px-3 py-2 font-mono text-white/40">
 										{value || "—"}
 									</td>
 									<td className="px-3 py-2">
@@ -455,12 +465,12 @@ function HeadersTab({
 						{additionalHeaders.map((h) => (
 							<tr
 								key={h.id}
-								className="border-b border-white/5 bg-green/5 hover:bg-green/10 transition-colors"
+								className="border-white/5 border-b bg-green/5 transition-colors hover:bg-green/10"
 							>
-								<td className="px-3 py-2 border-r border-white/5">
-									<span className="text-green text-[10px]">NEW</span>
+								<td className="border-white/5 border-r px-3 py-2">
+									<span className="text-[10px] text-green">NEW</span>
 								</td>
-								<td className="px-3 py-2 border-r border-white/5">
+								<td className="border-white/5 border-r px-3 py-2">
 									<input
 										type="text"
 										value={h.key}
@@ -471,7 +481,7 @@ function HeadersTab({
 										className="w-full bg-transparent text-white/80 placeholder:text-white/20 focus:outline-none"
 									/>
 								</td>
-								<td className="px-3 py-2 border-r border-white/5 text-white/20 italic">
+								<td className="border-white/5 border-r px-3 py-2 text-white/20 italic">
 									—
 								</td>
 								<td className="px-3 py-2">
@@ -486,7 +496,7 @@ function HeadersTab({
 									<button
 										type="button"
 										onClick={() => removeAdditionalHeader(h.id)}
-										className="w-5 h-5 flex items-center justify-center rounded text-white/30 hover:text-red hover:bg-red/10 transition-all mx-auto"
+										className="mx-auto flex h-5 w-5 items-center justify-center rounded text-white/30 transition-all hover:bg-red/10 hover:text-red"
 									>
 										<svg
 											width="12"
@@ -503,9 +513,9 @@ function HeadersTab({
 							</tr>
 						))}
 
-						<tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-							<td className="px-3 py-2 border-r border-white/5" />
-							<td className="px-3 py-2 border-r border-white/5">
+						<tr className="border-white/5 border-b transition-colors hover:bg-white/2">
+							<td className="border-white/5 border-r px-3 py-2" />
+							<td className="border-white/5 border-r px-3 py-2">
 								<input
 									type="text"
 									value={newKey}
@@ -515,7 +525,7 @@ function HeadersTab({
 									className="w-full bg-transparent text-white/80 placeholder:text-white/20 focus:outline-none"
 								/>
 							</td>
-							<td className="px-3 py-2 border-r border-white/5" />
+							<td className="border-white/5 border-r px-3 py-2" />
 							<td className="px-3 py-2">
 								<VariableInput
 									value={newValue}
@@ -560,13 +570,13 @@ function AuthTab({
 
 	return (
 		<div className="p-4">
-			<div className="flex items-center gap-4 mb-6">
-				<div className="text-xs text-white/40">Override</div>
+			<div className="mb-6 flex items-center gap-4">
+				<div className="text-white/40 text-xs">Override</div>
 				<div className="relative">
 					<button
 						type="button"
 						onClick={() => setShowSelector(!showSelector)}
-						className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 hover:bg-accent/15 transition-colors text-xs font-medium cursor-pointer"
+						className="flex cursor-pointer items-center gap-2 rounded-full bg-accent/10 px-3 py-1.5 font-medium text-xs transition-colors hover:bg-accent/15"
 					>
 						<span className="text-accent">
 							{AUTH_OVERRIDE_TYPES.find((t) => t.value === auth.type)?.label}
@@ -587,15 +597,15 @@ function AuthTab({
 			</div>
 
 			{auth.type === "inherit" && (
-				<div className="p-4 bg-white/[0.02] rounded-lg border border-white/5">
-					<div className="text-xs text-white/40 mb-2">
+				<div className="rounded-lg border border-white/5 bg-white/2 p-4">
+					<div className="mb-2 text-white/40 text-xs">
 						Original Authorization
 					</div>
 					<div className="text-sm text-white/80">{originalMethod}</div>
 					{originalAuth &&
 						originalAuth !== "None" &&
 						typeof originalAuth === "object" && (
-							<div className="mt-2 text-xs text-white/40 font-mono">
+							<div className="mt-2 font-mono text-white/40 text-xs">
 								{"Bearer" in originalAuth &&
 									`Token: ${originalAuth.Bearer.token?.slice(0, 20)}...`}
 								{"Basic" in originalAuth &&
@@ -608,10 +618,10 @@ function AuthTab({
 
 			{auth.type === "bearer" && (
 				<div className="space-y-2">
-					<label className="text-[10px] font-medium text-white/40 px-1">
+					<label className="px-1 font-medium text-[10px] text-white/40">
 						Token
 					</label>
-					<div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+					<div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
 						<VariableInput
 							value={auth.value}
 							onChange={(v) =>
@@ -626,10 +636,10 @@ function AuthTab({
 
 			{auth.type === "basic" && (
 				<div className="space-y-2">
-					<label className="text-[10px] font-medium text-white/40 px-1">
+					<label className="px-1 font-medium text-[10px] text-white/40">
 						Credentials (user:pass)
 					</label>
-					<div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+					<div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
 						<VariableInput
 							value={auth.value}
 							onChange={(v) =>
@@ -645,7 +655,7 @@ function AuthTab({
 			{auth.type === "apikey" && (
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<label className="text-[10px] font-medium text-white/40 px-1">
+						<label className="px-1 font-medium text-[10px] text-white/40">
 							Header Name
 						</label>
 						<input
@@ -658,14 +668,14 @@ function AuthTab({
 								})
 							}
 							placeholder="X-API-Key"
-							className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-accent/30"
+							className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-white text-xs focus:border-accent/30 focus:outline-none"
 						/>
 					</div>
 					<div className="space-y-2">
-						<label className="text-[10px] font-medium text-white/40 px-1">
+						<label className="px-1 font-medium text-[10px] text-white/40">
 							Value
 						</label>
-						<div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+						<div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
 							<VariableInput
 								value={auth.value}
 								onChange={(v) =>
@@ -681,10 +691,10 @@ function AuthTab({
 
 			{auth.type === "cookie" && (
 				<div className="space-y-2">
-					<label className="text-[10px] font-medium text-white/40 px-1">
+					<label className="px-1 font-medium text-[10px] text-white/40">
 						Cookie Value
 					</label>
-					<div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+					<div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
 						<VariableInput
 							value={auth.value}
 							onChange={(v) =>
@@ -731,22 +741,22 @@ function URLTab({
 	const overridePath = overrides.url || originalParsed.path;
 
 	return (
-		<div className="flex flex-col h-full">
-			<div className="p-4 space-y-3 flex-1 overflow-auto">
+		<div className="flex h-full flex-col">
+			<div className="flex-1 space-y-3 overflow-auto p-4">
 				<div className="space-y-2">
-					<label className="text-[10px] font-medium text-white/40 px-1">
+					<label className="px-1 font-medium text-[10px] text-white/40">
 						Host
 					</label>
-					<div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-xs font-mono text-white/40">
+					<div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 font-mono text-white/40 text-xs">
 						{originalParsed.valid ? originalParsed.base : originalUrl}
 					</div>
 				</div>
 
 				<div className="space-y-2">
-					<label className="text-[10px] font-medium text-white/40 px-1">
+					<label className="px-1 font-medium text-[10px] text-white/40">
 						Path
 					</label>
-					<div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+					<div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
 						<VariableInput
 							value={overridePath}
 							onChange={(v) => onChange({ ...overrides, url: v })}
@@ -792,14 +802,14 @@ function BodyTab({
 	}));
 
 	return (
-		<div className="p-4 flex flex-col h-full">
-			<div className="flex items-center gap-4 mb-4 shrink-0">
-				<div className="text-xs text-white/40">Override</div>
+		<div className="flex h-full flex-col p-4">
+			<div className="mb-4 flex shrink-0 items-center gap-4">
+				<div className="text-white/40 text-xs">Override</div>
 				<div className="relative">
 					<button
 						type="button"
 						onClick={() => setShowSelector(!showSelector)}
-						className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 hover:bg-accent/15 transition-colors text-xs font-medium cursor-pointer"
+						className="flex cursor-pointer items-center gap-2 rounded-full bg-accent/10 px-3 py-1.5 font-medium text-xs transition-colors hover:bg-accent/15"
 					>
 						<span className="text-accent">
 							{BODY_OVERRIDE_TYPES.find((t) => t.value === body.type)?.label}
@@ -819,16 +829,16 @@ function BodyTab({
 				</div>
 			</div>
 
-			<div className="flex-1 min-h-0">
+			<div className="min-h-0 flex-1">
 				{body.type === "inherit" && (
-					<div className="h-full flex flex-col">
-						<div className="text-[10px] text-white/40 mb-2">Original Body</div>
+					<div className="flex h-full flex-col">
+						<div className="mb-2 text-[10px] text-white/40">Original Body</div>
 						{getOriginalBodyPreview() ? (
-							<pre className="flex-1 p-3 bg-white/[0.02] rounded-lg border border-white/5 text-xs font-mono text-white/60 overflow-auto">
+							<pre className="flex-1 overflow-auto rounded-lg border border-white/5 bg-white/2 p-3 font-mono text-white/60 text-xs">
 								{getOriginalBodyPreview()}
 							</pre>
 						) : (
-							<div className="flex-1 flex items-center justify-center text-xs text-white/30 bg-white/[0.02] rounded-lg border border-white/5">
+							<div className="flex flex-1 items-center justify-center rounded-lg border border-white/5 bg-white/2 text-white/30 text-xs">
 								No body
 							</div>
 						)}
@@ -836,8 +846,8 @@ function BodyTab({
 				)}
 
 				{body.type === "json" && (
-					<div className="h-full flex flex-col">
-						<div className="flex-1 rounded-lg overflow-hidden border border-white/10">
+					<div className="flex h-full flex-col">
+						<div className="flex-1 overflow-hidden rounded-lg border border-white/10">
 							<CodeEditor
 								code={body.value || getOriginalBodyPreview() || "{\n  \n}"}
 								language="json"
@@ -846,7 +856,7 @@ function BodyTab({
 								}
 							/>
 						</div>
-						<div className="text-[10px] text-white/30 mt-2">
+						<div className="mt-2 text-[10px] text-white/30">
 							Use variables like: {`{"token": "{{body.access_token}}"}`}
 						</div>
 					</div>
@@ -854,10 +864,10 @@ function BodyTab({
 
 				{body.type === "variable" && (
 					<div className="space-y-2">
-						<label className="text-[10px] font-medium text-white/40 px-1">
+						<label className="px-1 font-medium text-[10px] text-white/40">
 							Variable Path
 						</label>
-						<div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5">
+						<div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
 							<VariableInput
 								value={body.value}
 								onChange={(v) =>
@@ -867,14 +877,14 @@ function BodyTab({
 								variables={variables}
 							/>
 						</div>
-						<p className="text-[10px] text-white/30 px-1">
+						<p className="px-1 text-[10px] text-white/30">
 							Pass entire response body or nested path from previous node
 						</p>
 					</div>
 				)}
 
 				{body.type === "none" && (
-					<div className="h-full flex items-center justify-center text-xs text-white/30 bg-white/[0.02] rounded-lg border border-white/5">
+					<div className="flex h-full items-center justify-center rounded-lg border border-white/5 bg-white/2 text-white/30 text-xs">
 						No body will be sent
 					</div>
 				)}
@@ -967,45 +977,45 @@ export function RequestOverrideModal({
 	return (
 		<div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
 			<div
-				className="absolute inset-0 bg-black/60 animate-in fade-in duration-300"
+				className="fade-in absolute inset-0 animate-in bg-black/60 duration-300"
 				onClick={onClose}
 			/>
 			<div
 				ref={modalRef}
-				className="relative w-full max-w-[700px] h-[520px] bg-card border border-border rounded-xl overflow-hidden animate-in zoom-in-95 fade-in duration-300 flex flex-col"
+				className="zoom-in-95 fade-in relative flex h-[520px] w-full max-w-[700px] animate-in flex-col overflow-hidden rounded-xl border border-border bg-card duration-300"
 				onClick={(e) => e.stopPropagation()}
 			>
-				<div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
+				<div className="flex shrink-0 items-center justify-between border-border/50 border-b px-4 py-3">
 					<div className="flex items-center gap-2">
 						<span
-							className="text-xs font-mono font-bold"
+							className="font-bold font-mono text-xs"
 							style={{ color: getMethodColor(method) }}
 						>
 							{method}
 						</span>
-						<span className="text-sm font-medium text-white/90">
+						<span className="font-medium text-sm text-white/90">
 							{requestName}
 						</span>
-						<span className="text-xs text-white/30">— Workflow Overrides</span>
+						<span className="text-white/30 text-xs">— Workflow Overrides</span>
 					</div>
 					<button
 						type="button"
 						onClick={onClose}
-						className="text-white/30 hover:text-white transition-colors cursor-pointer"
+						className="cursor-pointer text-white/30 transition-colors hover:text-white"
 					>
 						<HiX size={16} />
 					</button>
 				</div>
 
-				<div className="flex items-center gap-1 px-4 py-2 border-b border-white/5 shrink-0">
+				<div className="flex shrink-0 items-center gap-1 border-white/5 border-b px-4 py-2">
 					{tabs.map((tab) => (
 						<button
 							key={tab.id}
 							type="button"
 							onClick={() => setActiveTab(tab.id)}
-							className={`px-2 py-0.5 text-xs cursor-pointer font-medium rounded-md transition-colors ${
+							className={`cursor-pointer rounded-md px-2 py-0.5 font-medium text-xs transition-colors ${
 								activeTab === tab.id
-									? "text-accent bg-accent/10"
+									? "bg-accent/10 text-accent"
 									: "text-white/60 hover:text-white/80"
 							}`}
 						>
@@ -1062,7 +1072,7 @@ export function RequestOverrideModal({
 					)}
 				</div>
 
-				<div className="flex items-center justify-between px-4 py-3 border-t border-border/50 bg-white/[0.02] shrink-0">
+				<div className="flex shrink-0 items-center justify-between border-border/50 border-t bg-white/2 px-4 py-3">
 					<div className="text-[10px] text-white/30">
 						Changes only affect this workflow, not the original request
 					</div>
@@ -1070,14 +1080,14 @@ export function RequestOverrideModal({
 						<button
 							type="button"
 							onClick={onClose}
-							className="px-3 py-2 text-xs font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-colors cursor-pointer"
+							className="cursor-pointer rounded-md bg-white/5 px-3 py-2 font-medium text-white/70 text-xs transition-colors hover:bg-white/10 hover:text-white"
 						>
 							Cancel
 						</button>
 						<button
 							type="button"
 							onClick={handleSave}
-							className="px-4 py-2 text-xs font-semibold rounded-full bg-accent hover:bg-accent/90 text-background transition-colors cursor-pointer"
+							className="cursor-pointer rounded-full bg-accent px-4 py-2 font-semibold text-background text-xs transition-colors hover:bg-accent/90"
 						>
 							Save
 						</button>

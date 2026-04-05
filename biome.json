@@ -35,7 +35,7 @@
 				"noImportantStyles": "off"
 			},
 			"nursery": {
-				"useSortedClasses": "off"
+				"useSortedClasses": "warn"
 			},
 			"a11y": {
 				"noLabelWithoutControl": "warn",
@@ -55,10 +55,26 @@
 	"overrides": [
 		{
 			"includes": ["**/bindings.ts"],
+			"formatter": {
+				"enabled": false
+			},
+			"assist": {
+				"enabled": false
+			},
+			"linter": {
+				"enabled": false
+			}
+		},
+		{
+			"includes": [
+				"src/components/FileTree.tsx",
+				"src/components/ui/ContextMenu.tsx",
+				"src/components/ui/Dropdown.tsx"
+			],
 			"linter": {
 				"rules": {
 					"suspicious": {
-						"noExplicitAny": "off"
+						"noArrayIndexKey": "off"
 					}
 				}
 			}

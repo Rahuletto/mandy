@@ -19,6 +19,7 @@ import type {
 	MQTTMessage,
 	MQTTSubscription,
 } from "../../types/project";
+import { playSuccessChime } from "../../utils/sounds";
 import { CodeEditor } from "../CodeMirror";
 import {
 	AutocompleteInput,
@@ -321,6 +322,7 @@ export function MQTTEditor({
 			connectedRef.current = true;
 			persistedMqttSessionIds.delete(mqtt.id);
 			pushSystemMessage(`Connected to ${result.data.url}`);
+			playSuccessChime();
 		} catch (error: any) {
 			releaseRealtimeBridge(mqtt.id);
 			pushSystemMessage(error?.message || "Failed to connect");
@@ -553,7 +555,7 @@ export function MQTTEditor({
 						width: activeTab === "overview" ? "100%" : `${splitPercent}%`,
 					}}
 				>
-					<div className="flex items-center gap-1 py-2 shrink-0">
+					<div className="flex shrink-0 items-center gap-1 py-2">
 						{(["overview", "publish", "topics", "connection"] as const).map(
 							(tab) => (
 								<button
@@ -590,11 +592,11 @@ export function MQTTEditor({
 
 						{activeTab === "publish" && (
 							<div className="relative flex h-full min-h-0 w-full min-w-0 flex-col">
-								<div className="border-b border-white/5 px-4 py-4">
+								<div className="border-white/5 border-b px-4 py-4">
 									<div className={sectionClass}>
 										<div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
 											<div>
-												<label className="mb-2 block text-xs text-white/60">
+												<label className="mb-2 block text-white/60 text-xs">
 													Topic
 												</label>
 												<div className="rounded-lg bg-inputbox px-3">
@@ -613,7 +615,7 @@ export function MQTTEditor({
 													content="The broker stores this publish as the topic’s current value and may send it to new subscribers when they subscribe (retained message)."
 													wrapperClassName="inline-flex"
 												>
-													<label className="inline-flex h-10 cursor-help items-center gap-2 text-sm font-medium text-white/72">
+													<label className="inline-flex h-10 cursor-help items-center gap-2 font-medium text-sm text-white/72">
 														<Checkbox checked={retain} onChange={setRetain} />
 														Retain
 													</label>
@@ -622,7 +624,7 @@ export function MQTTEditor({
 										</div>
 									</div>
 								</div>
-								<div className="flex-1 min-h-0 overflow-auto">
+								<div className="min-h-0 flex-1 overflow-auto">
 									<CodeEditor
 										code={payload}
 										language="json"
@@ -631,7 +633,7 @@ export function MQTTEditor({
 										jsonKeyCompletions={publishJsonKeys}
 									/>
 								</div>
-								<div className="absolute bottom-4 right-4 z-20 inline-flex w-fit h-fit">
+								<div className="absolute right-4 bottom-4 z-20 inline-flex h-fit w-fit">
 									<Tooltip
 										content={
 											!isConnected
@@ -669,10 +671,10 @@ export function MQTTEditor({
 								<div className="min-h-0 flex-1 overflow-y-auto p-4">
 									<div className={sectionClass}>
 										<div className="space-y-1">
-											<h3 className="text-sm font-semibold text-white/78">
+											<h3 className="font-semibold text-sm text-white/78">
 												Topics
 											</h3>
-											<p className="text-xs leading-5 text-white/38">
+											<p className="text-white/38 text-xs leading-5">
 												Configure broker subscriptions here. This is separate
 												from publishing and keeps the receive flow explicit.
 											</p>
@@ -698,7 +700,7 @@ export function MQTTEditor({
 													}
 													className="inline-flex h-10 w-fit items-center gap-1 rounded-lg border border-white/8 bg-inputbox px-2 text-sm text-white transition-colors hover:border-white/15"
 												>
-													<span className="font-mono text-xs text-white/70">
+													<span className="font-mono text-white/70 text-xs">
 														QoS {subscriptionDraftQos}
 													</span>
 													<TbChevronDown
@@ -730,13 +732,13 @@ export function MQTTEditor({
 										</div>
 
 										{mqtt.subscriptions.length === 0 ? (
-											<div className="rounded-lg border border-dashed border-white/8 bg-white/[0.02] px-4 py-5 text-sm text-white/35">
+											<div className="rounded-lg border border-white/8 border-dashed bg-white/2 px-4 py-5 text-sm text-white/35">
 												No topics yet. Add one above to start listening for
 												broker traffic.
 											</div>
 										) : (
 											<div className="overflow-hidden rounded-lg border border-white/6 bg-background/25">
-												<div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 border-b border-white/6 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white/35">
+												<div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 border-white/6 border-b px-3 py-2 font-semibold text-[11px] text-white/35 uppercase tracking-wide">
 													<span className="min-w-0">Name</span>
 													<span className="justify-self-start">QoS</span>
 													<span
@@ -750,7 +752,7 @@ export function MQTTEditor({
 												{mqtt.subscriptions.map((subscription) => (
 													<div
 														key={subscription.id}
-														className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 border-b border-white/6 px-3 py-2 last:border-b-0"
+														className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 border-white/6 border-b px-3 py-2 last:border-b-0"
 													>
 														<input
 															type="text"
@@ -781,7 +783,7 @@ export function MQTTEditor({
 																}
 																className="inline-flex h-10 w-fit items-center gap-1 rounded-lg border border-white/8 bg-inputbox px-2 text-sm text-white transition-colors hover:border-white/15"
 															>
-																<span className="font-mono text-xs text-white/70">
+																<span className="font-mono text-white/70 text-xs">
 																	QoS {subscription.qos}
 																</span>
 																<TbChevronDown
@@ -856,7 +858,7 @@ export function MQTTEditor({
 							<div className="space-y-4 p-4">
 								<section className={sectionClass}>
 									<div>
-										<label className="mb-2 block text-xs text-white/60">
+										<label className="mb-2 block text-white/60 text-xs">
 											Client ID
 										</label>
 										<input
@@ -871,14 +873,14 @@ export function MQTTEditor({
 											placeholder="Leave blank to auto-generate"
 											className={fieldClass}
 										/>
-										<p className="mt-2 text-xs text-white/35">
+										<p className="mt-2 text-white/35 text-xs">
 											MQTT clients typically need a unique client ID. If you
 											leave this empty, Mandy will generate one at connect time.
 										</p>
 									</div>
 									<div className="grid grid-cols-2 gap-4">
 										<div>
-											<label className="mb-2 block text-xs text-white/60">
+											<label className="mb-2 block text-white/60 text-xs">
 												Username
 											</label>
 											<input
@@ -894,7 +896,7 @@ export function MQTTEditor({
 											/>
 										</div>
 										<div>
-											<label className="mb-2 block text-xs text-white/60">
+											<label className="mb-2 block text-white/60 text-xs">
 												Password
 											</label>
 											<input
@@ -912,7 +914,7 @@ export function MQTTEditor({
 									</div>
 									<div className="grid grid-cols-2 gap-4">
 										<div>
-											<label className="mb-2 block text-xs text-white/60">
+											<label className="mb-2 block text-white/60 text-xs">
 												Keep Alive (secs)
 											</label>
 											<input
@@ -932,7 +934,7 @@ export function MQTTEditor({
 											/>
 										</div>
 										<div className="flex items-end">
-											<label className="inline-flex h-10 items-center gap-2 text-sm font-medium text-white/72">
+											<label className="inline-flex h-10 items-center gap-2 font-medium text-sm text-white/72">
 												<Checkbox
 													checked={mqtt.cleanSession ?? true}
 													onChange={(checked) =>
@@ -963,7 +965,7 @@ export function MQTTEditor({
 						>
 							<div className="h-full w-px transition-colors group-hover:bg-accent/50" />
 						</div>
-						<div className="flex-1 min-w-0 overflow-auto border-l border-white/10 bg-inset">
+						<div className="min-w-0 flex-1 overflow-auto border-white/10 border-l bg-inset">
 							<MQTTMessageList
 								messages={messageListItems}
 								status={

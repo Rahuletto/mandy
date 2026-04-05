@@ -11,11 +11,12 @@ export function parseCurlCommand(curl: string): Partial<ApiRequest> {
 	const cleanedLineContinuations = curl.replace(/\\\n/g, " ");
 	const tokens: string[] = [];
 	const tokenRegex = /"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|(\S+)/g;
-	let match;
-	while ((match = tokenRegex.exec(cleanedLineContinuations)) !== null) {
+	let match: RegExpExecArray | null = tokenRegex.exec(cleanedLineContinuations);
+	while (match !== null) {
 		if (match[1] !== undefined) tokens.push(match[1].replace(/\\"/g, '"'));
 		else if (match[2] !== undefined) tokens.push(match[2].replace(/\\'/g, "'"));
 		else tokens.push(match[3]);
+		match = tokenRegex.exec(cleanedLineContinuations);
 	}
 
 	let data = "";

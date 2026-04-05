@@ -154,17 +154,17 @@ export function Sidebar({
 	return (
 		<div
 			ref={sidebarRef}
-			className={`flex flex-col h-full bg-transparent select-none shrink-0 ${className}`}
+			className={`flex h-full shrink-0 select-none flex-col bg-transparent ${className}`}
 			style={{ width }}
 		>
-			<div className="px-3 py-3 flex items-center gap-2 shrink-0">
+			<div className="flex shrink-0 items-center gap-2 px-3 py-3">
 				<div className="flex-1">
 					<input
 						type="text"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 						placeholder="Search"
-						className="w-full bg-text/10 rounded-full px-4 py-2 text-sm text-white/80 placeholder:text-white/20 focus:outline-none focus:border-white/10 transition-colors"
+						className="w-full rounded-full bg-text/10 px-4 py-2 text-sm text-white/80 transition-colors placeholder:text-white/20 focus:border-white/10 focus:outline-none"
 					/>
 				</div>
 				<button
@@ -172,7 +172,7 @@ export function Sidebar({
 					onClick={handleAddClick}
 					disabled={!activeProject}
 					type="button"
-					className="w-8 h-8 flex items-center justify-center rounded-full bg-accent text-[#fefefe] text-lg font-bold hover:bg-accent/90 transition-all disabled:opacity-30 cursor-pointer shrink-0"
+					className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent font-bold text-[#fefefe] text-lg transition-all hover:bg-accent/90 disabled:opacity-30"
 				>
 					<FaPlus size={16} />
 				</button>
@@ -182,7 +182,7 @@ export function Sidebar({
 				<>
 					<div className="shrink-0">
 						<div
-							className={`flex items-center opacity-80 gap-2 px-3 py-2 transition-colors cursor-pointer ${
+							className={`flex cursor-pointer items-center gap-2 px-3 py-2 opacity-80 transition-colors ${
 								showProjectOverview ? "bg-accent/10" : "hover:bg-white/5"
 							}`}
 							onClick={onProjectClick}
@@ -194,7 +194,7 @@ export function Sidebar({
 									e.stopPropagation();
 									setShowIconPicker(true);
 								}}
-								className="w-5 h-5 flex items-center justify-center transition-colors cursor-pointer"
+								className="flex h-5 w-5 cursor-pointer items-center justify-center transition-colors"
 								style={{
 									color: showProjectOverview
 										? "var(--accent)"
@@ -207,9 +207,9 @@ export function Sidebar({
 								})()}
 							</button>
 							<span
-								className={`flex-1 text-left text-xs truncate transition-colors ${
+								className={`flex-1 truncate text-left text-xs transition-colors ${
 									showProjectOverview
-										? "text-accent font-medium"
+										? "font-medium text-accent"
 										: "text-white/70 hover:text-white"
 								}`}
 							>
@@ -241,13 +241,13 @@ export function Sidebar({
 					/>
 				</>
 			) : (
-				<div className="flex-1 flex items-center justify-center text-white/30 text-xs p-4">
+				<div className="flex flex-1 items-center justify-center p-4 text-white/30 text-xs">
 					No project selected
 				</div>
 			)}
 
 			<div
-				className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-accent/50 transition-colors"
+				className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize transition-colors hover:bg-accent/50"
 				onMouseDown={handleMouseDown}
 			/>
 

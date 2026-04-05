@@ -59,8 +59,8 @@ export function findSecrets(text: string): SecretMatch[] {
 
 	for (const pattern of SECRET_PATTERNS) {
 		pattern.regex.lastIndex = 0;
-		let match;
-		while ((match = pattern.regex.exec(text)) !== null) {
+		let match: RegExpExecArray | null = pattern.regex.exec(text);
+		while (match !== null) {
 			let value = match[0];
 			if (pattern.id === "bearer_token") {
 				const parts = match[0].split(/\s+/);
@@ -80,6 +80,7 @@ export function findSecrets(text: string): SecretMatch[] {
 				value,
 				fullMatch: match[0],
 			});
+			match = pattern.regex.exec(text);
 		}
 	}
 

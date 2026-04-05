@@ -52,11 +52,11 @@ const RequestItem = memo(function RequestItem({
 		<button
 			type="button"
 			onClick={onClick}
-			className="w-full flex items-center gap-2 px-3 py-1.5 cursor-pointer text-xs hover:bg-white/10 rounded transition-colors text-left"
+			className="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-1.5 text-left text-xs transition-colors hover:bg-white/10"
 			style={{ paddingLeft: depth * 16 + 12 }}
 		>
 			<span
-				className="font-mono text-[10px] font-bold shrink-0 w-8 text-right"
+				className="w-8 shrink-0 text-right font-bold font-mono text-[10px]"
 				style={{ color: getMethodColor(item.request.method) }}
 			>
 				{getShortMethod(item.request.method)}
@@ -83,7 +83,7 @@ const FolderItem = memo(function FolderItem({
 	return (
 		<button
 			type="button"
-			className="w-full flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-xs hover:bg-white/10 rounded transition-colors text-left"
+			className="flex w-full cursor-pointer items-center gap-1.5 rounded px-3 py-1.5 text-left text-xs transition-colors hover:bg-white/10"
 			style={{ paddingLeft: depth * 16 + 12 }}
 			onClick={onToggle}
 		>
@@ -98,7 +98,7 @@ const FolderItem = memo(function FolderItem({
 				{isExpanded ? <FaFolderOpen size={12} /> : <FaFolder size={12} />}
 			</span>
 			<span className="truncate text-white/60">{item.name}</span>
-			<span className="text-white/30 text-[10px] ml-auto">{count}</span>
+			<span className="ml-auto text-[10px] text-white/30">{count}</span>
 		</button>
 	);
 });
@@ -158,11 +158,11 @@ export function RequestPopover({
 				maxHeight: 300,
 				zIndex: 1000,
 			}}
-			className="w-64 bg-card border border-white/10 rounded-lg overflow-hidden"
+			className="w-64 overflow-hidden rounded-lg border border-white/10 bg-card"
 		>
-			<div className="overflow-y-auto max-h-[260px] py-1">
+			<div className="max-h-[260px] overflow-y-auto py-1">
 				{items.length === 0 ? (
-					<div className="px-3 py-4 text-xs text-white/30 text-center">
+					<div className="px-3 py-4 text-center text-white/30 text-xs">
 						No requests found
 					</div>
 				) : (

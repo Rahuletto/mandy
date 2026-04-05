@@ -170,7 +170,7 @@ export function IconPicker({
 	return (
 		<div
 			ref={popoverRef}
-			className={`fixed z-50 bg-card border border-border rounded-xl shadow-2xl p-3 w-[216px] ${
+			className={`fixed z-50 w-[216px] rounded-xl border border-border bg-card p-3 shadow-2xl ${
 				isAnimatingOut ? "animate-blur-out" : "animate-blur-in"
 			}`}
 			style={{
@@ -189,7 +189,7 @@ export function IconPicker({
 						type="button"
 						key={name}
 						onClick={() => handleSelect(name)}
-						className={`w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors cursor-pointer group ${
+						className={`group flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-white/10 ${
 							selectedIcon === name ? "ring-1 ring-white/20" : ""
 						}`}
 						style={{
@@ -210,7 +210,7 @@ export function IconPicker({
 				))}
 			</div>
 
-			<div className="h-px bg-white/5 my-3" />
+			<div className="my-3 h-px bg-white/5" />
 
 			<div className="grid grid-cols-7 gap-1.5 px-0.5">
 				{COLOR_OPTIONS.map(({ name, value }) => (
@@ -218,7 +218,7 @@ export function IconPicker({
 						type="button"
 						key={name}
 						onClick={() => handleSelectColor(value)}
-						className={`w-5 h-5 rounded-full transition-transform hover:scale-110 cursor-pointer relative flex items-center justify-center ${
+						className={`relative flex h-5 w-5 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-110 ${
 							selectedColor === value
 								? "ring-2 ring-white/40 ring-offset-2 ring-offset-[#1e1e1e]"
 								: ""
@@ -227,7 +227,7 @@ export function IconPicker({
 						title={name}
 					>
 						{selectedColor === value && (
-							<div className="w-1 h-1 rounded-full bg-white shadow-sm" />
+							<div className="h-1 w-1 rounded-full bg-white shadow-sm" />
 						)}
 					</button>
 				))}

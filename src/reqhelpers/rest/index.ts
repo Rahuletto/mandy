@@ -44,6 +44,7 @@ export function createDefaultRequest(
 		proxy: null,
 		protocol: null,
 		request_label: null,
+		cancel_key: null,
 	};
 }
 
@@ -78,6 +79,13 @@ export async function sendRequest(request: ApiRequest): Promise<ApiResponse> {
 		throw new Error(result.error);
 	}
 	return result.data;
+}
+
+export async function cancelRestRequest(cancelKey: string): Promise<void> {
+	const result = await commands.restCancelRequest(cancelKey);
+	if (result.status === "error") {
+		throw new Error(result.error);
+	}
 }
 
 export function decodeBody(response: ApiResponse): string {

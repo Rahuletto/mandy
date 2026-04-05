@@ -13,7 +13,7 @@ export function ToastContainer() {
 	if (toasts.length === 0) return null;
 
 	return (
-		<div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none">
+		<div className="pointer-events-none fixed bottom-8 left-1/2 z-[100] flex -translate-x-1/2 flex-col gap-2">
 			{toasts.map((toast) => (
 				<ToastItem
 					key={toast.id}
@@ -39,15 +39,15 @@ function ToastItem({ toast, onRemove }: { toast: any; onRemove: () => void }) {
 	const getIcon = (type: ToastType) => {
 		switch (type) {
 			case "success":
-				return <BiCheckCircle className="text-green min-w-4.5 " size={18} />;
+				return <BiCheckCircle className="min-w-4.5 text-green" size={18} />;
 			case "error":
-				return <BiErrorCircle className="text-red min-w-4.5" size={18} />;
+				return <BiErrorCircle className="min-w-4.5 text-red" size={18} />;
 			case "warning":
 				return (
-					<BiErrorCircle className="text-orange-400 min-w-4.5" size={18} />
+					<BiErrorCircle className="min-w-4.5 text-orange-400" size={18} />
 				);
 			default:
-				return <BiInfoCircle className="text-blue-400 min-w-4.5" size={18} />;
+				return <BiInfoCircle className="min-w-4.5 text-blue-400" size={18} />;
 		}
 	};
 
@@ -58,14 +58,14 @@ function ToastItem({ toast, onRemove }: { toast: any; onRemove: () => void }) {
 
 	return (
 		<div
-			className={`flex items-center gap-3 bg-background px-4 py-3 border border-white/10 rounded-xl shadow-2xl pointer-events-auto min-w-[200px] max-w-[450px] ${isClosing ? "animate-blur-out" : "animate-blur-in"}`}
+			className={`pointer-events-auto flex min-w-[200px] max-w-[450px] items-center gap-3 rounded-xl border border-white/10 bg-background px-4 py-3 shadow-2xl ${isClosing ? "animate-blur-out" : "animate-blur-in"}`}
 		>
 			{getIcon(toast.type)}
-			<span className="text-sm text-white/90 font-medium">{toast.message}</span>
+			<span className="font-medium text-sm text-white/90">{toast.message}</span>
 			<button
 				type="button"
 				onClick={handleManualRemove}
-				className="ml-auto p-1 text-white/20 hover:text-white/50 transition-colors"
+				className="ml-auto p-1 text-white/20 transition-colors hover:text-white/50"
 			>
 				<BiX size={18} />
 			</button>

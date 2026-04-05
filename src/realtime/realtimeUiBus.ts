@@ -26,7 +26,9 @@ export function subscribeSocketIoRemoteDisconnect(id: string, fn: () => void) {
 }
 
 export function emitSocketIoRemoteDisconnect(id: string) {
-	sioDisc.get(id)?.forEach((fn) => fn());
+	for (const fn of sioDisc.get(id) ?? []) {
+		fn();
+	}
 }
 
 export function subscribeMqttRemoteDisconnect(id: string, fn: () => void) {
@@ -34,7 +36,9 @@ export function subscribeMqttRemoteDisconnect(id: string, fn: () => void) {
 }
 
 export function emitMqttRemoteDisconnect(id: string) {
-	mqttDisc.get(id)?.forEach((fn) => fn());
+	for (const fn of mqttDisc.get(id) ?? []) {
+		fn();
+	}
 }
 
 export function subscribeWebSocketRemoteClosed(
@@ -45,7 +49,9 @@ export function subscribeWebSocketRemoteClosed(
 }
 
 export function emitWebSocketRemoteClosed(id: string, detail: WsCloseDetail) {
-	wsClose.get(id)?.forEach((fn) => fn(detail));
+	for (const fn of wsClose.get(id) ?? []) {
+		fn(detail);
+	}
 }
 
 /** Drop editor subscriptions (e.g. app close / project switch) so callbacks are not retained. */

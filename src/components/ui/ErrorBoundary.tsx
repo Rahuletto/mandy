@@ -34,14 +34,14 @@ export class ErrorBoundary extends Component<
 	render() {
 		if (this.state.hasError) {
 			return (
-				<div className="h-screen w-screen flex items-center justify-center bg-transparent">
-					<div className="flex flex-col items-center gap-6 p-8 max-w-md text-center">
-						<div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+				<div className="flex h-screen w-screen items-center justify-center bg-transparent">
+					<div className="flex max-w-md flex-col items-center gap-6 p-8 text-center">
+						<div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
 							<IoWarningOutline size={28} className="text-white/30" />
 						</div>
 
 						<div className="flex flex-col gap-2">
-							<h1 className="text-xl font-semibold text-white">
+							<h1 className="font-semibold text-white text-xl">
 								Oops! Something went wrong
 							</h1>
 							<p className="text-sm text-white/50">
@@ -52,10 +52,10 @@ export class ErrorBoundary extends Component<
 
 						{this.state.error && (
 							<details className="w-full text-center">
-								<summary className="text-xs text-white/30 cursor-pointer hover:text-white/50 transition-colors">
+								<summary className="cursor-pointer text-white/30 text-xs transition-colors hover:text-white/50">
 									Show error details
 								</summary>
-								<pre className="mt-2 p-3 bg-white/5 rounded-lg text-xs text-red overflow-auto max-h-32 font-mono">
+								<pre className="mt-2 max-h-32 overflow-auto rounded-lg bg-white/5 p-3 font-mono text-red text-xs">
 									{this.state.error.message}
 									{"\n\n"}
 									{this.state.error.stack}
@@ -67,7 +67,7 @@ export class ErrorBoundary extends Component<
 							<button
 								type="button"
 								onClick={this.handleReload}
-								className="px-4 py-2 bg-accent hover:bg-accent/90 text-background font-semibold rounded-full text-sm transition-colors"
+								className="rounded-full bg-accent px-4 py-2 font-semibold text-background text-sm transition-colors hover:bg-accent/90"
 							>
 								Reload App
 							</button>

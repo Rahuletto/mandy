@@ -60,17 +60,22 @@ function TypeName({
 	const expandable = isExpandableType(schema, name);
 	const display = wrapper;
 
-	const parts: { text: string; highlight: boolean }[] = [];
+	const parts: { text: string; highlight: boolean; id: number }[] = [];
 	let current = "";
 	let depth = 0;
+	let partId = 0;
 
 	for (const ch of display) {
 		if (ch === "[" || ch === "]" || ch === "!") {
 			if (current) {
-				parts.push({ text: current, highlight: depth === 0 || expandable });
+				parts.push({
+					text: current,
+					highlight: depth === 0 || expandable,
+					id: partId++,
+				});
 				current = "";
 			}
-			parts.push({ text: ch, highlight: false });
+			parts.push({ text: ch, highlight: false, id: partId++ });
 		} else {
 			current += ch;
 		}
@@ -78,18 +83,18 @@ function TypeName({
 		if (ch === "]") depth--;
 	}
 	if (current) {
-		parts.push({ text: current, highlight: expandable });
+		parts.push({ text: current, highlight: expandable, id: partId++ });
 	}
 
 	return (
-		<span className="text-xs font-mono ml-1.5">
-			{parts.map((p, i) =>
+		<span className="ml-1.5 font-mono text-xs">
+			{parts.map((p) =>
 				p.highlight ? (
-					<span key={i} className="text-amber-300/70">
+					<span key={p.id} className="text-amber-300/70">
 						{p.text}
 					</span>
 				) : (
-					<span key={i} className="text-white/25">
+					<span key={p.id} className="text-white/25">
 						{p.text}
 					</span>
 				),
@@ -100,7 +105,7 @@ function TypeName({
 
 function ArgBadge() {
 	return (
-		<span className="ml-1.5 px-1.5 py-0 text-[9px] font-bold rounded bg-rose-500/20 text-rose-400 uppercase tracking-wider leading-relaxed">
+		<span className="ml-1.5 rounded bg-rose-500/20 px-1.5 py-0 font-bold text-[9px] text-rose-400 uppercase leading-relaxed tracking-wider">
 			arg
 		</span>
 	);
@@ -109,7 +114,7 @@ function ArgBadge() {
 function DeprecatedBadge({ reason }: { reason?: string | null }) {
 	return (
 		<span
-			className="ml-1.5 px-1.5 py-0 text-[9px] font-bold rounded bg-amber-500/20 text-amber-400 uppercase tracking-wider leading-relaxed"
+			className="ml-1.5 rounded bg-amber-500/20 px-1.5 py-0 font-bold text-[9px] text-amber-400 uppercase leading-relaxed tracking-wider"
 			title={reason || "Deprecated"}
 		>
 			deprecated
@@ -149,11 +154,11 @@ function FieldRow({
 	return (
 		<div>
 			<div
-				className={`flex items-start gap-0 py-1.5 group ${canExpand ? "cursor-pointer" : ""}`}
+				className={`group flex items-start gap-0 py-1.5 ${canExpand ? "cursor-pointer" : ""}`}
 				style={{ paddingLeft: `${depth * 20 + 8}px` }}
 				onClick={canExpand ? () => setExpanded(!expanded) : undefined}
 			>
-				<div className="w-4 h-5 flex items-center justify-center shrink-0">
+				<div className="flex h-5 w-4 shrink-0 items-center justify-center">
 					{canExpand &&
 						(expanded ? (
 							<TbChevronDown size={12} className="text-white/30" />
@@ -162,10 +167,10 @@ function FieldRow({
 						))}
 				</div>
 
-				<div className="flex-1 min-w-0">
-					<div className="flex items-center flex-wrap">
+				<div className="min-w-0 flex-1">
+					<div className="flex flex-wrap items-center">
 						<span
-							className={`text-[13px] font-mono font-medium ${isDeprecated ? "line-through text-white/30" : "text-white/80"}`}
+							className={`font-medium font-mono text-[13px] ${isDeprecated ? "text-white/30 line-through" : "text-white/80"}`}
 						>
 							{name}
 						</span>
@@ -173,13 +178,13 @@ function FieldRow({
 						{isArg && <ArgBadge />}
 						{isDeprecated && <DeprecatedBadge reason={deprecationReason} />}
 						{defaultValue != null && (
-							<span className="ml-1.5 text-[10px] text-white/20 font-mono">
+							<span className="ml-1.5 font-mono text-[10px] text-white/20">
 								= {defaultValue}
 							</span>
 						)}
 					</div>
 					{description && (
-						<div className="text-[11px] text-white/30 mt-0.5 leading-relaxed">
+						<div className="mt-0.5 text-[11px] text-white/30 leading-relaxed">
 							{description}
 						</div>
 					)}
@@ -282,7 +287,7 @@ function TypeFields({
 					>
 						<div className="flex items-center">
 							<span
-								className={`text-[13px] font-mono font-medium ${val.deprecationReason != null ? "line-through text-white/30" : "text-emerald-400/70"}`}
+								className={`font-medium font-mono text-[13px] ${val.deprecationReason != null ? "text-white/30 line-through" : "text-emerald-400/70"}`}
 							>
 								{val.name}
 							</span>
@@ -291,7 +296,7 @@ function TypeFields({
 							)}
 						</div>
 						{val.description && (
-							<div className="text-[11px] text-white/30 mt-0.5 leading-relaxed">
+							<div className="mt-0.5 text-[11px] text-white/30 leading-relaxed">
 								{val.description}
 							</div>
 						)}
@@ -339,15 +344,15 @@ function RootTypeSection({
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
-				className="flex items-center gap-1 w-full py-2 px-2 text-left hover:bg-white/[0.02] transition-colors"
+				className="flex w-full items-center gap-1 px-2 py-2 text-left transition-colors hover:bg-white/2"
 			>
 				{expanded ? (
 					<TbChevronDown size={14} className="text-white/40" />
 				) : (
 					<TbChevronRight size={14} className="text-white/40" />
 				)}
-				<span className="text-[13px] font-semibold text-white/70">{label}</span>
-				<span className="text-[11px] text-white/20 ml-1 font-mono">
+				<span className="font-semibold text-[13px] text-white/70">{label}</span>
+				<span className="ml-1 font-mono text-[11px] text-white/20">
 					{type.name}
 				</span>
 			</button>
@@ -395,19 +400,19 @@ function AllTypesSection({ schema }: { schema: GraphQLSchema }) {
 	}, [schema]);
 
 	return (
-		<div className="mb-1 border-t border-white/5">
+		<div className="mb-1 border-white/5 border-t">
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
-				className="flex items-center gap-1 w-full py-2 px-2 text-left hover:bg-white/[0.02] transition-colors"
+				className="flex w-full items-center gap-1 px-2 py-2 text-left transition-colors hover:bg-white/2"
 			>
 				{expanded ? (
 					<TbChevronDown size={14} className="text-white/40" />
 				) : (
 					<TbChevronRight size={14} className="text-white/40" />
 				)}
-				<span className="text-[13px] font-semibold text-white/70">Types</span>
-				<span className="text-[11px] text-white/20 ml-1">{types.length}</span>
+				<span className="font-semibold text-[13px] text-white/70">Types</span>
+				<span className="ml-1 text-[11px] text-white/20">{types.length}</span>
 			</button>
 
 			{expanded && (
@@ -457,27 +462,27 @@ function TypeRow({
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
-				className="flex items-center gap-0 w-full py-1.5 text-left hover:bg-white/[0.02] transition-colors"
+				className="flex w-full items-center gap-0 py-1.5 text-left transition-colors hover:bg-white/2"
 				style={{ paddingLeft: "28px" }}
 			>
-				<div className="w-4 h-5 flex items-center justify-center shrink-0">
+				<div className="flex h-5 w-4 shrink-0 items-center justify-center">
 					{expanded ? (
 						<TbChevronDown size={12} className="text-white/30" />
 					) : (
 						<TbChevronRight size={12} className="text-white/30" />
 					)}
 				</div>
-				<span className={`text-[10px] font-mono mr-1.5 ${kindColor}`}>
+				<span className={`mr-1.5 font-mono text-[10px] ${kindColor}`}>
 					{kindLabel}
 				</span>
-				<span className="text-[13px] font-mono font-medium text-white/70">
+				<span className="font-medium font-mono text-[13px] text-white/70">
 					{type.name}
 				</span>
 			</button>
 
 			{expanded && type.description && (
 				<div
-					className="text-[11px] text-white/30 leading-relaxed pb-1"
+					className="pb-1 text-[11px] text-white/30 leading-relaxed"
 					style={{ paddingLeft: "52px" }}
 				>
 					{type.description}
@@ -538,7 +543,7 @@ export function SchemaExplorer({ schema, filter = "" }: SchemaExplorerProps) {
 			{filteredSchema ? (
 				<div>
 					{filteredSchema.length === 0 ? (
-						<div className="p-4 text-xs text-white/20 text-center">
+						<div className="p-4 text-center text-white/20 text-xs">
 							No matches for "{filter}"
 						</div>
 					) : (

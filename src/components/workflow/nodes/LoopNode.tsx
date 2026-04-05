@@ -1,5 +1,5 @@
 import { Handle, type NodeProps, Position } from "@xyflow/react";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { VscCheck, VscClose, VscLoading, VscRefresh } from "react-icons/vsc";
 
 export const LoopNode = memo(function LoopNode({ data }: NodeProps) {
@@ -12,34 +12,44 @@ export const LoopNode = memo(function LoopNode({ data }: NodeProps) {
 
 	const [style, setStyle] = useState("bg-card border-white/20");
 
-	const getBorderColor = () => {
-		if (status === "running") return "border-accent";
-		if (status === "completed") return "border-green";
-		if (status === "error") return "border-red";
-		return "border-white/20";
-	};
-
-	const getBgColor = () => {
-		if (status === "running") return "bg-accent/10";
-		if (status === "completed") return "bg-green/10";
-		if (status === "error") return "bg-red/10";
-		return "bg-card";
-	};
+	const borderAndBg = useMemo(() => {
+		const border =
+			status === "running"
+				? "border-accent"
+				: status === "completed"
+					? "border-green"
+					: status === "error"
+						? "border-red"
+						: "border-white/20";
+		const bg =
+			status === "running"
+				? "bg-accent/10"
+				: status === "completed"
+					? "bg-green/10"
+					: status === "error"
+						? "bg-red/10"
+						: "bg-card";
+		return `${border} ${bg}`;
+	}, [status]);
 
 	useEffect(() => {
+		let timer: ReturnType<typeof setTimeout> | undefined;
 		if (currentIteration !== undefined) {
 			setStyle("bg-yellow/10 border-yellow");
-			setTimeout(() => {
-				setStyle(`${getBorderColor()} ${getBgColor()}`);
+			timer = setTimeout(() => {
+				setStyle(borderAndBg);
 			}, 500);
 		} else {
-			setStyle(`${getBorderColor()} ${getBgColor()}`);
+			setStyle(borderAndBg);
 		}
-	}, [currentIteration, getBorderColor, getBgColor]);
+		return () => {
+			if (timer !== undefined) clearTimeout(timer);
+		};
+	}, [currentIteration, borderAndBg]);
 
 	return (
 		<div
-			className={`px-3 py-2 rounded-lg border-2 transition-colors backdrop-blur-md ${style}`}
+			className={`rounded-lg border-2 px-3 py-2 backdrop-blur-md transition-colors ${style}`}
 		>
 			<Handle
 				type="target"
@@ -47,20 +57,20 @@ export const LoopNode = memo(function LoopNode({ data }: NodeProps) {
 				className="!w-2 !h-2 !bg-white/40 !border-none"
 			/>
 			<div className="flex items-center gap-2">
-				<VscRefresh className="text-cyan-400 shrink-0" size={12} />
-				<span className="text-sm text-white/80 truncate w-30">{label}</span>
-				<span className="text-[9px] text-white/40 shrink-0">
+				<VscRefresh className="shrink-0 text-cyan-400" size={12} />
+				<span className="w-30 truncate text-sm text-white/80">{label}</span>
+				<span className="shrink-0 text-[9px] text-white/40">
 					{currentIteration !== undefined ? `${currentIteration}/` : ""}
 					{iterations}x
 				</span>
 				{status === "running" && (
-					<VscLoading className="text-accent animate-spin shrink-0" size={10} />
+					<VscLoading className="shrink-0 animate-spin text-accent" size={10} />
 				)}
 				{status === "completed" && (
-					<VscCheck className="text-green shrink-0" size={10} />
+					<VscCheck className="shrink-0 text-green" size={10} />
 				)}
 				{status === "error" && (
-					<VscClose className="text-red shrink-0" size={10} />
+					<VscClose className="shrink-0 text-red" size={10} />
 				)}
 			</div>
 			<Handle

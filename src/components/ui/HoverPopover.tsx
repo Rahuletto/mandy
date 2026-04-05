@@ -73,13 +73,18 @@ export function HoverPopover({
 
 		if (render) {
 			updatePosition();
+			const t1 = window.setTimeout(updatePosition, 0);
+			const t2 = window.setTimeout(updatePosition, 32);
 			window.addEventListener("resize", updatePosition);
 			window.addEventListener("scroll", updatePosition, true);
+			return () => {
+				clearTimeout(t1);
+				clearTimeout(t2);
+				window.removeEventListener("resize", updatePosition);
+				window.removeEventListener("scroll", updatePosition, true);
+			};
 		}
-		return () => {
-			window.removeEventListener("resize", updatePosition);
-			window.removeEventListener("scroll", updatePosition, true);
-		};
+		return () => {};
 	}, [anchorRef, position, render]);
 
 	useEffect(() => {
@@ -113,7 +118,7 @@ export function HoverPopover({
 	return (
 		<div
 			ref={popoverRef}
-			className={`${className} fixed z-50 bg-card border border-border rounded-xl shadow-2xl p-3 ${isClosing ? "animate-blur-out" : "animate-blur-in"}`}
+			className={`${className} fixed z-50 rounded-xl border border-border bg-card p-3 shadow-2xl ${isClosing ? "animate-blur-out" : "animate-blur-in"}`}
 			style={{ top: coords.top, left: coords.left }}
 			onMouseEnter={onMouseEnter}
 			onMouseLeave={onMouseLeave}

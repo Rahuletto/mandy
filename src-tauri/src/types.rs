@@ -85,6 +85,9 @@ pub struct ApiRequest {
     /// Tab / request name for background completion notifications (REST only).
     #[serde(default)]
     pub request_label: Option<String>,
+    /// When set, `rest_cancel_request` can abort this transfer (libcurl progress hook).
+    #[serde(default)]
+    pub cancel_key: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Type, Clone)]
@@ -167,6 +170,7 @@ impl Default for ApiRequest {
             proxy: None,
             protocol: None,
             request_label: None,
+            cancel_key: None,
         }
     }
 }

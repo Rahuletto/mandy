@@ -6,6 +6,7 @@ use tauri_specta::{collect_commands, Builder};
 
 mod app_focus;
 mod app_menu;
+mod dock_badge;
 mod helpers;
 mod notifications;
 mod macos_appearance;
@@ -63,7 +64,9 @@ pub fn run() {
         // ── Commands ─────────────────────────────────────────────────────────
         .commands(collect_commands![
             helpers::rest::rest_request,
+            helpers::rest::rest_cancel_request,
             helpers::rest::fetch_url,
+            dock_badge::set_dock_badge,
             helpers::websocket::ws_connect,
             helpers::websocket::ws_send,
             helpers::websocket::ws_disconnect,

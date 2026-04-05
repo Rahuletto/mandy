@@ -78,7 +78,7 @@ export function NodeTypePopover({
 		<div
 			ref={popoverRef}
 			style={style}
-			className="w-52 bg-card border border-white/10 rounded-lg overflow-hidden"
+			className="w-52 overflow-hidden rounded-lg border border-white/10 bg-card"
 		>
 			<div className="py-1">
 				{items.map((item) => (
@@ -86,10 +86,10 @@ export function NodeTypePopover({
 						key={item.label}
 						type="button"
 						onClick={item.onClick}
-						className="w-full flex items-start gap-3 px-3 py-2 hover:bg-white/10 transition-colors text-left"
+						className="flex w-full items-start gap-3 px-3 py-2 text-left transition-colors hover:bg-white/10"
 					>
 						<item.icon size={14} className={`${item.color} shrink-0`} />
-						<div className="text-xs text-white/90 font-medium">
+						<div className="font-medium text-white/90 text-xs">
 							{item.label}
 						</div>
 					</button>

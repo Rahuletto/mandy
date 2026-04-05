@@ -26,6 +26,13 @@ import {
 	releaseExclusiveWebSocketLock,
 } from "./wsExclusiveLock";
 
+/** After forced teardown, bridge listeners are gone so Tauri close events never run — editors listen here. */
+function notifyEditorsForcedRealtimeClose(connectionId: string) {
+	emitWebSocketRemoteClosed(connectionId, { code: 1000 });
+	emitSocketIoRemoteDisconnect(connectionId);
+	emitMqttRemoteDisconnect(connectionId);
+}
+
 const MAX_SOCKETIO_MESSAGES = 600;
 const MAX_MQTT_MESSAGES = 600;
 
@@ -214,12 +221,16 @@ async function attachSocketIo(connectionId: string): Promise<() => void> {
 			),
 		);
 	} catch (e) {
-		unsubs.forEach((u) => u());
+		for (const u of unsubs) {
+			u();
+		}
 		throw e;
 	}
 
 	return () => {
-		unsubs.forEach((u) => u());
+		for (const u of unsubs) {
+			u();
+		}
 	};
 }
 
@@ -250,12 +261,16 @@ async function attachMqtt(connectionId: string): Promise<() => void> {
 			),
 		);
 	} catch (e) {
-		unsubs.forEach((u) => u());
+		for (const u of unsubs) {
+			u();
+		}
 		throw e;
 	}
 
 	return () => {
-		unsubs.forEach((u) => u());
+		for (const u of unsubs) {
+			u();
+		}
 	};
 }
 
@@ -291,12 +306,16 @@ async function attachWebSocket(connectionId: string): Promise<() => void> {
 			}),
 		);
 	} catch (e) {
-		unsubs.forEach((u) => u());
+		for (const u of unsubs) {
+			u();
+		}
 		throw e;
 	}
 
 	return () => {
-		unsubs.forEach((u) => u());
+		for (const u of unsubs) {
+			u();
+		}
 	};
 }
 
@@ -374,10 +393,11 @@ export async function teardownRealtimeForConnection(
 		entry.dispose();
 		active.delete(connectionId);
 		await rustDisconnectByKind(kind, connectionId);
-		return;
+	} else {
+		await rustDisconnectAllKinds(connectionId);
 	}
 
-	await rustDisconnectAllKinds(connectionId);
+	notifyEditorsForcedRealtimeClose(connectionId);
 }
 
 /**

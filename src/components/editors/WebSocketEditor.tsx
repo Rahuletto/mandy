@@ -137,7 +137,7 @@ export function WebSocketEditor({
 		!url || status === "connecting" || blockedByOtherWs;
 
 	return (
-		<div className="flex flex-col h-full">
+		<div className="flex h-full flex-col">
 			<EditorRequestBar
 				loading={status === "connecting"}
 				accentDivider={status === "connected"}
@@ -175,14 +175,14 @@ export function WebSocketEditor({
 				}
 			/>
 
-			<div ref={splitContainerRef} className="flex-1 flex overflow-hidden">
+			<div ref={splitContainerRef} className="flex flex-1 overflow-hidden">
 				<div
-					className="flex p-2 pl-4 flex-col overflow-hidden"
+					className="flex flex-col overflow-hidden p-2 pl-4"
 					style={{
 						width: !isOverview ? `${splitPercent}%` : "100%",
 					}}
 				>
-					<div className="flex items-center gap-1 py-2 shrink-0">
+					<div className="flex shrink-0 items-center gap-1 py-2">
 						{tabs.map((tab) => (
 							<button
 								key={tab}
@@ -199,7 +199,7 @@ export function WebSocketEditor({
 						))}
 					</div>
 
-					<div className="flex-1 overflow-auto relative min-h-0">
+					<div className="relative min-h-0 flex-1 overflow-auto">
 						{activeTab === "overview" && (
 							<WebSocketOverview
 								ws={ws}
@@ -278,16 +278,16 @@ export function WebSocketEditor({
 				{!isOverview && (
 					<>
 						<div
-							className="w-2 cursor-col-resize flex items-center justify-center shrink-0 group"
+							className="group flex w-2 shrink-0 cursor-col-resize items-center justify-center"
 							onMouseDown={(e) => {
 								e.preventDefault();
 								setIsResizing(true);
 							}}
 						>
-							<div className="w-px h-full group-hover:bg-accent/50 transition-colors" />
+							<div className="h-full w-px transition-colors group-hover:bg-accent/50" />
 						</div>
 
-						<div className="flex-1 flex flex-col overflow-hidden bg-inset border-l border-white/10 min-h-0">
+						<div className="flex min-h-0 flex-1 flex-col overflow-hidden border-white/10 border-l bg-inset">
 							<WebSocketMessageList
 								messages={ws.messages}
 								status={status}

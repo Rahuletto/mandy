@@ -52,14 +52,14 @@ export function Dialog({
 	if (!isOpen) return null;
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+		<div className="fade-in fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 duration-200">
 			<div
 				ref={dialogRef}
-				className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl animate-blur-in p-6 flex flex-col gap-4"
+				className="flex w-full max-w-sm animate-blur-in flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-2xl"
 				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="flex flex-col gap-2">
-					<h3 className="text-lg font-semibold text-white leading-none tracking-tight">
+					<h3 className="font-semibold text-lg text-white leading-none tracking-tight">
 						{title}
 					</h3>
 					{description && (
@@ -67,12 +67,12 @@ export function Dialog({
 					)}
 				</div>
 
-				<div className="flex items-center justify-end gap-3 mt-2">
+				<div className="mt-2 flex items-center justify-end gap-3">
 					{dismissible && (
 						<button
 							type="button"
 							onClick={onCancel}
-							className="px-3 py-2 text-xs cursor-pointer font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-colors"
+							className="cursor-pointer rounded-md bg-white/5 px-3 py-2 font-medium text-white/70 text-xs transition-colors hover:bg-white/10 hover:text-white"
 						>
 							{cancelLabel}
 						</button>
@@ -80,10 +80,10 @@ export function Dialog({
 					<button
 						type="button"
 						onClick={onConfirm}
-						className={`px-4 py-2 cursor-pointer text-xs font-semibold rounded-full transition-colors shadow-sm ${
+						className={`cursor-pointer rounded-full px-4 py-2 font-semibold text-xs shadow-sm transition-colors ${
 							isDestructive
-								? "bg-red hover:bg-red text-white"
-								: "bg-accent hover:bg-accent/90 text-background"
+								? "bg-red text-white hover:bg-red"
+								: "bg-accent text-background hover:bg-accent/90"
 						}`}
 					>
 						{confirmLabel}

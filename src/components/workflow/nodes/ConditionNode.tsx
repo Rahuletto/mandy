@@ -22,7 +22,7 @@ export const ConditionNode = memo(function ConditionNode({ data }: NodeProps) {
 
 	return (
 		<div
-			className={`w-16 h-16 rounded-full backdrop-blur-md border-2 flex flex-col items-center justify-center transition-colors ${getBorderColor()} ${getBgColor()}`}
+			className={`flex h-16 w-16 flex-col items-center justify-center rounded-full border-2 backdrop-blur-md transition-colors ${getBorderColor()} ${getBgColor()}`}
 		>
 			<Handle
 				type="target"
@@ -31,14 +31,14 @@ export const ConditionNode = memo(function ConditionNode({ data }: NodeProps) {
 			/>
 			<div className="flex items-center gap-1">
 				{status === "running" && (
-					<VscLoading className="text-accent animate-spin" size={10} />
+					<VscLoading className="animate-spin text-accent" size={10} />
 				)}
 				{status === "completed" && (
 					<VscCheck className="text-green" size={10} />
 				)}
 				{status === "error" && <VscClose className="text-red" size={10} />}
 			</div>
-			<span className="text-sm text-white/80 max-w-16 truncate text-center leading-tight px-1">
+			<span className="max-w-16 truncate px-1 text-center text-sm text-white/80 leading-tight">
 				{label}
 			</span>
 			<Handle

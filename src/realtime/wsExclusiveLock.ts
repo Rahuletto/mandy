@@ -6,7 +6,9 @@ let exclusiveWsOwnerId: string | null = null;
 const exclusiveOwnerListeners = new Set<() => void>();
 
 function notifyExclusiveOwnerChanged() {
-	exclusiveOwnerListeners.forEach((fn) => fn());
+	for (const fn of exclusiveOwnerListeners) {
+		fn();
+	}
 }
 
 export function assignExclusiveWebSocketOwner(id: string | null) {

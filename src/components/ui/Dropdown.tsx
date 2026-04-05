@@ -80,23 +80,23 @@ export function Dropdown({
 	return (
 		<div
 			ref={ref}
-			className={`fixed z-[9999] bg-card border border-border rounded-xl shadow-2xl py-2 ${width} ${isVisible ? "animate-blur-in" : "opacity-0"} max-h-[calc(100vh-24px)] overflow-auto shadow-black/50`}
+			className={`fixed z-[9999] rounded-xl border border-border bg-card py-2 shadow-2xl ${width} ${isVisible ? "animate-blur-in" : "opacity-0"} max-h-[calc(100vh-24px)] overflow-auto shadow-black/50`}
 			style={{ left: pos.left, top: pos.top }}
 		>
 			{items.map((item, i) =>
 				item.divider ? (
-					<div key={i} className="border-t border-border my-1" />
+					<div key={i} className="my-1 border-border border-t" />
 				) : item.header ? (
 					<div
 						key={i}
-						className="px-3 py-2 text-xs text-white/30 mt-2 first:mt-1"
+						className="mt-2 px-3 py-2 text-white/30 text-xs first:mt-1"
 					>
 						{item.label}
 					</div>
 				) : (
 					<div
 						key={i}
-						className={`flex items-center group transition-colors ${
+						className={`group flex items-center transition-colors ${
 							item.active ? "bg-accent/5" : "hover:bg-white/5"
 						}`}
 					>
@@ -107,11 +107,11 @@ export function Dropdown({
 								onClose();
 							}}
 							disabled={item.header}
-							className={`flex-1 text-left px-4 py-2 text-xs flex items-center gap-2.5 ${
+							className={`flex flex-1 items-center gap-2.5 px-4 py-2 text-left text-xs ${
 								item.danger
 									? "text-red"
 									: item.active
-										? "text-accent font-semibold"
+										? "font-semibold text-accent"
 										: "text-white/80"
 							} ${item.header ? "cursor-default" : "cursor-pointer"}`}
 						>
@@ -139,7 +139,7 @@ export function MoreButton({ onClick, className = "" }: MoreButtonProps) {
 				e.stopPropagation();
 				onClick(e);
 			}}
-			className={`p-1 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors ${className}`}
+			className={`rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70 ${className}`}
 		>
 			<BsThreeDots size={14} />
 		</button>

@@ -57,7 +57,7 @@ export function EditorRequestBar({
 	action,
 }: EditorRequestBarProps) {
 	return (
-		<div className="flex gap-4 border-b border-text/15 p-4">
+		<div className="flex gap-4 border-text/15 border-b p-4">
 			<div
 				className={`${URL_BAR_CLASS} ${loading ? "shimmer-loading opacity-80" : ""}`}
 			>
