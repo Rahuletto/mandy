@@ -351,7 +351,7 @@ export const RestRequestEditor = forwardRef<
       let match: RegExpExecArray | null = regex.exec(text);
       while (match !== null) {
         const varName = match[1];
-        if (available.length > 0 && !available.includes(varName)) return true;
+        if (!available.includes(varName)) return true;
         match = regex.exec(text);
       }
       return false;
