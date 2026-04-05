@@ -19,11 +19,49 @@ import type {
 } from "../types/project";
 import type { WorkflowFile } from "../types/workflow";
 import type { ApiResponse } from "../bindings";
-import { createDefaultRequest } from "../reqhelpers/rest";
 import { findSecrets } from "../utils/secretDetection";
 import type { AuthType } from "../bindings";
-import type { Node, Edge } from "@xyflow/react";
 import { getItemConfig } from "../registry";
+
+const PERSIST_VERSION = 2 as const;
+
+const LEGACY_ACTIVE_ID_KEYS = [
+  "activeRequestId",
+  "activeWorkflowId",
+  "activeWebSocketId",
+  "activeGraphQLId",
+  "activeSocketIOId",
+  "activeMqttId",
+] as const;
+
+type LegacyPersistSlice = Partial<
+  Record<(typeof LEGACY_ACTIVE_ID_KEYS)[number], string | null>
+> & { activeItemId?: string | null };
+
+function migratePersistedStateV2(
+  persisted: unknown,
+): LegacyPersistSlice & Record<string, unknown> {
+  if (!persisted || typeof persisted !== "object") return persisted as never;
+  const p = persisted as LegacyPersistSlice & Record<string, unknown>;
+  let activeItemId: string | null =
+    typeof p.activeItemId === "string" || p.activeItemId === null
+      ? p.activeItemId
+      : null;
+  if (activeItemId == null) {
+    for (const key of LEGACY_ACTIVE_ID_KEYS) {
+      const v = p[key];
+      if (typeof v === "string" && v.length > 0) {
+        activeItemId = v;
+        break;
+      }
+    }
+  }
+  const next = { ...p, activeItemId };
+  for (const key of LEGACY_ACTIVE_ID_KEYS) {
+    delete next[key];
+  }
+  return next;
+}
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -161,29 +199,22 @@ function addChildToFolder(root: Folder, parentFolderId: string, child: TreeItem)
 interface ProjectState {
   projects: Project[];
   activeProjectId: string | null;
-  /** Unified active item id — replaces the 6 separate activeXxxId fields. */
   activeItemId: string | null;
-  /** @deprecated Use activeItemId. Kept for backward compat during migration. */
-  activeRequestId: string | null;
-  /** @deprecated Use activeItemId. */
-  activeWorkflowId: string | null;
-  /** @deprecated Use activeItemId. */
-  activeWebSocketId: string | null;
-  /** @deprecated Use activeItemId. */
-  activeGraphQLId: string | null;
-  /** @deprecated Use activeItemId. */
-  activeSocketIOId: string | null;
-  /** @deprecated Use activeItemId. */
-  activeMqttId: string | null;
   selectedItemId: string | null;
   unsavedChanges: Set<string>;
 
-  /** Set the active item (any request type). Replaces all setActiveXxxId methods. */
   setActiveItem: (id: string | null) => void;
-  /** Generic add item using registry createDefault. */
-  addItem: <T extends RequestType>(type: T, parentFolderId: string, name?: string) => string;
-  /** Generic update item using registry type. */
-  updateItem: <T extends RequestType>(id: string, type: T, updater: (item: ItemOfType<T>) => ItemOfType<T>) => void;
+  getActiveItem: () => RequestItem | null;
+  addItem: <T extends RequestType>(
+    type: T,
+    parentFolderId: string,
+    name?: string,
+  ) => string;
+  updateItem: <T extends RequestType>(
+    id: string,
+    type: T,
+    updater: (item: ItemOfType<T>) => ItemOfType<T>,
+  ) => void;
 
   addToRecentRequests: (requestId: string) => void;
   getRecentRequests: () => RecentRequest[];
@@ -225,55 +256,11 @@ interface ProjectState {
   getActiveEnvironmentVariables: (projectId?: string) => EnvironmentVariable[];
   resolveVariables: (text: string, projectId?: string) => string;
 
-  /** @deprecated Use setActiveItem */
-  setActiveRequestId: (id: string | null) => void;
-  /** @deprecated Use setActiveItem */
-  setActiveWorkflowId: (id: string | null) => void;
-  /** @deprecated Use setActiveItem */
-  setActiveWebSocketId: (id: string | null) => void;
-  /** @deprecated Use setActiveItem */
-  setActiveGraphQLId: (id: string | null) => void;
-  /** @deprecated Use setActiveItem */
-  setActiveMqttId: (id: string | null) => void;
-  /** @deprecated Use setActiveItem */
-  setActiveSocketIOId: (id: string | null) => void;
   setSelectedItem: (id: string | null) => void;
-  /** @deprecated Use addItem("request", ...) */
-  addRequest: (parentFolderId: string, name?: string) => string;
-  /** @deprecated Use addItem("websocket", ...) */
-  addWebSocket: (parentFolderId: string, name?: string) => string;
-  /** @deprecated Use addItem("graphql", ...) */
-  addGraphQL: (parentFolderId: string, name?: string) => string;
-  /** @deprecated Use addItem("workflow", ...) */
-  addWorkflow: (parentFolderId: string, name?: string) => string;
   addFolder: (parentFolderId: string, name?: string) => string;
-  /** @deprecated Use updateItem("websocket", ...) */
-  updateWebSocket: (
-    wsId: string,
-    updater: (ws: WebSocketFile) => WebSocketFile,
-  ) => void;
   getActiveWebSocket: () => WebSocketFile | null;
-  /** @deprecated Use updateItem("graphql", ...) */
-  updateGraphQL: (
-    gqlId: string,
-    updater: (gql: GraphQLFile) => GraphQLFile,
-  ) => void;
   getActiveGraphQL: () => GraphQLFile | null;
-  /** @deprecated Use addItem("socketio", ...) */
-  addSocketIO: (parentFolderId: string, name?: string) => string;
-  /** @deprecated Use addItem("mqtt", ...) */
-  addMqtt: (parentFolderId: string, name?: string) => string;
-  /** @deprecated Use updateItem("socketio", ...) */
-  updateSocketIO: (
-    sioId: string,
-    updater: (sio: SocketIOFile) => SocketIOFile,
-  ) => void;
   getActiveSocketIO: () => SocketIOFile | null;
-  /** @deprecated Use updateItem("mqtt", ...) */
-  updateMqtt: (
-    mqttId: string,
-    updater: (mqtt: MQTTFile) => MQTTFile,
-  ) => void;
   getActiveMqtt: () => MQTTFile | null;
   renameItem: (itemId: string, newName: string) => void;
   deleteItem: (itemId: string) => void;
@@ -287,16 +274,6 @@ interface ProjectState {
   ) => void;
   moveItemBefore: (itemId: string, beforeItemId: string) => void;
   moveItemAfter: (itemId: string, afterItemId: string) => void;
-  /** @deprecated Use updateItem("request", ...) */
-  updateRequest: (
-    requestId: string,
-    updater: (r: RequestFile) => RequestFile,
-  ) => void;
-  /** @deprecated Use updateItem("workflow", ...) */
-  updateWorkflow: (
-    workflowId: string,
-    updater: (w: WorkflowFile) => WorkflowFile,
-  ) => void;
   setRequestResponse: (requestId: string, response: ApiResponse) => void;
   getActiveRequest: () => RequestFile | null;
   getActiveWorkflow: () => WorkflowFile | null;
@@ -330,12 +307,6 @@ export const useProjectStore = create<ProjectState>()(
       projects: [initialProject],
       activeProjectId: initialProject.id,
       activeItemId: null,
-      activeRequestId: null,
-      activeWorkflowId: null,
-      activeWebSocketId: null,
-      activeGraphQLId: null,
-      activeSocketIOId: null,
-      activeMqttId: null,
       selectedItemId: null,
       unsavedChanges: new Set(),
       clipboard: null,
@@ -346,18 +317,21 @@ export const useProjectStore = create<ProjectState>()(
       // ── Generic methods ──────────────────────────────────────────
 
       setActiveItem: (id) => {
-        set({
-          activeItemId: id,
-          activeRequestId: null,
-          activeWorkflowId: null,
-          activeWebSocketId: null,
-          activeGraphQLId: null,
-          activeSocketIOId: null,
-          activeMqttId: null,
-        });
+        set({ activeItemId: id });
         if (id) {
           get().addToRecentRequests(id);
         }
+      },
+
+      getActiveItem: () => {
+        const state = get();
+        const project = state.projects.find(
+          (p) => p.id === state.activeProjectId,
+        );
+        if (!project || !state.activeItemId) return null;
+        const item = findItem(project.root, state.activeItemId);
+        if (!item || item.type === "folder") return null;
+        return item;
       },
 
       addItem: (type, parentFolderId, name) => {
@@ -372,12 +346,6 @@ export const useProjectStore = create<ProjectState>()(
             return { ...p, root: addChildToFolder(p.root, parentFolderId, item) };
           }),
           activeItemId: newId,
-          activeRequestId: null,
-          activeWorkflowId: null,
-          activeWebSocketId: null,
-          activeGraphQLId: null,
-          activeSocketIOId: null,
-          activeMqttId: null,
         }));
         get().addToRecentRequests(newId);
         return newId;
@@ -412,12 +380,6 @@ export const useProjectStore = create<ProjectState>()(
           projects: [...state.projects, newProject],
           activeProjectId: newProject.id,
           activeItemId: null,
-          activeRequestId: null,
-          activeWorkflowId: null,
-          activeWebSocketId: null,
-          activeGraphQLId: null,
-          activeSocketIOId: null,
-          activeMqttId: null,
         }));
         return newProject.id;
       },
@@ -426,12 +388,6 @@ export const useProjectStore = create<ProjectState>()(
         set({
           activeProjectId: id,
           activeItemId: null,
-          activeRequestId: null,
-          activeWorkflowId: null,
-          activeWebSocketId: null,
-          activeGraphQLId: null,
-          activeSocketIOId: null,
-          activeMqttId: null,
           selectedItemId: null,
         });
       },
@@ -476,32 +432,16 @@ export const useProjectStore = create<ProjectState>()(
             return {
               projects: [newProject],
               activeProjectId: newProject.id,
-              activeRequestId: null,
-              activeWorkflowId: null,
-              activeWebSocketId: null,
-              activeGraphQLId: null,
-              activeSocketIOId: null,
-              activeMqttId: null,
+              activeItemId: null,
+              selectedItemId: null,
             };
           }
+          const switching = state.activeProjectId === id;
           return {
             projects: remaining,
-            activeProjectId:
-              state.activeProjectId === id
-                ? remaining[0].id
-                : state.activeProjectId,
-            activeRequestId:
-              state.activeProjectId === id ? null : state.activeRequestId,
-            activeWorkflowId:
-              state.activeProjectId === id ? null : state.activeWorkflowId,
-            activeWebSocketId:
-              state.activeProjectId === id ? null : state.activeWebSocketId,
-            activeGraphQLId:
-              state.activeProjectId === id ? null : state.activeGraphQLId,
-            activeSocketIOId:
-              state.activeProjectId === id ? null : state.activeSocketIOId,
-            activeMqttId:
-              state.activeProjectId === id ? null : state.activeMqttId,
+            activeProjectId: switching ? remaining[0].id : state.activeProjectId,
+            activeItemId: switching ? null : state.activeItemId,
+            selectedItemId: switching ? null : state.selectedItemId,
           };
         });
       },
@@ -662,227 +602,7 @@ export const useProjectStore = create<ProjectState>()(
         return result;
       },
 
-      setActiveRequestId: (id) => {
-        set({ activeRequestId: id, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null, activeMqttId: null });
-        if (id) {
-          get().addToRecentRequests(id);
-        }
-      },
-      setActiveWorkflowId: (id) => {
-        set({ activeWorkflowId: id, activeRequestId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null, activeMqttId: null });
-        if (id) {
-          get().addToRecentRequests(id);
-        }
-      },
-      setActiveWebSocketId: (id) => {
-        set({ activeWebSocketId: id, activeRequestId: null, activeWorkflowId: null, activeGraphQLId: null, activeSocketIOId: null, activeMqttId: null });
-        if (id) {
-          get().addToRecentRequests(id);
-        }
-      },
-      setActiveGraphQLId: (id) => {
-        set({ activeGraphQLId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeSocketIOId: null, activeMqttId: null });
-        if (id) {
-          get().addToRecentRequests(id);
-        }
-      },
-      setActiveSocketIOId: (id) => {
-        set({ activeSocketIOId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null, activeMqttId: null });
-        if (id) {
-          get().addToRecentRequests(id);
-        }
-      },
-      setActiveMqttId: (id) => {
-        set({ activeMqttId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null });
-        if (id) {
-          get().addToRecentRequests(id);
-        }
-      },
       setSelectedItem: (id) => set({ selectedItemId: id }),
-
-      addRequest: (parentFolderId, name = "New Request") => {
-        const newId = generateId();
-        const request: RequestFile = {
-          id: newId,
-          type: "request",
-          name,
-          request: createDefaultRequest(),
-          response: null,
-          useInheritedAuth: true,
-        };
-
-        set((state) => ({
-          ...state,
-          projects: state.projects.map((p) => {
-            if (p.id !== state.activeProjectId) return p;
-
-            const addChildToFolder = (folder: Folder): Folder => {
-              if (folder.id === parentFolderId) {
-                return { ...folder, children: [...folder.children, request] };
-              }
-              return {
-                ...folder,
-                children: folder.children.map((child) =>
-                  child.type === "folder" ? addChildToFolder(child) : child
-                )
-              };
-            };
-
-            return { ...p, root: addChildToFolder(p.root) };
-          }),
-          activeRequestId: newId,
-        }));
-        get().addToRecentRequests(newId);
-        return newId;
-      },
-
-      addWebSocket: (parentFolderId, name = "New WebSocket") => {
-        const newId = generateId();
-        const ws: WebSocketFile = {
-          id: newId,
-          type: "websocket",
-          name,
-          url: "",
-          messages: [],
-          headers: {},
-          params: [],
-          headerItems: [],
-          cookies: [],
-          auth: "None",
-          useInheritedAuth: true,
-        };
-
-        set((state) => ({
-          ...state,
-          projects: state.projects.map((p) => {
-            if (p.id !== state.activeProjectId) return p;
-
-            const addChildToFolder = (folder: Folder): Folder => {
-              if (folder.id === parentFolderId) {
-                return { ...folder, children: [...folder.children, ws] };
-              }
-              return {
-                ...folder,
-                children: folder.children.map((child) =>
-                  child.type === "folder" ? addChildToFolder(child) : child
-                ),
-              };
-            };
-
-            return { ...p, root: addChildToFolder(p.root) };
-          }),
-          activeWebSocketId: newId,
-          activeRequestId: null,
-          activeWorkflowId: null,
-          activeGraphQLId: null,
-          activeSocketIOId: null,
-          activeMqttId: null,
-        }));
-        return newId;
-      },
-
-      addGraphQL: (parentFolderId, name = "New GraphQL") => {
-        const newId = generateId();
-        const gql: GraphQLFile = {
-          id: newId,
-          type: "graphql",
-          name,
-          url: "",
-          query: "query {\n  \n}",
-          variables: "{}",
-          headers: { "Content-Type": "application/json" },
-          headerItems: [],
-          auth: "None",
-          useInheritedAuth: true,
-          response: null,
-        };
-
-        set((state) => ({
-          ...state,
-          projects: state.projects.map((p) => {
-            if (p.id !== state.activeProjectId) return p;
-
-            const addChildToFolder = (folder: Folder): Folder => {
-              if (folder.id === parentFolderId) {
-                return { ...folder, children: [...folder.children, gql] };
-              }
-              return {
-                ...folder,
-                children: folder.children.map((child) =>
-                  child.type === "folder" ? addChildToFolder(child) : child
-                ),
-              };
-            };
-
-            return { ...p, root: addChildToFolder(p.root) };
-          }),
-          activeGraphQLId: newId,
-          activeRequestId: null,
-          activeWorkflowId: null,
-          activeWebSocketId: null,
-          activeSocketIOId: null,
-          activeMqttId: null,
-        }));
-        return newId;
-      },
-
-      addWorkflow: (parentFolderId, name = "New Workflow") => {
-        const newId = generateId();
-        const startNodeId = generateId();
-        const endNodeId = generateId();
-
-        const startNode: Node = {
-          id: startNodeId,
-          type: "start",
-          position: { x: 250, y: 100 },
-          data: { label: "Start", status: "idle", type: "start" },
-        };
-
-        const endNode: Node = {
-          id: endNodeId,
-          type: "end",
-          position: { x: 250, y: 400 },
-          data: { label: "End", status: "idle", type: "end" },
-        };
-
-        const defaultEdge: Edge = {
-          id: `${startNodeId}-${endNodeId}`,
-          source: startNodeId,
-          target: endNodeId,
-        };
-
-        const workflow: WorkflowFile = {
-          id: newId,
-          type: "workflow",
-          name,
-          nodes: [startNode, endNode],
-          edges: [defaultEdge],
-        };
-
-        set((state) => ({
-          ...state,
-          projects: state.projects.map((p) => {
-            if (p.id !== state.activeProjectId) return p;
-
-            const addChildToFolder = (folder: Folder): Folder => {
-              if (folder.id === parentFolderId) {
-                return { ...folder, children: [...folder.children, workflow] };
-              }
-              return {
-                ...folder,
-                children: folder.children.map((child) =>
-                  child.type === "folder" ? addChildToFolder(child) : child
-                ),
-              };
-            };
-
-            return { ...p, root: addChildToFolder(p.root) };
-          }),
-          activeWorkflowId: newId,
-          activeRequestId: null,
-        }));
-        return newId;
-      },
 
       addFolder: (parentFolderId, name = "New Folder") => {
         const newId = generateId();
@@ -1108,8 +828,10 @@ export const useProjectStore = create<ProjectState>()(
           newUnsaved.delete(itemId);
           return {
             projects: [...state.projects],
-            activeRequestId:
-              state.activeRequestId === itemId ? null : state.activeRequestId,
+            activeItemId:
+              state.activeItemId === itemId ? null : state.activeItemId,
+            selectedItemId:
+              state.selectedItemId === itemId ? null : state.selectedItemId,
             unsavedChanges: newUnsaved,
           };
         });
@@ -1227,48 +949,6 @@ export const useProjectStore = create<ProjectState>()(
         get().moveItem(itemId, targetParent.id, idx + 1);
       },
 
-      updateRequest: (requestId, updater) => {
-        set((state) => {
-          const project = state.projects.find(
-            (p) => p.id === state.activeProjectId,
-          );
-          if (!project) return state;
-          const item = findItem(project.root, requestId);
-          if (item && item.type === "request") {
-            const updated = updater(item);
-            Object.assign(item, updated);
-            const newUnsaved = new Set(state.unsavedChanges);
-            newUnsaved.add(requestId);
-            return {
-              projects: [...state.projects],
-              unsavedChanges: newUnsaved,
-            };
-          }
-          return state;
-        });
-      },
-
-      updateWorkflow: (workflowId, updater) => {
-        set((state) => {
-          const project = state.projects.find(
-            (p) => p.id === state.activeProjectId,
-          );
-          if (!project) return state;
-          const item = findItem(project.root, workflowId);
-          if (item && item.type === "workflow") {
-            const updated = updater(item);
-            Object.assign(item, updated);
-            const newUnsaved = new Set(state.unsavedChanges);
-            newUnsaved.add(workflowId);
-            return {
-              projects: [...state.projects],
-              unsavedChanges: newUnsaved,
-            };
-          }
-          return state;
-        });
-      },
-
       setRequestResponse: (requestId, response) => {
         set((state) => {
           const project = state.projects.find(
@@ -1284,240 +964,32 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       getActiveRequest: () => {
-        const state = get();
-        const project = state.projects.find(
-          (p) => p.id === state.activeProjectId,
-        );
-        if (!project || !state.activeRequestId) return null;
-        const item = findItem(project.root, state.activeRequestId);
+        const item = get().getActiveItem();
         return item?.type === "request" ? item : null;
       },
 
       getActiveWorkflow: () => {
-        const state = get();
-        const project = state.projects.find(
-          (p) => p.id === state.activeProjectId,
-        );
-        if (!project || !state.activeWorkflowId) return null;
-        const item = findItem(project.root, state.activeWorkflowId);
+        const item = get().getActiveItem();
         return item?.type === "workflow" ? item : null;
       },
 
-      updateWebSocket: (wsId, updater) => {
-        set((state) => {
-          const project = state.projects.find(
-            (p) => p.id === state.activeProjectId,
-          );
-          if (!project) return state;
-          const item = findItem(project.root, wsId);
-          if (item && item.type === "websocket") {
-            const updated = updater(item);
-            Object.assign(item, updated);
-            const newUnsaved = new Set(state.unsavedChanges);
-            newUnsaved.add(wsId);
-            return {
-              projects: [...state.projects],
-              unsavedChanges: newUnsaved,
-            };
-          }
-          return state;
-        });
-      },
-
       getActiveWebSocket: () => {
-        const state = get();
-        const project = state.projects.find(
-          (p) => p.id === state.activeProjectId,
-        );
-        if (!project || !state.activeWebSocketId) return null;
-        const item = findItem(project.root, state.activeWebSocketId);
+        const item = get().getActiveItem();
         return item?.type === "websocket" ? item : null;
       },
 
-      updateGraphQL: (gqlId, updater) => {
-        set((state) => {
-          const project = state.projects.find(
-            (p) => p.id === state.activeProjectId,
-          );
-          if (!project) return state;
-          const item = findItem(project.root, gqlId);
-          if (item && item.type === "graphql") {
-            const updated = updater(item);
-            Object.assign(item, updated);
-            const newUnsaved = new Set(state.unsavedChanges);
-            newUnsaved.add(gqlId);
-            return {
-              projects: [...state.projects],
-              unsavedChanges: newUnsaved,
-            };
-          }
-          return state;
-        });
-      },
-
       getActiveGraphQL: () => {
-        const state = get();
-        const project = state.projects.find(
-          (p) => p.id === state.activeProjectId,
-        );
-        if (!project || !state.activeGraphQLId) return null;
-        const item = findItem(project.root, state.activeGraphQLId);
+        const item = get().getActiveItem();
         return item?.type === "graphql" ? item : null;
       },
 
-      addSocketIO: (parentFolderId, name = "New Socket.IO") => {
-        const newId = generateId();
-        const sio: SocketIOFile = {
-          id: newId,
-          type: "socketio",
-          name,
-          url: "",
-          namespace: "/",
-          path: "/socket.io/",
-          transport: "websocket",
-          reconnect: true,
-          reconnectOnDisconnect: false,
-          reconnectDelayMinMs: 300,
-          reconnectDelayMaxMs: 5000,
-          maxReconnectAttempts: 20,
-          messages: [],
-          headers: {},
-          headerItems: [],
-          queryItems: [],
-          auth: "None",
-          useInheritedAuth: true,
-        };
-
-        set((state) => ({
-          ...state,
-          projects: state.projects.map((p) => {
-            if (p.id !== state.activeProjectId) return p;
-
-            const addChildToFolder = (folder: Folder): Folder => {
-              if (folder.id === parentFolderId) {
-                return { ...folder, children: [...folder.children, sio] };
-              }
-              return {
-                ...folder,
-                children: folder.children.map((child) =>
-                  child.type === "folder" ? addChildToFolder(child) : child
-                ),
-              };
-            };
-
-            return { ...p, root: addChildToFolder(p.root) };
-          }),
-          activeSocketIOId: newId,
-          activeRequestId: null,
-          activeWorkflowId: null,
-          activeWebSocketId: null,
-          activeGraphQLId: null,
-        }));
-        return newId;
-      },
-
-      addMqtt: (parentFolderId, name = "New MQTT") => {
-        const newId = generateId();
-        const mqtt: MQTTFile = {
-          id: newId,
-          type: "mqtt",
-          name,
-          url: "mqtt://broker.emqx.io:1883",
-          clientId: `mandy-${newId.slice(0, 8)}`,
-          cleanSession: true,
-          keepAliveSecs: 30,
-          subscriptions: [],
-          messages: [],
-        };
-
-        set((state) => ({
-          ...state,
-          projects: state.projects.map((p) => {
-            if (p.id !== state.activeProjectId) return p;
-
-            const addChildToFolder = (folder: Folder): Folder => {
-              if (folder.id === parentFolderId) {
-                return { ...folder, children: [...folder.children, mqtt] };
-              }
-              return {
-                ...folder,
-                children: folder.children.map((child) =>
-                  child.type === "folder" ? addChildToFolder(child) : child
-                ),
-              };
-            };
-
-            return { ...p, root: addChildToFolder(p.root) };
-          }),
-          activeMqttId: newId,
-          activeRequestId: null,
-          activeWorkflowId: null,
-          activeWebSocketId: null,
-          activeGraphQLId: null,
-          activeSocketIOId: null,
-        }));
-        return newId;
-      },
-
-      updateSocketIO: (sioId, updater) => {
-        set((state) => {
-          const project = state.projects.find(
-            (p) => p.id === state.activeProjectId,
-          );
-          if (!project) return state;
-          const item = findItem(project.root, sioId);
-          if (item && item.type === "socketio") {
-            const updated = updater(item);
-            Object.assign(item, updated);
-            const newUnsaved = new Set(state.unsavedChanges);
-            newUnsaved.add(sioId);
-            return {
-              projects: [...state.projects],
-              unsavedChanges: newUnsaved,
-            };
-          }
-          return state;
-        });
-      },
-
       getActiveSocketIO: () => {
-        const state = get();
-        const project = state.projects.find(
-          (p) => p.id === state.activeProjectId,
-        );
-        if (!project || !state.activeSocketIOId) return null;
-        const item = findItem(project.root, state.activeSocketIOId);
+        const item = get().getActiveItem();
         return item?.type === "socketio" ? item : null;
       },
 
-      updateMqtt: (mqttId, updater) => {
-        set((state) => {
-          const project = state.projects.find(
-            (p) => p.id === state.activeProjectId,
-          );
-          if (!project) return state;
-          const item = findItem(project.root, mqttId);
-          if (item && item.type === "mqtt") {
-            const updated = updater(item);
-            Object.assign(item, updated);
-            const newUnsaved = new Set(state.unsavedChanges);
-            newUnsaved.add(mqttId);
-            return {
-              projects: [...state.projects],
-              unsavedChanges: newUnsaved,
-            };
-          }
-          return state;
-        });
-      },
-
       getActiveMqtt: () => {
-        const state = get();
-        const project = state.projects.find(
-          (p) => p.id === state.activeProjectId,
-        );
-        if (!project || !state.activeMqttId) return null;
-        const item = findItem(project.root, state.activeMqttId);
+        const item = get().getActiveItem();
         return item?.type === "mqtt" ? item : null;
       },
 
@@ -1613,12 +1085,8 @@ export const useProjectStore = create<ProjectState>()(
         set((state) => ({
           projects: [...state.projects, newProject],
           activeProjectId: newProject.id,
-          activeRequestId: null,
-          activeWorkflowId: null,
-          activeWebSocketId: null,
-          activeGraphQLId: null,
-          activeSocketIOId: null,
-          activeMqttId: null,
+          activeItemId: null,
+          selectedItemId: null,
         }));
 
         return newProject.id;
@@ -1632,44 +1100,16 @@ export const useProjectStore = create<ProjectState>()(
           if (!project) return state;
 
           const item = findItem(project.root, requestId);
-          if (!item) return state;
+          if (!item || item.type === "folder") return state;
 
-          let method: string;
-          let url: string;
-
-          switch (item.type) {
-            case "request":
-              method = item.request.method;
-              url = item.request.url;
-              break;
-            case "websocket":
-              method = "WS";
-              url = item.url;
-              break;
-            case "graphql":
-              method = "GQL";
-              url = item.url;
-              break;
-            case "socketio":
-              method = "SIO";
-              url = item.url;
-              break;
-            case "mqtt":
-              method = "MQTT";
-              url = item.url;
-              break;
-            case "workflow":
-              method = "WF";
-              url = "";
-              break;
-            default:
-              return state;
-          }
+          const { methodLabel, url } = getItemConfig(item.type).getRecentMeta(
+            item as RequestItem,
+          );
 
           const recent: RecentRequest = {
             requestId: item.id,
             name: item.name,
-            method,
+            method: methodLabel,
             url,
             timestamp: Date.now(),
           };
@@ -1696,28 +1136,8 @@ export const useProjectStore = create<ProjectState>()(
         if (!item) return;
 
         set({ selectedItemId: id });
-
-        switch (item.type) {
-          case "request":
-            get().setActiveRequestId(id);
-            break;
-          case "workflow":
-            get().setActiveWorkflowId(id);
-            break;
-          case "websocket":
-            get().setActiveWebSocketId(id);
-            break;
-          case "graphql":
-            get().setActiveGraphQLId(id);
-            break;
-          case "socketio":
-            get().setActiveSocketIOId(id);
-            break;
-          case "mqtt":
-            get().setActiveMqttId(id);
-            break;
-          default:
-            break;
+        if (item.type !== "folder") {
+          get().setActiveItem(id);
         }
       },
 
@@ -1731,21 +1151,38 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: "mandy-projects",
+      version: PERSIST_VERSION,
+      migrate: (persistedState, fromVersion) => {
+        if (fromVersion < PERSIST_VERSION) {
+          return migratePersistedStateV2(persistedState) as {
+            projects: Project[];
+            activeProjectId: string | null;
+            activeItemId: string | null;
+            selectedItemId: string | null;
+            selectedLanguage: string;
+          };
+        }
+        return persistedState as {
+          projects: Project[];
+          activeProjectId: string | null;
+          activeItemId: string | null;
+          selectedItemId: string | null;
+          selectedLanguage: string;
+        };
+      },
       partialize: (state) => ({
         projects: state.projects,
         activeProjectId: state.activeProjectId,
-        activeRequestId: state.activeRequestId,
-        activeWorkflowId: state.activeWorkflowId,
-        activeWebSocketId: state.activeWebSocketId,
-        activeGraphQLId: state.activeGraphQLId,
-        activeSocketIOId: state.activeSocketIOId,
-        activeMqttId: state.activeMqttId,
+        activeItemId: state.activeItemId,
         selectedItemId: state.selectedItemId,
         selectedLanguage: state.selectedLanguage,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.unsavedChanges = new Set();
+          if (state.activeItemId === undefined) {
+            state.activeItemId = null;
+          }
           if (state.projects && state.projects.length > 0) {
             state.projects = state.projects.map((p) => {
               if (p.environments && p.environments.length > 0) {

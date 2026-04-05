@@ -3,7 +3,7 @@ import type {
   Folder,
   RequestFile,
   WebSocketFile,
-  WebSocketKeyValue,
+  KeyValueItem,
   Environment,
   EnvironmentVariable,
 } from "../../../types/project";
@@ -187,7 +187,7 @@ function parseInsomniaRequest(resource: InsomniaRequest): RequestFile {
 }
 
 function parseInsomniaWebSocket(resource: InsomniaWebSocketRequest): WebSocketFile {
-  const headerItems: WebSocketKeyValue[] = (resource.headers || [])
+  const headerItems: KeyValueItem[] = (resource.headers || [])
     .filter((h) => !h.disabled)
     .map((h) => ({
       id: crypto.randomUUID(),
@@ -197,7 +197,7 @@ function parseInsomniaWebSocket(resource: InsomniaWebSocketRequest): WebSocketFi
       enabled: true,
     }));
 
-  const params: WebSocketKeyValue[] = (resource.parameters || [])
+  const params: KeyValueItem[] = (resource.parameters || [])
     .filter((p) => !p.disabled)
     .map((p) => ({
       id: crypto.randomUUID(),

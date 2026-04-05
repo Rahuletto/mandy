@@ -1,27 +1,18 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import type { Project, SortMode } from "../types/project";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import type { Project, SortMode, TreeItem, RequestType } from "../types/project";
 import { FileTree } from "./FileTree";
 import { ContextMenu, MenuItem, IconPicker, getIconComponent } from "./ui";
 import { FaFolder, FaPlus } from "react-icons/fa6";
-import { SiMqtt, SiSocketdotio } from "react-icons/si";
-import { TbPlugConnected, TbWorld, TbBrandGraphql } from "react-icons/tb";
 import { VscTypeHierarchySub } from "react-icons/vsc";
+import { creatableItemTypes } from "../registry";
 
 interface SidebarProps {
   activeProject: Project | null;
   selectedItemId: string | null;
   unsavedIds: Set<string>;
-  onSelect: (
-    id: string,
-    type: "folder" | "request" | "workflow" | "websocket" | "graphql" | "socketio" | "mqtt",
-  ) => void;
+  onSelect: (id: string, type: TreeItem["type"]) => void;
   onToggleFolder: (id: string) => void;
-  onAddRequest: (folderId: string) => void;
-  onAddWebSocket: (folderId: string) => void;
-  onAddGraphQL: (folderId: string) => void;
-  onAddSocketIO: (folderId: string) => void;
-  onAddMqtt: (folderId: string) => void;
-  onAddWorkflow: (folderId: string) => void;
+  onAddItem: (type: RequestType, folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
   onDelete: (id: string) => void;
@@ -44,12 +35,8 @@ interface SidebarProps {
   onImportClick: () => void;
   showProjectOverview?: boolean;
   className?: string;
-  loadingRequests?: Set<string>;
-  completedRequests?: Set<string>;
-  loadingWebSockets?: Set<string>;
-  loadingGraphQLs?: Set<string>;
-  loadingSocketIOs?: Set<string>;
-  loadingMqtts?: Set<string>;
+  loadingItems?: Set<string>;
+  completedItems?: Set<string>;
 }
 
 export function Sidebar({
@@ -58,12 +45,7 @@ export function Sidebar({
   unsavedIds,
   onSelect,
   onToggleFolder,
-  onAddRequest,
-  onAddWebSocket,
-  onAddGraphQL,
-  onAddSocketIO,
-  onAddMqtt,
-  onAddWorkflow,
+  onAddItem,
   onAddFolder,
   onRename,
   onDelete,
@@ -82,12 +64,8 @@ export function Sidebar({
   onImportClick,
   showProjectOverview = false,
   className = "",
-  loadingRequests = new Set(),
-  completedRequests = new Set(),
-  loadingWebSockets = new Set(),
-  loadingGraphQLs = new Set(),
-  loadingSocketIOs = new Set(),
-  loadingMqtts = new Set(),
+  loadingItems = new Set(),
+  completedItems = new Set(),
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isResizing, setIsResizing] = useState(false);
@@ -136,51 +114,39 @@ export function Sidebar({
     }
   }
 
-  const addMenuItems: MenuItem[] = activeProject
-    ? [
-        {
-          label: "REST Request",
-          icon: <TbWorld size={14} className="text-emerald-400 opacity-100" />,
-          onClick: () => onAddRequest(activeProject.root.id),
-        },
-        {
-          label: "WebSocket",
-          icon: <TbPlugConnected size={14} className="text-emerald-400 opacity-100" />,
-          onClick: () => onAddWebSocket(activeProject.root.id),
-        },
-        {
-          label: "GraphQL",
-          icon: <TbBrandGraphql size={14} className="text-fuchsia-400 opacity-100" />,
-          onClick: () => onAddGraphQL(activeProject.root.id),
-        },
-        {
-          label: "Socket.IO",
-          icon: <SiSocketdotio size={14} className="text-[#25C2A0] opacity-100" />,
-          onClick: () => onAddSocketIO(activeProject.root.id),
-        },
-        {
-          label: "MQTT",
-          icon: <SiMqtt size={12} className="text-orange-300 opacity-100" />,
-          onClick: () => onAddMqtt(activeProject.root.id),
-        },
-        { label: "", onClick: () => {}, divider: true },
-        {
-          label: "New Workflow",
-          icon: <VscTypeHierarchySub size={14} />,
-          onClick: () => onAddWorkflow(activeProject.root.id),
-        },
-        {
-          label: "New Folder",
-          icon: <FaFolder size={12} />,
-          onClick: () => onAddFolder(activeProject.root.id),
-        },
-        { label: "", onClick: () => {}, divider: true },
-        {
-          label: "Import Collection",
-          onClick: onImportClick,
-        },
-      ]
-    : [];
+  const addMenuItems: MenuItem[] = useMemo(() => {
+    if (!activeProject) return [];
+    const rootId = activeProject.root.id;
+    const fromRegistry: MenuItem[] = creatableItemTypes.map((cfg) => {
+      const Icon = cfg.icon;
+      return {
+        label: cfg.label,
+        icon: (
+          <Icon size={14} className={`${cfg.iconClassName} opacity-100`} />
+        ),
+        onClick: () => onAddItem(cfg.type, rootId),
+      };
+    });
+    return [
+      ...fromRegistry,
+      { label: "", onClick: () => {}, divider: true },
+      {
+        label: "New Workflow",
+        icon: <VscTypeHierarchySub size={14} className="text-accent" />,
+        onClick: () => onAddItem("workflow", rootId),
+      },
+      {
+        label: "New Folder",
+        icon: <FaFolder size={12} />,
+        onClick: () => onAddFolder(rootId),
+      },
+      { label: "", onClick: () => {}, divider: true },
+      {
+        label: "Import Collection",
+        onClick: onImportClick,
+      },
+    ];
+  }, [activeProject, onAddItem, onAddFolder, onImportClick]);
 
   return (
     <div
@@ -252,12 +218,7 @@ export function Sidebar({
             selectedItemId={selectedItemId}
             onSelect={onSelect}
             onToggleFolder={onToggleFolder}
-            onAddRequest={onAddRequest}
-            onAddWebSocket={onAddWebSocket}
-            onAddGraphQL={onAddGraphQL}
-            onAddSocketIO={onAddSocketIO}
-            onAddMqtt={onAddMqtt}
-            onAddWorkflow={onAddWorkflow}
+            onAddItem={onAddItem}
             onAddFolder={onAddFolder}
             onRename={onRename}
             onDelete={onDelete}
@@ -271,12 +232,8 @@ export function Sidebar({
             searchQuery={searchQuery}
             unsavedIds={unsavedIds}
             onImportClick={onImportClick}
-            loadingRequests={loadingRequests}
-            completedRequests={completedRequests}
-            loadingWebSockets={loadingWebSockets}
-            loadingGraphQLs={loadingGraphQLs}
-            loadingSocketIOs={loadingSocketIOs}
-            loadingMqtts={loadingMqtts}
+            loadingItems={loadingItems}
+            completedItems={completedItems}
           />
         </>
       ) : (

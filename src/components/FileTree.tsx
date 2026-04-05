@@ -20,28 +20,27 @@ import { VscChevronRight, VscChevronDown, VscAdd } from "react-icons/vsc";
 import { FaFolder, FaFolderOpen, FaPlus } from "react-icons/fa6";
 import { HiDownload } from "react-icons/hi";
 import { SiMqtt, SiSocketdotio } from "react-icons/si";
-import { TbPlugConnected, TbWorld, TbBrandGraphql } from "react-icons/tb";
-import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
+import { TbPlugConnected, TbBrandGraphql } from "react-icons/tb";
+import type {
+  Folder,
+  RequestFile,
+  TreeItem,
+  SortMode,
+  RequestType,
+} from "../types/project";
 
 import { ContextMenu, MenuItem } from "./ui";
 import { getSimpleShortcut, getShortcutDisplay } from "../utils/platform";
 import { haptic } from "../utils/haptics";
 import { VscTypeHierarchySub } from "react-icons/vsc";
+import { creatableItemTypes } from "../registry";
 
 interface FileTreeProps {
   root: Folder;
   selectedItemId: string | null;
-  onSelect: (
-    id: string,
-    type: "folder" | "request" | "workflow" | "websocket" | "graphql" | "socketio" | "mqtt",
-  ) => void;
+  onSelect: (id: string, type: TreeItem["type"]) => void;
   onToggleFolder: (id: string) => void;
-  onAddRequest: (folderId: string) => void;
-  onAddWebSocket: (folderId: string) => void;
-  onAddGraphQL: (folderId: string) => void;
-  onAddSocketIO: (folderId: string) => void;
-  onAddMqtt: (folderId: string) => void;
-  onAddWorkflow: (folderId: string) => void;
+  onAddItem: (type: RequestType, folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
   onDelete: (id: string) => void;
@@ -59,12 +58,8 @@ interface FileTreeProps {
   searchQuery: string;
   unsavedIds: Set<string>;
   onImportClick: () => void;
-  loadingRequests?: Set<string>;
-  completedRequests?: Set<string>;
-  loadingWebSockets?: Set<string>;
-  loadingGraphQLs?: Set<string>;
-  loadingSocketIOs?: Set<string>;
-  loadingMqtts?: Set<string>;
+  loadingItems?: Set<string>;
+  completedItems?: Set<string>;
 }
 
 import {
@@ -396,12 +391,7 @@ export function FileTree({
   selectedItemId,
   onSelect,
   onToggleFolder,
-  onAddRequest,
-  onAddWebSocket,
-  onAddGraphQL,
-  onAddSocketIO,
-  onAddMqtt,
-  onAddWorkflow,
+  onAddItem,
   onAddFolder,
   onRename,
   onDelete,
@@ -415,12 +405,8 @@ export function FileTree({
   searchQuery,
   unsavedIds,
   onImportClick,
-  loadingRequests = new Set(),
-  completedRequests = new Set(),
-  loadingWebSockets = new Set(),
-  loadingGraphQLs = new Set(),
-  loadingSocketIOs = new Set(),
-  loadingMqtts = new Set(),
+  loadingItems = new Set(),
+  completedItems = new Set(),
 }: FileTreeProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -751,37 +737,21 @@ export function FileTree({
     ];
 
     if (item.type === "folder") {
+      const registryAdds: MenuItem[] = creatableItemTypes.map((cfg) => {
+        const Icon = cfg.icon;
+        return {
+          label: cfg.label,
+          icon: <Icon size={14} className={cfg.iconClassName} />,
+          onClick: () => onAddItem(cfg.type, item.id),
+        };
+      });
       return [
-        {
-          label: "REST Request",
-          icon: <TbWorld size={14} className="text-emerald-400" />,
-          onClick: () => onAddRequest(item.id),
-        },
-        {
-          label: "WebSocket",
-          icon: <TbPlugConnected size={14} className="text-emerald-400" />,
-          onClick: () => onAddWebSocket(item.id),
-        },
-        {
-          label: "GraphQL",
-          icon: <TbBrandGraphql size={14} className="text-fuchsia-400" />,
-          onClick: () => onAddGraphQL(item.id),
-        },
-        {
-          label: "Socket.IO",
-          icon: <SiSocketdotio size={14} className="text-[#25C2A0]" />,
-          onClick: () => onAddSocketIO(item.id),
-        },
-        {
-          label: "MQTT",
-          icon: <SiMqtt size={12} className="text-orange-300" />,
-          onClick: () => onAddMqtt(item.id),
-        },
+        ...registryAdds,
         { label: "", onClick: () => {}, divider: true },
         {
           label: "New Workflow",
-          icon: <VscTypeHierarchySub size={14} />,
-          onClick: () => onAddWorkflow(item.id),
+          icon: <VscTypeHierarchySub size={14} className="text-accent" />,
+          onClick: () => onAddItem("workflow", item.id),
         },
         {
           label: "New Folder",
@@ -842,13 +812,11 @@ export function FileTree({
               isCut={clipboard?.id === item.id && clipboard.type === "cut"}
               itemRectsRef={itemRectsRef}
               isLoading={
-                (item.type === "request" && loadingRequests.has(item.id)) ||
-                (item.type === "websocket" && loadingWebSockets.has(item.id)) ||
-                (item.type === "graphql" && loadingGraphQLs.has(item.id)) ||
-                (item.type === "socketio" && loadingSocketIOs.has(item.id)) ||
-                (item.type === "mqtt" && loadingMqtts.has(item.id))
+                item.type !== "folder" &&
+                item.type !== "workflow" &&
+                loadingItems.has(item.id)
               }
-              isCompleted={completedRequests.has(item.id)}
+              isCompleted={completedItems.has(item.id)}
             />
           ))}
         </SortableContext>
@@ -883,8 +851,15 @@ export function FileTree({
           x={contextMenu.x}
           y={contextMenu.y}
           items={
-            contextMenu.filterAddOnly
-              ? getContextMenuItems(contextMenu.item).slice(0, 5)
+            contextMenu.filterAddOnly && contextMenu.item.type === "folder"
+              ? creatableItemTypes.map((cfg) => {
+                  const Icon = cfg.icon;
+                  return {
+                    label: cfg.label,
+                    icon: <Icon size={14} className={cfg.iconClassName} />,
+                    onClick: () => onAddItem(cfg.type, contextMenu.item.id),
+                  };
+                })
               : getContextMenuItems(contextMenu.item)
           }
           onClose={() => setContextMenu(null)}

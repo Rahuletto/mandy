@@ -5,7 +5,7 @@ import {
   useWebSocket,
 } from "../../hooks/useWebSocket";
 import type { AuthType } from "../../bindings";
-import type { WebSocketFile, WebSocketKeyValue } from "../../types/project";
+import type { WebSocketFile } from "../../types/project";
 import { KeyValueTable, type KeyValueItem } from "../KeyValueTable";
 import { Tooltip } from "../ui/Tooltip";
 import { AuthEditor } from "./AuthEditor";
@@ -31,26 +31,6 @@ type WsTab =
   | "authorization"
   | "headers"
   | "cookies";
-
-function toKeyValueItems(items: WebSocketKeyValue[]): KeyValueItem[] {
-  return items.map((item) => ({
-    id: item.id,
-    key: item.key,
-    value: item.value,
-    description: item.description,
-    enabled: item.enabled,
-  }));
-}
-
-function fromKeyValueItems(items: KeyValueItem[]): WebSocketKeyValue[] {
-  return items.map((item) => ({
-    id: item.id,
-    key: item.key,
-    value: item.value,
-    description: item.description,
-    enabled: item.enabled,
-  }));
-}
 
 export function WebSocketEditor({
   ws,
@@ -234,11 +214,11 @@ export function WebSocketEditor({
 
             {activeTab === "params" && (
               <KeyValueTable
-                items={toKeyValueItems(ws.params || [])}
+                items={ws.params || []}
                 onChange={(items) =>
                   onUpdate((prev) => ({
                     ...prev,
-                    params: fromKeyValueItems(items),
+                    params: items,
                   }))
                 }
                 availableVariables={availableVariables}
@@ -265,11 +245,11 @@ export function WebSocketEditor({
 
             {activeTab === "headers" && (
               <KeyValueTable
-                items={toKeyValueItems(ws.headerItems || [])}
+                items={ws.headerItems || []}
                 onChange={(items) =>
                   onUpdate((prev) => ({
                     ...prev,
-                    headerItems: fromKeyValueItems(items),
+                    headerItems: items,
                   }))
                 }
                 availableVariables={availableVariables}
@@ -279,11 +259,11 @@ export function WebSocketEditor({
 
             {activeTab === "cookies" && (
               <KeyValueTable
-                items={toKeyValueItems(ws.cookies || [])}
+                items={ws.cookies || []}
                 onChange={(items) =>
                   onUpdate((prev) => ({
                     ...prev,
-                    cookies: fromKeyValueItems(items),
+                    cookies: items,
                   }))
                 }
                 availableVariables={availableVariables}

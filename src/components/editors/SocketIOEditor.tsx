@@ -3,8 +3,8 @@ import { listen } from "@tauri-apps/api/event";
 import { SiSocketdotio } from "react-icons/si";
 import { TbChevronDown, TbPlus, TbSend, TbTrash } from "react-icons/tb";
 import { commands, type SioIncomingMessage } from "../../bindings";
-import type { SocketIOFile, SocketIOKeyValue } from "../../types/project";
-import { KeyValueTable, type KeyValueItem } from "../KeyValueTable";
+import type { KeyValueItem, SocketIOFile } from "../../types/project";
+import { KeyValueTable } from "../KeyValueTable";
 import { CodeEditor } from "../CodeMirror";
 import { SocketIOOverview } from "./SocketIOOverview";
 import { SocketIOMessageList } from "./SocketIOMessageList";
@@ -24,26 +24,6 @@ interface SocketIOEditorProps {
 
 type SioTab = "overview" | "emit" | "headers" | "authorization" | "connection";
 
-function toKeyValueItems(items: SocketIOKeyValue[]): KeyValueItem[] {
-  return items.map((item) => ({
-    id: item.id,
-    key: item.key,
-    value: item.value,
-    description: item.description,
-    enabled: item.enabled,
-  }));
-}
-
-function fromKeyValueItems(items: KeyValueItem[]): SocketIOKeyValue[] {
-  return items.map((item) => ({
-    id: item.id,
-    key: item.key,
-    value: item.value,
-    description: item.description,
-    enabled: item.enabled,
-  }));
-}
-
 function appendSioMessage(messages: SocketIOFile["messages"], nextMessage: SocketIOFile["messages"][number]) {
   const next = [...messages, nextMessage];
   return next.length > MAX_SOCKETIO_MESSAGES
@@ -54,7 +34,7 @@ function appendSioMessage(messages: SocketIOFile["messages"], nextMessage: Socke
 function buildSocketIoUrl(
   baseUrl: string,
   path: string | undefined,
-  queryItems: SocketIOKeyValue[] | undefined,
+  queryItems: KeyValueItem[] | undefined,
   resolve: (text: string) => string,
 ): string {
   const normalizedBase = resolve(baseUrl).trim();
@@ -539,11 +519,11 @@ export function SocketIOEditor({
 
             {activeTab === "headers" && (
               <KeyValueTable
-                items={toKeyValueItems(sio.headerItems || [])}
+                items={sio.headerItems || []}
                 onChange={(items) =>
                   onUpdate((prev) => ({
                     ...prev,
-                    headerItems: fromKeyValueItems(items),
+                    headerItems: items,
                   }))
                 }
                 availableVariables={availableVariables}

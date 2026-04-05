@@ -33,13 +33,6 @@ export interface KeyValueItem {
   enabled: boolean;
 }
 
-/** @deprecated Use `KeyValueItem` instead */
-export type WebSocketKeyValue = KeyValueItem;
-/** @deprecated Use `KeyValueItem` instead */
-export type GraphQLKeyValue = KeyValueItem;
-/** @deprecated Use `KeyValueItem` instead */
-export type SocketIOKeyValue = KeyValueItem;
-
 export interface WebSocketFile {
   id: string;
   type: "websocket";

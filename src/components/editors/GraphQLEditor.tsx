@@ -4,7 +4,7 @@ import { buildClientSchema, printSchema } from "graphql";
 import type { GraphQLSchema, IntrospectionQuery } from "graphql";
 import type { AuthType } from "../../bindings";
 import { commands } from "../../bindings";
-import type { GraphQLFile, GraphQLKeyValue } from "../../types/project";
+import type { GraphQLFile } from "../../types/project";
 import { KeyValueTable, type KeyValueItem } from "../KeyValueTable";
 import { AuthEditor } from "./AuthEditor";
 import { GraphQLOverview } from "./GraphQLOverview";
@@ -16,7 +16,7 @@ import { formatBytes, getStatusColor, STATUS_TEXT } from "../../utils/format";
 
 interface GraphQLEditorProps {
   gql: GraphQLFile;
-  onUpdate: (updater: (gql: GraphQLFile) => void) => void;
+  onUpdate: (updater: (gql: GraphQLFile) => GraphQLFile) => void;
   onSendQuery: () => void;
   loading?: boolean;
   availableVariables?: string[];
@@ -28,26 +28,6 @@ interface GraphQLEditorProps {
 
 type GqlTab = "overview" | "query" | "variables" | "authorization" | "headers";
 type SchemaViewMode = "pretty" | "raw";
-
-function toKeyValueItems(items: GraphQLKeyValue[]): KeyValueItem[] {
-  return items.map((item) => ({
-    id: item.id,
-    key: item.key,
-    value: item.value,
-    description: item.description,
-    enabled: item.enabled,
-  }));
-}
-
-function fromKeyValueItems(items: KeyValueItem[]): GraphQLKeyValue[] {
-  return items.map((item) => ({
-    id: item.id,
-    key: item.key,
-    value: item.value,
-    description: item.description,
-    enabled: item.enabled,
-  }));
-}
 
 function tryBuildSchema(schemaJSON: string | undefined): GraphQLSchema | null {
   if (!schemaJSON) return null;
@@ -251,7 +231,7 @@ export function GraphQLEditor({
         setSchemaError(err.message || "Failed to fetch schema");
       } finally {
         setSchemaLoading(false);
-        onStopLoading?.();
+        onStopLoading?.(gql.id);
       }
     },
     [gql.url, gql.headerItems, onUpdate, onStartLoading, onStopLoading],
@@ -565,11 +545,11 @@ export function GraphQLEditor({
             {activeTab === "headers" && (
               <div className="h-full min-h-0">
                 <KeyValueTable
-                  items={toKeyValueItems(gql.headerItems || [])}
+                  items={gql.headerItems || []}
                   onChange={(items) =>
                     onUpdate((prev) => ({
                       ...prev,
-                      headerItems: fromKeyValueItems(items),
+                      headerItems: items,
                     }))
                   }
                   availableVariables={availableVariables}

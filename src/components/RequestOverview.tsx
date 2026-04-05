@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
-import { autoSizeTextarea } from "../utils";
+import React, { useState, useMemo } from "react";
 import type { RequestFile } from "../types/project";
 import {
   generateCurl,
@@ -10,8 +9,6 @@ import {
   generateJava,
   generatePHP,
 } from "../utils/snippets";
-import { CodeViewer } from "./CodeMirror";
-import { Dropdown } from "./ui";
 import { decodeBody } from "../reqhelpers/rest";
 import { ObjectDefinition } from "../types/overview";
 import {
@@ -19,6 +16,8 @@ import {
   extractDefinitions,
   scrollToId,
 } from "../utils/overviewUtils";
+import { OverviewLayout } from "./editors/OverviewLayout";
+import type { MenuItem } from "./ui";
 
 interface RequestOverviewProps {
   activeRequest: RequestFile;
@@ -29,6 +28,18 @@ interface RequestOverviewProps {
   onSwitchToBody: () => void;
 }
 
+const SNIPPET_OPTIONS = [
+  "Shell cURL",
+  "JavaScript Fetch",
+  "Python Requests",
+  "Go Native",
+  "Rust Reqwest",
+  "Java HttpClient",
+  "PHP Guzzle",
+] as const;
+
+type SnippetLang = (typeof SNIPPET_OPTIONS)[number];
+
 export const RequestOverview: React.FC<RequestOverviewProps> = ({
   activeRequest,
   onRun,
@@ -37,34 +48,10 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
   onUpdatePropertyDescription,
   onSwitchToBody,
 }) => {
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [name, setName] = useState(activeRequest.name);
-  const [description, setDescription] = useState(
-    activeRequest.description || "",
-  );
-  const descriptionRef = useRef<HTMLTextAreaElement>(null);
-  const [snippetLang, setSnippetLang] = useState("Shell cURL");
+  const [snippetLang, setSnippetLang] = useState<SnippetLang>("Shell cURL");
   const [showSnippetDropdown, setShowSnippetDropdown] = useState(false);
   const [editingProperty, setEditingProperty] = useState<string | null>(null);
   const [propDescValue, setPropDescValue] = useState("");
-
-  useEffect(() => {
-    setName(activeRequest.name);
-    setDescription(activeRequest.description || "");
-  }, [activeRequest]);
-
-  useLayoutEffect(() => {
-    autoSizeTextarea(descriptionRef.current);
-  }, [description]);
-
-  const handleNameBlur = () => {
-    setIsEditingName(false);
-    if (name.trim() && name !== activeRequest.name) {
-      onUpdateName(name.trim());
-    } else {
-      setName(activeRequest.name);
-    }
-  };
 
   const getSnippet = () => {
     switch (snippetLang) {
@@ -149,7 +136,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
 
   const renderProperty = (
     key: string,
-    value: any,
+    value: unknown,
     context?: string,
     allowDescription?: boolean,
     showTypes: boolean = true,
@@ -157,7 +144,10 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
     const type = Array.isArray(value) ? "array" : typeof value;
     const isObject = type === "object" && value !== null;
     const isObjectArray =
-      type === "array" && value.length > 0 && typeof value[0] === "object";
+      type === "array" &&
+      Array.isArray(value) &&
+      value.length > 0 &&
+      typeof value[0] === "object";
 
     const fullKey = context ? `${context}.${key}` : key;
     const savedDesc = activeRequest.propertyDescriptions?.[fullKey] || "";
@@ -180,6 +170,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
           {showTypes &&
             (targetId ? (
               <button
+                type="button"
                 onClick={() => scrollToId(targetId)}
                 className={`text-[10px] lowercase font-mono cursor-pointer hover:underline ${getTypeColor(type)}`}
               >
@@ -232,7 +223,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
 
   const renderStructure = (
     title: string,
-    data: any,
+    data: Record<string, unknown>,
     showSwitch?: boolean,
     context?: string,
     allowDescription?: boolean,
@@ -244,6 +235,7 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
           <h3 className="text-sm font-semibold text-white/70">{title}</h3>
           {showSwitch && (
             <button
+              type="button"
               onClick={onSwitchToBody}
               className="text-[10px] cursor-pointer text-white/80 hover:text-white/50 font-medium px-3 py-1 rounded-full bg-white/5 hover:bg-white/2 transition-colors"
             >
@@ -266,242 +258,134 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
     );
   };
 
-  return (
-    <div className="h-full overflow-y-auto overflow-x-hidden">
-      <div className="flex min-h-full max-w-[1600px] mx-auto relative pl-8 pr-4 gap-8">
-        <div className="flex-1 py-12 w-[40%]">
-          <div className="max-w-3xl">
-            {isEditingName ? (
-              <input
-                autoFocus
-                className="text-2xl font-bold bg-transparent border-none outline-none text-white w-full mb-2"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={handleNameBlur}
-                onKeyDown={(e) => e.key === "Enter" && handleNameBlur()}
-              />
-            ) : (
-              <h1
-                className="text-2xl font-bold text-white mb-2 cursor-text hover:text-white/90"
-                onClick={() => setIsEditingName(true)}
-              >
-                {activeRequest.name}
-              </h1>
+  const method = activeRequest.request.method;
+  const methodBadgeClassName =
+    method === "GET"
+      ? "bg-green/20 text-green"
+      : method === "POST"
+        ? "bg-blue-500/20 text-blue-400"
+        : method === "PUT"
+          ? "bg-yellow/20 text-yellow"
+          : method === "DELETE"
+            ? "bg-red/20 text-red"
+            : "bg-gray-500/20 text-gray-400";
+
+  const snippetDropdownItems: MenuItem[] = SNIPPET_OPTIONS.map((label) => ({
+    label,
+    onClick: () => {
+      setSnippetLang(label);
+      setShowSnippetDropdown(false);
+    },
+  }));
+
+  const leftFooter = (
+    <>
+      {Object.keys(activeRequest.request.query_params).length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-white/70 mb-2">
+            Query Parameters
+          </h3>
+          <div className="space-y-1">
+            {Object.entries(activeRequest.request.query_params).map(
+              ([key, value]) =>
+                renderProperty(key, value, "params", true, false),
             )}
-
-            <textarea
-              ref={descriptionRef}
-              className="w-full bg-transparent border-none outline-none text-sm text-white/60 resize-none overflow-hidden min-h-6 mb-3 placeholder:text-white/20"
-              placeholder="Add a description..."
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-                onUpdateDescription(e.target.value);
-              }}
-            />
-
-            <section className="flex flex-col gap-8">
-              {Object.keys(activeRequest.request.query_params).length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-semibold text-white/70 mb-2">
-                    Query Parameters
-                  </h3>
-                  <div className="space-y-1">
-                    {Object.entries(activeRequest.request.query_params).map(
-                      ([key, value]) =>
-                        renderProperty(key, value, "params", true, false),
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {(() => {
-                const body = activeRequest.request.body;
-                if (
-                  body !== "None" &&
-                  "Raw" in body &&
-                  body.Raw.content_type?.includes("json")
-                ) {
-                  try {
-                    return renderStructure(
-                      "Request Body",
-                      JSON.parse(body.Raw.content),
-                      true,
-                      "request",
-                      true,
-                    );
-                  } catch (e) {}
-                }
-                return null;
-              })()}
-
-              {(() => {
-                if (!activeRequest.response) return null;
-                const bodyText = decodeBody(activeRequest.response);
-                if (!bodyText) return null;
-                try {
-                  return renderStructure(
-                    "Response Body",
-                    JSON.parse(bodyText),
-                    false,
-                    "response",
-                    false,
-                  );
-                } catch (e) {}
-                return null;
-              })()}
-
-              {definitions.length > 0 && (
-                <div className="mt-8">
-                  <h3 className="text-sm font-semibold text-white/70 mb-4">
-                    Object Definitions
-                  </h3>
-                  <div className="space-y-4">
-                    {definitions.map((def) => (
-                      <div
-                        key={def.name}
-                        id={`def-${def.name}`}
-                        className="scroll-mt-12 transition-colors duration-500 rounded-lg"
-                      >
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-white/20 font-mono text-lg">
-                            #
-                          </span>
-                          <h4 className="text-sm font-mono font-semibold text-accent/70">
-                            {def.name}
-                          </h4>
-                        </div>
-                        <div className="space-y-1 ml-2 border-l border-white/5 pl-8">
-                          {Object.entries(def.properties).map(([key, value]) =>
-                            renderProperty(key, value, def.name, false, true),
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <div className="h-24" />
           </div>
         </div>
+      )}
 
-        <div className="w-[60%] shrink-0 py-4 self-start sticky top-0 h-[80vh]">
-          <div className="h-full rounded-xl bg-background border border-white/5 overflow-hidden flex flex-col">
-            <div className="flex shrink-0 items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                    activeRequest.request.method === "GET"
-                      ? "bg-green/20 text-green"
-                      : activeRequest.request.method === "POST"
-                        ? "bg-blue-500/20 text-blue-400"
-                        : activeRequest.request.method === "PUT"
-                          ? "bg-yellow/20 text-yellow"
-                          : activeRequest.request.method === "DELETE"
-                            ? "bg-red/20 text-red"
-                            : "bg-gray-500/20 text-gray-400"
-                  }`}
-                >
-                  {activeRequest.request.method}
-                </span>
-                <span className="text-xs text-white/40 truncate max-w-[150px] ">
-                  {activeRequest.name || "/"}
-                </span>
-              </div>
+      {(() => {
+        const body = activeRequest.request.body;
+        if (
+          body !== "None" &&
+          "Raw" in body &&
+          body.Raw.content_type?.includes("json")
+        ) {
+          try {
+            return renderStructure(
+              "Request Body",
+              JSON.parse(body.Raw.content) as Record<string, unknown>,
+              true,
+              "request",
+              true,
+            );
+          } catch (e) {}
+        }
+        return null;
+      })()}
 
-              <div className="relative">
-                <button
-                  onClick={() => setShowSnippetDropdown(!showSnippetDropdown)}
-                  className="text-[11px] text-white/60 hover:text-white flex items-center gap-1"
-                >
-                  {snippetLang}
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-                {showSnippetDropdown && (
-                  <Dropdown
-                    className="top-full right-0 mt-1"
-                    onClose={() => setShowSnippetDropdown(false)}
-                    items={[
-                      {
-                        label: "Shell cURL",
-                        onClick: () => {
-                          setSnippetLang("Shell cURL");
-                          setShowSnippetDropdown(false);
-                        },
-                      },
-                      {
-                        label: "JavaScript Fetch",
-                        onClick: () => {
-                          setSnippetLang("JavaScript Fetch");
-                          setShowSnippetDropdown(false);
-                        },
-                      },
-                      {
-                        label: "Python Requests",
-                        onClick: () => {
-                          setSnippetLang("Python Requests");
-                          setShowSnippetDropdown(false);
-                        },
-                      },
-                      {
-                        label: "Go Native",
-                        onClick: () => {
-                          setSnippetLang("Go Native");
-                          setShowSnippetDropdown(false);
-                        },
-                      },
-                      {
-                        label: "Rust Reqwest",
-                        onClick: () => {
-                          setSnippetLang("Rust Reqwest");
-                          setShowSnippetDropdown(false);
-                        },
-                      },
-                      {
-                        label: "Java HttpClient",
-                        onClick: () => {
-                          setSnippetLang("Java HttpClient");
-                          setShowSnippetDropdown(false);
-                        },
-                      },
-                      {
-                        label: "PHP Guzzle",
-                        onClick: () => {
-                          setSnippetLang("PHP Guzzle");
-                          setShowSnippetDropdown(false);
-                        },
-                      },
-                    ]}
-                  />
-                )}
-              </div>
-            </div>
+      {(() => {
+        if (!activeRequest.response) return null;
+        const bodyText = decodeBody(activeRequest.response);
+        if (!bodyText) return null;
+        try {
+          return renderStructure(
+            "Response Body",
+            JSON.parse(bodyText) as Record<string, unknown>,
+            false,
+            "response",
+            false,
+          );
+        } catch (e) {}
+        return null;
+      })()}
 
-            <div className="flex-1 min-h-0 text-[11px] relative">
-              <div className="absolute inset-0 overflow-auto">
-                <CodeViewer code={snippetCode} language={currentLang} />
-              </div>
-              <button
-                onClick={onRun}
-                className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20"
+      {definitions.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold text-white/70 mb-4">
+            Object Definitions
+          </h3>
+          <div className="space-y-4">
+            {definitions.map((def) => (
+              <div
+                key={def.name}
+                id={`def-${def.name}`}
+                className="scroll-mt-12 transition-colors duration-500 rounded-lg"
               >
-                Run
-              </button>
-            </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-white/20 font-mono text-lg">#</span>
+                  <h4 className="text-sm font-mono font-semibold text-accent/70">
+                    {def.name}
+                  </h4>
+                </div>
+                <div className="space-y-1 ml-2 border-l border-white/5 pl-8">
+                  {Object.entries(def.properties).map(([key, value]) =>
+                    renderProperty(key, value, def.name, false, true),
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
+  );
+
+  return (
+    <OverviewLayout
+      name={activeRequest.name}
+      description={activeRequest.description || ""}
+      onCommitName={onUpdateName}
+      onDescriptionChange={onUpdateDescription}
+      leftFooter={leftFooter}
+      panelBadge={activeRequest.request.method}
+      panelBadgeClassName={methodBadgeClassName}
+      panelSubtitle={activeRequest.name || "/"}
+      snippetDropdownLabel={snippetLang}
+      snippetDropdownOpen={showSnippetDropdown}
+      onSnippetDropdownOpenChange={setShowSnippetDropdown}
+      snippetDropdownItems={snippetDropdownItems}
+      snippetCode={snippetCode}
+      snippetViewerLanguage={currentLang}
+      action={
+        <button
+          type="button"
+          onClick={onRun}
+          className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20"
+        >
+          Run
+        </button>
+      }
+    />
   );
 };
