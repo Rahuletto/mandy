@@ -1,391 +1,391 @@
-import React, { useState, useMemo } from "react";
+import type React from "react";
+import { useMemo, useState } from "react";
+import { decodeBody } from "../reqhelpers/rest";
+import type { ObjectDefinition } from "../types/overview";
 import type { RequestFile } from "../types/project";
 import {
-  generateCurl,
-  generateFetch,
-  generatePythonRequests,
-  generateGo,
-  generateRust,
-  generateJava,
-  generatePHP,
-} from "../utils/snippets";
-import { decodeBody } from "../reqhelpers/rest";
-import { ObjectDefinition } from "../types/overview";
-import {
-  getTypeColor,
-  extractDefinitions,
-  scrollToId,
+	extractDefinitions,
+	getTypeColor,
+	scrollToId,
 } from "../utils/overviewUtils";
+import {
+	generateCurl,
+	generateFetch,
+	generateGo,
+	generateJava,
+	generatePHP,
+	generatePythonRequests,
+	generateRust,
+} from "../utils/snippets";
 import { OverviewLayout } from "./editors/OverviewLayout";
 import type { MenuItem } from "./ui";
 
 interface RequestOverviewProps {
-  activeRequest: RequestFile;
-  onRun: () => void;
-  onUpdateName: (name: string) => void;
-  onUpdateDescription: (description: string) => void;
-  onUpdatePropertyDescription: (key: string, description: string) => void;
-  onSwitchToBody: () => void;
+	activeRequest: RequestFile;
+	onRun: () => void;
+	onUpdateName: (name: string) => void;
+	onUpdateDescription: (description: string) => void;
+	onUpdatePropertyDescription: (key: string, description: string) => void;
+	onSwitchToBody: () => void;
 }
 
 const SNIPPET_OPTIONS = [
-  "Shell cURL",
-  "JavaScript Fetch",
-  "Python Requests",
-  "Go Native",
-  "Rust Reqwest",
-  "Java HttpClient",
-  "PHP Guzzle",
+	"Shell cURL",
+	"JavaScript Fetch",
+	"Python Requests",
+	"Go Native",
+	"Rust Reqwest",
+	"Java HttpClient",
+	"PHP Guzzle",
 ] as const;
 
 type SnippetLang = (typeof SNIPPET_OPTIONS)[number];
 
 export const RequestOverview: React.FC<RequestOverviewProps> = ({
-  activeRequest,
-  onRun,
-  onUpdateName,
-  onUpdateDescription,
-  onUpdatePropertyDescription,
-  onSwitchToBody,
+	activeRequest,
+	onRun,
+	onUpdateName,
+	onUpdateDescription,
+	onUpdatePropertyDescription,
+	onSwitchToBody,
 }) => {
-  const [snippetLang, setSnippetLang] = useState<SnippetLang>("Shell cURL");
-  const [showSnippetDropdown, setShowSnippetDropdown] = useState(false);
-  const [editingProperty, setEditingProperty] = useState<string | null>(null);
-  const [propDescValue, setPropDescValue] = useState("");
+	const [snippetLang, setSnippetLang] = useState<SnippetLang>("Shell cURL");
+	const [showSnippetDropdown, setShowSnippetDropdown] = useState(false);
+	const [editingProperty, setEditingProperty] = useState<string | null>(null);
+	const [propDescValue, setPropDescValue] = useState("");
 
-  const getSnippet = () => {
-    switch (snippetLang) {
-      case "Shell cURL":
-        return {
-          code: generateCurl(activeRequest.request),
-          lang: "shell" as const,
-        };
-      case "JavaScript Fetch":
-        return {
-          code: generateFetch(activeRequest.request),
-          lang: "javascript" as const,
-        };
-      case "Python Requests":
-        return {
-          code: generatePythonRequests(activeRequest.request),
-          lang: "python" as const,
-        };
-      case "Go Native":
-        return { code: generateGo(activeRequest.request), lang: "go" as const };
-      case "Rust Reqwest":
-        return {
-          code: generateRust(activeRequest.request),
-          lang: "rust" as const,
-        };
-      case "Java HttpClient":
-        return {
-          code: generateJava(activeRequest.request),
-          lang: "java" as const,
-        };
-      case "PHP Guzzle":
-        return {
-          code: generatePHP(activeRequest.request),
-          lang: "php" as const,
-        };
-      default:
-        return { code: "", lang: "text" as const };
-    }
-  };
+	const getSnippet = () => {
+		switch (snippetLang) {
+			case "Shell cURL":
+				return {
+					code: generateCurl(activeRequest.request),
+					lang: "shell" as const,
+				};
+			case "JavaScript Fetch":
+				return {
+					code: generateFetch(activeRequest.request),
+					lang: "javascript" as const,
+				};
+			case "Python Requests":
+				return {
+					code: generatePythonRequests(activeRequest.request),
+					lang: "python" as const,
+				};
+			case "Go Native":
+				return { code: generateGo(activeRequest.request), lang: "go" as const };
+			case "Rust Reqwest":
+				return {
+					code: generateRust(activeRequest.request),
+					lang: "rust" as const,
+				};
+			case "Java HttpClient":
+				return {
+					code: generateJava(activeRequest.request),
+					lang: "java" as const,
+				};
+			case "PHP Guzzle":
+				return {
+					code: generatePHP(activeRequest.request),
+					lang: "php" as const,
+				};
+			default:
+				return { code: "", lang: "text" as const };
+		}
+	};
 
-  const { code: snippetCode, lang: currentLang } = getSnippet();
+	const { code: snippetCode, lang: currentLang } = getSnippet();
 
-  const definitions = useMemo(() => {
-    let allDefs: ObjectDefinition[] = [];
-    const seen = new Set<string>();
+	const definitions = useMemo(() => {
+		let allDefs: ObjectDefinition[] = [];
+		const seen = new Set<string>();
 
-    const reqBody = activeRequest.request.body;
-    if (
-      reqBody !== "None" &&
-      "Raw" in reqBody &&
-      reqBody.Raw.content_type?.includes("json")
-    ) {
-      try {
-        const data = JSON.parse(reqBody.Raw.content);
-        allDefs = [
-          ...allDefs,
-          ...extractDefinitions(data, "RequestBody", seen),
-        ];
-      } catch (e) {}
-    }
+		const reqBody = activeRequest.request.body;
+		if (
+			reqBody !== "None" &&
+			"Raw" in reqBody &&
+			reqBody.Raw.content_type?.includes("json")
+		) {
+			try {
+				const data = JSON.parse(reqBody.Raw.content);
+				allDefs = [
+					...allDefs,
+					...extractDefinitions(data, "RequestBody", seen),
+				];
+			} catch (_e) {}
+		}
 
-    if (activeRequest.response) {
-      const bodyText = decodeBody(activeRequest.response);
-      if (bodyText) {
-        try {
-          const data = JSON.parse(bodyText);
-          allDefs = [
-            ...allDefs,
-            ...extractDefinitions(data, "ResponseBody", seen),
-          ];
-        } catch (e) {}
-      }
-    }
+		if (activeRequest.response) {
+			const bodyText = decodeBody(activeRequest.response);
+			if (bodyText) {
+				try {
+					const data = JSON.parse(bodyText);
+					allDefs = [
+						...allDefs,
+						...extractDefinitions(data, "ResponseBody", seen),
+					];
+				} catch (_e) {}
+			}
+		}
 
-    return allDefs;
-  }, [activeRequest]);
+		return allDefs;
+	}, [activeRequest]);
 
-  const handlePropDescBlur = (key: string) => {
-    onUpdatePropertyDescription(key, propDescValue);
-    setEditingProperty(null);
-  };
+	const handlePropDescBlur = (key: string) => {
+		onUpdatePropertyDescription(key, propDescValue);
+		setEditingProperty(null);
+	};
 
-  const renderProperty = (
-    key: string,
-    value: unknown,
-    context?: string,
-    allowDescription?: boolean,
-    showTypes: boolean = true,
-  ) => {
-    const type = Array.isArray(value) ? "array" : typeof value;
-    const isObject = type === "object" && value !== null;
-    const isObjectArray =
-      type === "array" &&
-      Array.isArray(value) &&
-      value.length > 0 &&
-      typeof value[0] === "object";
+	const renderProperty = (
+		key: string,
+		value: unknown,
+		context?: string,
+		allowDescription?: boolean,
+		showTypes: boolean = true,
+	) => {
+		const type = Array.isArray(value) ? "array" : typeof value;
+		const isObject = type === "object" && value !== null;
+		const isObjectArray =
+			type === "array" &&
+			Array.isArray(value) &&
+			value.length > 0 &&
+			typeof value[0] === "object";
 
-    const fullKey = context ? `${context}.${key}` : key;
-    const savedDesc = activeRequest.propertyDescriptions?.[fullKey] || "";
+		const fullKey = context ? `${context}.${key}` : key;
+		const savedDesc = activeRequest.propertyDescriptions?.[fullKey] || "";
 
-    let targetId = "";
-    if (isObject)
-      targetId = `def-${key.charAt(0).toUpperCase() + key.slice(1)}`;
-    if (isObjectArray)
-      targetId = `def-${key.charAt(0).toUpperCase() + key.slice(1)}Item`;
+		let targetId = "";
+		if (isObject)
+			targetId = `def-${key.charAt(0).toUpperCase() + key.slice(1)}`;
+		if (isObjectArray)
+			targetId = `def-${key.charAt(0).toUpperCase() + key.slice(1)}Item`;
 
-    return (
-      <div
-        key={key}
-        className="py-2 border-b border-white/5 last:border-0 group"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-mono text-white font-medium">
-            {key}
-          </span>
-          {showTypes &&
-            (targetId ? (
-              <button
-                type="button"
-                onClick={() => scrollToId(targetId)}
-                className={`text-[10px] lowercase font-mono cursor-pointer hover:underline ${getTypeColor(type)}`}
-              >
-                {type}
-              </button>
-            ) : (
-              <span
-                className={`text-[10px] lowercase font-mono ${getTypeColor(type)}`}
-              >
-                {type}
-              </span>
-            ))}
-          {key === "id" && (
-            <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded leading-none">
-              read-only
-            </span>
-          )}
-        </div>
+		return (
+			<div
+				key={key}
+				className="py-2 border-b border-white/5 last:border-0 group"
+			>
+				<div className="flex items-center gap-3">
+					<span className="text-xs font-mono text-white font-medium">
+						{key}
+					</span>
+					{showTypes &&
+						(targetId ? (
+							<button
+								type="button"
+								onClick={() => scrollToId(targetId)}
+								className={`text-[10px] lowercase font-mono cursor-pointer hover:underline ${getTypeColor(type)}`}
+							>
+								{type}
+							</button>
+						) : (
+							<span
+								className={`text-[10px] lowercase font-mono ${getTypeColor(type)}`}
+							>
+								{type}
+							</span>
+						))}
+					{key === "id" && (
+						<span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded leading-none">
+							read-only
+						</span>
+					)}
+				</div>
 
-        {allowDescription && (
-          <div className="mt-1 flex items-center min-h-[18px]">
-            {editingProperty === fullKey ? (
-              <input
-                autoFocus
-                className="w-full bg-transparent border-none outline-none text-[11px] text-white/80 p-0 m-0 leading-none"
-                value={propDescValue}
-                onChange={(e) => setPropDescValue(e.target.value)}
-                onBlur={() => handlePropDescBlur(fullKey)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && handlePropDescBlur(fullKey)
-                }
-                placeholder="Enter description..."
-              />
-            ) : (
-              <div
-                className="w-full text-[11px] text-white/40 cursor-text hover:text-white/60 transition-colors leading-none"
-                onClick={() => {
-                  setEditingProperty(fullKey);
-                  setPropDescValue(savedDesc);
-                }}
-              >
-                {savedDesc || "No description"}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
+				{allowDescription && (
+					<div className="mt-1 flex items-center min-h-[18px]">
+						{editingProperty === fullKey ? (
+							<input
+								className="w-full bg-transparent border-none outline-none text-[11px] text-white/80 p-0 m-0 leading-none"
+								value={propDescValue}
+								onChange={(e) => setPropDescValue(e.target.value)}
+								onBlur={() => handlePropDescBlur(fullKey)}
+								onKeyDown={(e) =>
+									e.key === "Enter" && handlePropDescBlur(fullKey)
+								}
+								placeholder="Enter description..."
+							/>
+						) : (
+							<div
+								className="w-full text-[11px] text-white/40 cursor-text hover:text-white/60 transition-colors leading-none"
+								onClick={() => {
+									setEditingProperty(fullKey);
+									setPropDescValue(savedDesc);
+								}}
+							>
+								{savedDesc || "No description"}
+							</div>
+						)}
+					</div>
+				)}
+			</div>
+		);
+	};
 
-  const renderStructure = (
-    title: string,
-    data: Record<string, unknown>,
-    showSwitch?: boolean,
-    context?: string,
-    allowDescription?: boolean,
-  ) => {
-    if (!data) return null;
-    return (
-      <div className="mt-4">
-        <div className="flex items-center justify-start mb-6 gap-5">
-          <h3 className="text-sm font-semibold text-white/70">{title}</h3>
-          {showSwitch && (
-            <button
-              type="button"
-              onClick={onSwitchToBody}
-              className="text-[10px] cursor-pointer text-white/80 hover:text-white/50 font-medium px-3 py-1 rounded-full bg-white/5 hover:bg-white/2 transition-colors"
-            >
-              Show Body
-            </button>
-          )}
-        </div>
-        <div className="space-y-1">
-          {Object.entries(data).map(([key, value]) =>
-            renderProperty(
-              key,
-              value,
-              context,
-              allowDescription,
-              showSwitch || context === "response" || context === "request",
-            ),
-          )}
-        </div>
-      </div>
-    );
-  };
+	const renderStructure = (
+		title: string,
+		data: Record<string, unknown>,
+		showSwitch?: boolean,
+		context?: string,
+		allowDescription?: boolean,
+	) => {
+		if (!data) return null;
+		return (
+			<div className="mt-4">
+				<div className="flex items-center justify-start mb-6 gap-5">
+					<h3 className="text-sm font-semibold text-white/70">{title}</h3>
+					{showSwitch && (
+						<button
+							type="button"
+							onClick={onSwitchToBody}
+							className="text-[10px] cursor-pointer text-white/80 hover:text-white/50 font-medium px-3 py-1 rounded-full bg-white/5 hover:bg-white/2 transition-colors"
+						>
+							Show Body
+						</button>
+					)}
+				</div>
+				<div className="space-y-1">
+					{Object.entries(data).map(([key, value]) =>
+						renderProperty(
+							key,
+							value,
+							context,
+							allowDescription,
+							showSwitch || context === "response" || context === "request",
+						),
+					)}
+				</div>
+			</div>
+		);
+	};
 
-  const method = activeRequest.request.method;
-  const methodBadgeClassName =
-    method === "GET"
-      ? "bg-green/20 text-green"
-      : method === "POST"
-        ? "bg-blue-500/20 text-blue-400"
-        : method === "PUT"
-          ? "bg-yellow/20 text-yellow"
-          : method === "DELETE"
-            ? "bg-red/20 text-red"
-            : "bg-gray-500/20 text-gray-400";
+	const method = activeRequest.request.method;
+	const methodBadgeClassName =
+		method === "GET"
+			? "bg-green/20 text-green"
+			: method === "POST"
+				? "bg-blue-500/20 text-blue-400"
+				: method === "PUT"
+					? "bg-yellow/20 text-yellow"
+					: method === "DELETE"
+						? "bg-red/20 text-red"
+						: "bg-gray-500/20 text-gray-400";
 
-  const snippetDropdownItems: MenuItem[] = SNIPPET_OPTIONS.map((label) => ({
-    label,
-    onClick: () => {
-      setSnippetLang(label);
-      setShowSnippetDropdown(false);
-    },
-  }));
+	const snippetDropdownItems: MenuItem[] = SNIPPET_OPTIONS.map((label) => ({
+		label,
+		onClick: () => {
+			setSnippetLang(label);
+			setShowSnippetDropdown(false);
+		},
+	}));
 
-  const leftFooter = (
-    <>
-      {Object.keys(activeRequest.request.query_params).length > 0 && (
-        <div className="mt-4">
-          <h3 className="text-sm font-semibold text-white/70 mb-2">
-            Query Parameters
-          </h3>
-          <div className="space-y-1">
-            {Object.entries(activeRequest.request.query_params).map(
-              ([key, value]) =>
-                renderProperty(key, value, "params", true, false),
-            )}
-          </div>
-        </div>
-      )}
+	const leftFooter = (
+		<>
+			{Object.keys(activeRequest.request.query_params).length > 0 && (
+				<div className="mt-4">
+					<h3 className="text-sm font-semibold text-white/70 mb-2">
+						Query Parameters
+					</h3>
+					<div className="space-y-1">
+						{Object.entries(activeRequest.request.query_params).map(
+							([key, value]) =>
+								renderProperty(key, value, "params", true, false),
+						)}
+					</div>
+				</div>
+			)}
 
-      {(() => {
-        const body = activeRequest.request.body;
-        if (
-          body !== "None" &&
-          "Raw" in body &&
-          body.Raw.content_type?.includes("json")
-        ) {
-          try {
-            return renderStructure(
-              "Request Body",
-              JSON.parse(body.Raw.content) as Record<string, unknown>,
-              true,
-              "request",
-              true,
-            );
-          } catch (e) {}
-        }
-        return null;
-      })()}
+			{(() => {
+				const body = activeRequest.request.body;
+				if (
+					body !== "None" &&
+					"Raw" in body &&
+					body.Raw.content_type?.includes("json")
+				) {
+					try {
+						return renderStructure(
+							"Request Body",
+							JSON.parse(body.Raw.content) as Record<string, unknown>,
+							true,
+							"request",
+							true,
+						);
+					} catch (_e) {}
+				}
+				return null;
+			})()}
 
-      {(() => {
-        if (!activeRequest.response) return null;
-        const bodyText = decodeBody(activeRequest.response);
-        if (!bodyText) return null;
-        try {
-          return renderStructure(
-            "Response Body",
-            JSON.parse(bodyText) as Record<string, unknown>,
-            false,
-            "response",
-            false,
-          );
-        } catch (e) {}
-        return null;
-      })()}
+			{(() => {
+				if (!activeRequest.response) return null;
+				const bodyText = decodeBody(activeRequest.response);
+				if (!bodyText) return null;
+				try {
+					return renderStructure(
+						"Response Body",
+						JSON.parse(bodyText) as Record<string, unknown>,
+						false,
+						"response",
+						false,
+					);
+				} catch (_e) {}
+				return null;
+			})()}
 
-      {definitions.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-sm font-semibold text-white/70 mb-4">
-            Object Definitions
-          </h3>
-          <div className="space-y-4">
-            {definitions.map((def) => (
-              <div
-                key={def.name}
-                id={`def-${def.name}`}
-                className="scroll-mt-12 transition-colors duration-500 rounded-lg"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-white/20 font-mono text-lg">#</span>
-                  <h4 className="text-sm font-mono font-semibold text-accent/70">
-                    {def.name}
-                  </h4>
-                </div>
-                <div className="space-y-1 ml-2 border-l border-white/5 pl-8">
-                  {Object.entries(def.properties).map(([key, value]) =>
-                    renderProperty(key, value, def.name, false, true),
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </>
-  );
+			{definitions.length > 0 && (
+				<div className="mt-8">
+					<h3 className="text-sm font-semibold text-white/70 mb-4">
+						Object Definitions
+					</h3>
+					<div className="space-y-4">
+						{definitions.map((def) => (
+							<div
+								key={def.name}
+								id={`def-${def.name}`}
+								className="scroll-mt-12 transition-colors duration-500 rounded-lg"
+							>
+								<div className="flex items-center gap-2 mb-3">
+									<span className="text-white/20 font-mono text-lg">#</span>
+									<h4 className="text-sm font-mono font-semibold text-accent/70">
+										{def.name}
+									</h4>
+								</div>
+								<div className="space-y-1 ml-2 border-l border-white/5 pl-8">
+									{Object.entries(def.properties).map(([key, value]) =>
+										renderProperty(key, value, def.name, false, true),
+									)}
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+		</>
+	);
 
-  return (
-    <OverviewLayout
-      name={activeRequest.name}
-      description={activeRequest.description || ""}
-      onCommitName={onUpdateName}
-      onDescriptionChange={onUpdateDescription}
-      leftFooter={leftFooter}
-      panelBadge={activeRequest.request.method}
-      panelBadgeClassName={methodBadgeClassName}
-      panelSubtitle={activeRequest.name || "/"}
-      snippetDropdownLabel={snippetLang}
-      snippetDropdownOpen={showSnippetDropdown}
-      onSnippetDropdownOpenChange={setShowSnippetDropdown}
-      snippetDropdownItems={snippetDropdownItems}
-      snippetCode={snippetCode}
-      snippetViewerLanguage={currentLang}
-      action={
-        <button
-          type="button"
-          onClick={onRun}
-          className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20"
-        >
-          Run
-        </button>
-      }
-    />
-  );
+	return (
+		<OverviewLayout
+			name={activeRequest.name}
+			description={activeRequest.description || ""}
+			onCommitName={onUpdateName}
+			onDescriptionChange={onUpdateDescription}
+			leftFooter={leftFooter}
+			panelBadge={activeRequest.request.method}
+			panelBadgeClassName={methodBadgeClassName}
+			panelSubtitle={activeRequest.name || "/"}
+			snippetDropdownLabel={snippetLang}
+			snippetDropdownOpen={showSnippetDropdown}
+			onSnippetDropdownOpenChange={setShowSnippetDropdown}
+			snippetDropdownItems={snippetDropdownItems}
+			snippetCode={snippetCode}
+			snippetViewerLanguage={currentLang}
+			action={
+				<button
+					type="button"
+					onClick={onRun}
+					className="flex absolute right-4 bottom-4 cursor-pointer items-center gap-2 px-4 py-1.5 bg-accent text-background rounded-full text-sm font-semibold hover:bg-accent/90 transition-colors z-20"
+				>
+					Run
+				</button>
+			}
+		/>
+	);
 };

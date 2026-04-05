@@ -65,13 +65,18 @@ fn tahoe_runtime_icon_path(
 ) -> Option<PathBuf> {
     let dark = resource_dir.join("resources/macos-tahoe-tinted-dark.png");
     let light = resource_dir.join("resources/macos-tahoe-light.png");
-    let clear_light = resource_dir.join("resources/macos-tahoe-light.png");
-    let clear_only = resource_dir.join("resources/macos-tahoe-clear.png");
+    let clear = resource_dir.join("resources/macos-tahoe-clear.png");
 
     let candidates: &[PathBuf] = match variant {
         TahoeIconVariant::Dark => std::slice::from_ref(&dark),
-        TahoeIconVariant::Light => &[light, clear_light.clone()],
-        TahoeIconVariant::Clear => &[clear_only, clear_light],
+        TahoeIconVariant::Light => std::slice::from_ref(&light),
+        TahoeIconVariant::Clear => {
+            if clear.exists() {
+                std::slice::from_ref(&clear)
+            } else {
+                std::slice::from_ref(&light)
+            }
+        }
     };
 
     for p in candidates {
@@ -160,6 +165,7 @@ mod theme_observer {
             fn theme_changed(&self, _notification: &NSNotification) {
                 if let Some(app) = TAHOE_APP.get() {
                     apply_tahoe_app_icon_if_needed(app);
+                    crate::window::refresh_liquid_glass_theme(app);
                 }
             }
         }

@@ -2,46 +2,45 @@ import type { Language } from "../components/CodeMirror";
 import type { MQTTFile, SocketIOFile } from "../types/project";
 
 export type SocketIOSnippetLang =
-  | "JavaScript"
-  | "Python"
-  | "Go"
-  | "Rust"
-  | "Java"
-  | "PHP";
+	| "JavaScript"
+	| "Python"
+	| "Go"
+	| "Rust"
+	| "Java"
+	| "PHP";
 
 export type MqttSnippetLang =
-  | "JavaScript"
-  | "Python"
-  | "Go"
-  | "Rust"
-  | "Java"
-  | "Shell mosquitto";
-
-function escapeForDoubleQuotes(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
+	| "JavaScript"
+	| "Python"
+	| "Go"
+	| "Rust"
+	| "Java"
+	| "Shell mosquitto";
 
 function getSocketIoUrlParts(sio: SocketIOFile) {
-  return {
-    url: sio.url?.trim() || "https://api.example.com",
-    namespace: sio.namespace?.trim() || "/",
-    path: sio.path?.trim() || "/socket.io/",
-    eventName: sio.messages.find((message) => message.direction !== "system")?.event || "message",
-    authPayload: sio.authPayload?.trim() || "{}",
-  };
+	return {
+		url: sio.url?.trim() || "https://api.example.com",
+		namespace: sio.namespace?.trim() || "/",
+		path: sio.path?.trim() || "/socket.io/",
+		eventName:
+			sio.messages.find((message) => message.direction !== "system")?.event ||
+			"message",
+		authPayload: sio.authPayload?.trim() || "{}",
+	};
 }
 
 export function generateSocketIoSnippet(
-  sio: SocketIOFile,
-  lang: SocketIOSnippetLang,
+	sio: SocketIOFile,
+	lang: SocketIOSnippetLang,
 ): { code: string; language: Language } {
-  const { url, namespace, path, eventName, authPayload } = getSocketIoUrlParts(sio);
+	const { url, namespace, path, eventName, authPayload } =
+		getSocketIoUrlParts(sio);
 
-  switch (lang) {
-    case "JavaScript":
-      return {
-        language: "javascript",
-        code: `import { io } from "socket.io-client";
+	switch (lang) {
+		case "JavaScript":
+			return {
+				language: "javascript",
+				code: `import { io } from "socket.io-client";
 
 const socket = io("${url}", {
   path: "${path}",
@@ -57,11 +56,11 @@ socket.on("connect", () => {
 socket.onAny((event, payload) => {
   console.log(event, payload);
 });`,
-      };
-    case "Python":
-      return {
-        language: "python",
-        code: `import socketio
+			};
+		case "Python":
+			return {
+				language: "python",
+				code: `import socketio
 
 sio = socketio.Client()
 
@@ -79,11 +78,11 @@ sio.connect(
     socketio_path="${path.replace(/^\//, "")}",
     auth=${authPayload}
 )`,
-      };
-    case "Go":
-      return {
-        language: "go",
-        code: `package main
+			};
+		case "Go":
+			return {
+				language: "go",
+				code: `package main
 
 import (
 \t"fmt"
@@ -111,11 +110,11 @@ func main() {
 \t})
 
 \tselect {}`,
-      };
-    case "Rust":
-      return {
-        language: "rust",
-        code: `use rust_socketio::{ClientBuilder, Payload};
+			};
+		case "Rust":
+			return {
+				language: "rust",
+				code: `use rust_socketio::{ClientBuilder, Payload};
 use serde_json::json;
 
 fn main() {
@@ -133,11 +132,11 @@ fn main() {
         .connect()
         .expect("connection failed");
 }`,
-      };
-    case "Java":
-      return {
-        language: "java",
-        code: `import io.socket.client.IO;
+			};
+		case "Java":
+			return {
+				language: "java",
+				code: `import io.socket.client.IO;
 import io.socket.client.Socket;
 import org.json.JSONObject;
 
@@ -157,11 +156,11 @@ public class Main {
         socket.connect();
     }
 }`,
-      };
-    case "PHP":
-      return {
-        language: "php",
-        code: `<?php
+			};
+		case "PHP":
+			return {
+				language: "php",
+				code: `<?php
 
 require 'vendor/autoload.php';
 
@@ -175,37 +174,38 @@ $client = new Client(new Version4X('${url}', [
 $client->initialize();
 $client->emit('${eventName}', ['hello' => 'world']);
 $client->close();`,
-      };
-  }
+			};
+	}
 }
 
 function getMqttSnippetParts(mqtt: MQTTFile) {
-  const activeSubscription =
-    mqtt.subscriptions.find((sub) => sub.enabled !== false && sub.topic.trim()) ||
-    mqtt.subscriptions.find((sub) => sub.topic.trim());
+	const activeSubscription =
+		mqtt.subscriptions.find(
+			(sub) => sub.enabled !== false && sub.topic.trim(),
+		) || mqtt.subscriptions.find((sub) => sub.topic.trim());
 
-  return {
-    url: mqtt.url?.trim() || "mqtt://broker.emqx.io:1883",
-    clientId: mqtt.clientId?.trim() || "mandy-client",
-    cleanSession: mqtt.cleanSession !== false,
-    keepAlive: mqtt.keepAliveSecs || 30,
-    topic: activeSubscription?.topic?.trim() || "demo/topic",
-    qos: activeSubscription?.qos ?? 0,
-  };
+	return {
+		url: mqtt.url?.trim() || "mqtt://broker.emqx.io:1883",
+		clientId: mqtt.clientId?.trim() || "mandy-client",
+		cleanSession: mqtt.cleanSession !== false,
+		keepAlive: mqtt.keepAliveSecs || 30,
+		topic: activeSubscription?.topic?.trim() || "demo/topic",
+		qos: activeSubscription?.qos ?? 0,
+	};
 }
 
 export function generateMqttSnippet(
-  mqtt: MQTTFile,
-  lang: MqttSnippetLang,
+	mqtt: MQTTFile,
+	lang: MqttSnippetLang,
 ): { code: string; language: Language } {
-  const { url, clientId, cleanSession, keepAlive, topic, qos } =
-    getMqttSnippetParts(mqtt);
+	const { url, clientId, cleanSession, keepAlive, topic, qos } =
+		getMqttSnippetParts(mqtt);
 
-  switch (lang) {
-    case "JavaScript":
-      return {
-        language: "javascript",
-        code: `import mqtt from "mqtt";
+	switch (lang) {
+		case "JavaScript":
+			return {
+				language: "javascript",
+				code: `import mqtt from "mqtt";
 
 const client = mqtt.connect("${url}", {
   clientId: "${clientId}",
@@ -222,11 +222,11 @@ client.on("connect", () => {
 client.on("message", (topic, payload) => {
   console.log(topic, payload.toString());
 });`,
-      };
-    case "Python":
-      return {
-        language: "python",
-        code: `import paho.mqtt.client as mqtt
+			};
+		case "Python":
+			return {
+				language: "python",
+				code: `import paho.mqtt.client as mqtt
 
 client = mqtt.Client(client_id="${clientId}", clean_session=${cleanSession ? "True" : "False"})
 
@@ -242,11 +242,11 @@ client.on_connect = on_connect
 client.on_message = on_message
 client.connect("${url.replace(/^mqtts?:\/\//, "").replace(/:\d+.*$/, "")}", ${Number(url.match(/:(\d+)/)?.[1] || 1883)}, ${keepAlive})
 client.loop_forever()`,
-      };
-    case "Go":
-      return {
-        language: "go",
-        code: `package main
+			};
+		case "Go":
+			return {
+				language: "go",
+				code: `package main
 
 import (
 \t"fmt"
@@ -270,11 +270,11 @@ func main() {
 
 \tclient.Publish("${topic}", ${qos}, false, []byte("{\\"hello\\":\\"world\\"}"))
 \tselect {}`,
-      };
-    case "Rust":
-      return {
-        language: "rust",
-        code: `use rumqttc::{Client, Event, Incoming, MqttOptions, QoS};
+			};
+		case "Rust":
+			return {
+				language: "rust",
+				code: `use rumqttc::{Client, Event, Incoming, MqttOptions, QoS};
 use std::time::Duration;
 
 fn main() {
@@ -292,11 +292,11 @@ fn main() {
         }
     }
 }`,
-      };
-    case "Java":
-      return {
-        language: "java",
-        code: `import org.eclipse.paho.client.mqttv3.*;
+			};
+		case "Java":
+			return {
+				language: "java",
+				code: `import org.eclipse.paho.client.mqttv3.*;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -310,39 +310,39 @@ public class Main {
         client.publish("${topic}", new MqttMessage("{\\"hello\\":\\"world\\"}".getBytes()));
     }
 }`,
-      };
-    case "Shell mosquitto":
-      return {
-        language: "shell",
-        code: `# Subscribe
+			};
+		case "Shell mosquitto":
+			return {
+				language: "shell",
+				code: `# Subscribe
 mosquitto_sub -h ${url.replace(/^mqtts?:\/\//, "").replace(/:\d+.*$/, "")} -p ${Number(url.match(/:(\d+)/)?.[1] || 1883)} -t "${topic}" -q ${qos}
 
 # Publish
 mosquitto_pub -h ${url.replace(/^mqtts?:\/\//, "").replace(/:\d+.*$/, "")} -p ${Number(url.match(/:(\d+)/)?.[1] || 1883)} -t "${topic}" -q ${qos} -m '{"hello":"world"}'`,
-      };
-  }
+			};
+	}
 }
 
 export const SOCKETIO_SNIPPET_LANGS: {
-  label: string;
-  lang: SocketIOSnippetLang;
+	label: string;
+	lang: SocketIOSnippetLang;
 }[] = [
-  { label: "JavaScript", lang: "JavaScript" },
-  { label: "Python Socket.IO", lang: "Python" },
-  { label: "Go Socket.IO", lang: "Go" },
-  { label: "Rust Socket.IO", lang: "Rust" },
-  { label: "Java Socket.IO", lang: "Java" },
-  { label: "PHP Elephant.IO", lang: "PHP" },
+	{ label: "JavaScript", lang: "JavaScript" },
+	{ label: "Python Socket.IO", lang: "Python" },
+	{ label: "Go Socket.IO", lang: "Go" },
+	{ label: "Rust Socket.IO", lang: "Rust" },
+	{ label: "Java Socket.IO", lang: "Java" },
+	{ label: "PHP Elephant.IO", lang: "PHP" },
 ];
 
 export const MQTT_SNIPPET_LANGS: {
-  label: string;
-  lang: MqttSnippetLang;
+	label: string;
+	lang: MqttSnippetLang;
 }[] = [
-  { label: "JavaScript MQTT.js", lang: "JavaScript" },
-  { label: "Python Paho", lang: "Python" },
-  { label: "Go Paho", lang: "Go" },
-  { label: "Rust rumqttc", lang: "Rust" },
-  { label: "Java Eclipse Paho", lang: "Java" },
-  { label: "Shell mosquitto", lang: "Shell mosquitto" },
+	{ label: "JavaScript MQTT.js", lang: "JavaScript" },
+	{ label: "Python Paho", lang: "Python" },
+	{ label: "Go Paho", lang: "Go" },
+	{ label: "Rust rumqttc", lang: "Rust" },
+	{ label: "Java Eclipse Paho", lang: "Java" },
+	{ label: "Shell mosquitto", lang: "Shell mosquitto" },
 ];

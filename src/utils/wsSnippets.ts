@@ -1,24 +1,24 @@
 import type { Language } from "../components/CodeMirror";
 
 export type WsSnippetLang =
-  | "JavaScript"
-  | "Python"
-  | "Go"
-  | "Rust"
-  | "Java"
-  | "PHP"
-  | "Shell wscat";
+	| "JavaScript"
+	| "Python"
+	| "Go"
+	| "Rust"
+	| "Java"
+	| "PHP"
+	| "Shell wscat";
 
 export function generateWsSnippet(
-  url: string,
-  lang: WsSnippetLang,
+	url: string,
+	lang: WsSnippetLang,
 ): { code: string; language: Language } {
-  const u = url || "wss://echo.websocket.org";
-  switch (lang) {
-    case "JavaScript":
-      return {
-        language: "javascript",
-        code: `const ws = new WebSocket("${u}");
+	const u = url || "wss://echo.websocket.org";
+	switch (lang) {
+		case "JavaScript":
+			return {
+				language: "javascript",
+				code: `const ws = new WebSocket("${u}");
 
 ws.onopen = () => {
   console.log("Connected");
@@ -36,11 +36,11 @@ ws.onerror = (error) => {
 ws.onclose = (event) => {
   console.log("Disconnected:", event.code, event.reason);
 };`,
-      };
-    case "Python":
-      return {
-        language: "python",
-        code: `import asyncio
+			};
+		case "Python":
+			return {
+				language: "python",
+				code: `import asyncio
 import websockets
 
 async def connect():
@@ -50,11 +50,11 @@ async def connect():
         print(f"Received: {response}")
 
 asyncio.run(connect())`,
-      };
-    case "Go":
-      return {
-        language: "go",
-        code: `package main
+			};
+		case "Go":
+			return {
+				language: "go",
+				code: `package main
 
 import (
 \t"fmt"
@@ -80,11 +80,11 @@ func main() {
 \t}
 \tfmt.Printf("Received: %s\\n", msg)
 }`,
-      };
-    case "Rust":
-      return {
-        language: "rust",
-        code: `use tungstenite::connect;
+			};
+		case "Rust":
+			return {
+				language: "rust",
+				code: `use tungstenite::connect;
 use url::Url;
 
 fn main() {
@@ -97,11 +97,11 @@ fn main() {
     let msg = socket.read().expect("Error reading");
     println!("Received: {}", msg);
 }`,
-      };
-    case "Java":
-      return {
-        language: "java",
-        code: `import java.net.URI;
+			};
+		case "Java":
+			return {
+				language: "java",
+				code: `import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.util.concurrent.CompletionStage;
@@ -128,11 +128,11 @@ public class WsClient {
         Thread.sleep(2000);
     }
 }`,
-      };
-    case "PHP":
-      return {
-        language: "php",
-        code: `<?php
+			};
+		case "PHP":
+			return {
+				language: "php",
+				code: `<?php
 require 'vendor/autoload.php';
 
 use Ratchet\\Client\\connect;
@@ -147,25 +147,25 @@ connect("${u}")->then(function($conn) {
 }, function ($e) {
     echo "Could not connect: {$e->getMessage()}\\n";
 });`,
-      };
-    case "Shell wscat":
-      return {
-        language: "shell",
-        code: `# Install: npm install -g wscat
+			};
+		case "Shell wscat":
+			return {
+				language: "shell",
+				code: `# Install: npm install -g wscat
 wscat -c "${u}"
 
 # Then type messages in the interactive prompt
 # > Hello`,
-      };
-  }
+			};
+	}
 }
 
 export const WS_SNIPPET_LANGS: { label: string; lang: WsSnippetLang }[] = [
-  { label: "JavaScript", lang: "JavaScript" },
-  { label: "Python", lang: "Python" },
-  { label: "Go Native", lang: "Go" },
-  { label: "Rust Tungstenite", lang: "Rust" },
-  { label: "Java HttpClient", lang: "Java" },
-  { label: "PHP Ratchet", lang: "PHP" },
-  { label: "Shell wscat", lang: "Shell wscat" },
+	{ label: "JavaScript", lang: "JavaScript" },
+	{ label: "Python", lang: "Python" },
+	{ label: "Go Native", lang: "Go" },
+	{ label: "Rust Tungstenite", lang: "Rust" },
+	{ label: "Java HttpClient", lang: "Java" },
+	{ label: "PHP Ratchet", lang: "PHP" },
+	{ label: "Shell wscat", lang: "Shell wscat" },
 ];

@@ -1,101 +1,100 @@
 import { useEffect, useRef } from "react";
 
 interface DialogProps {
-  isOpen: boolean;
-  title: string;
-  description?: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  isDestructive?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-  /** When false: no Cancel, backdrop does not close, Escape does nothing. */
-  dismissible?: boolean;
+	isOpen: boolean;
+	title: string;
+	description?: string;
+	confirmLabel?: string;
+	cancelLabel?: string;
+	isDestructive?: boolean;
+	onConfirm: () => void;
+	onCancel: () => void;
+	/** When false: no Cancel, backdrop does not close, Escape does nothing. */
+	dismissible?: boolean;
 }
 
 export function Dialog({
-  isOpen,
-  title,
-  description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
-  isDestructive = false,
-  onConfirm,
-  onCancel,
-  dismissible = true,
+	isOpen,
+	title,
+	description,
+	confirmLabel = "Confirm",
+	cancelLabel = "Cancel",
+	isDestructive = false,
+	onConfirm,
+	onCancel,
+	dismissible = true,
 }: DialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
+	const dialogRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
-      if (e.key === "Escape" && dismissible) {
-        onCancel();
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        onConfirm();
-      }
-    };
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (!isOpen) return;
+			if (e.key === "Escape" && dismissible) {
+				onCancel();
+			}
+			if (e.key === "Enter") {
+				e.preventDefault();
+				onConfirm();
+			}
+		};
 
-    if (isOpen) {
-      document.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden";
-    }
+		if (isOpen) {
+			document.addEventListener("keydown", handleKeyDown);
+			document.body.style.overflow = "hidden";
+		}
 
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [isOpen, onCancel, onConfirm, dismissible]);
+		return () => {
+			document.removeEventListener("keydown", handleKeyDown);
+			document.body.style.overflow = "";
+		};
+	}, [isOpen, onCancel, onConfirm, dismissible]);
 
-  if (!isOpen) return null;
+	if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-      <div
-        ref={dialogRef}
-        className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl animate-blur-in p-6 flex flex-col gap-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex flex-col gap-2">
-          <h3 className="text-lg font-semibold text-white leading-none tracking-tight">
-            {title}
-          </h3>
-          {description && (
-            <p className="text-sm text-white/60">{description}</p>
-          )}
-        </div>
+	return (
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+			<div
+				ref={dialogRef}
+				className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl animate-blur-in p-6 flex flex-col gap-4"
+				onClick={(e) => e.stopPropagation()}
+			>
+				<div className="flex flex-col gap-2">
+					<h3 className="text-lg font-semibold text-white leading-none tracking-tight">
+						{title}
+					</h3>
+					{description && (
+						<p className="text-sm text-white/60">{description}</p>
+					)}
+				</div>
 
-        <div className="flex items-center justify-end gap-3 mt-2">
-          {dismissible && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-3 py-2 text-xs cursor-pointer font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-colors"
-            >
-              {cancelLabel}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={`px-4 py-2 cursor-pointer text-xs font-semibold rounded-full transition-colors shadow-sm ${
-              isDestructive
-                ? "bg-red hover:bg-red text-white"
-                : "bg-accent hover:bg-accent/90 text-background"
-            }`}
-            autoFocus
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-      <div
-        className="absolute inset-0 -z-10"
-        onClick={dismissible ? onCancel : undefined}
-        aria-hidden
-      />
-    </div>
-  );
+				<div className="flex items-center justify-end gap-3 mt-2">
+					{dismissible && (
+						<button
+							type="button"
+							onClick={onCancel}
+							className="px-3 py-2 text-xs cursor-pointer font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-colors"
+						>
+							{cancelLabel}
+						</button>
+					)}
+					<button
+						type="button"
+						onClick={onConfirm}
+						className={`px-4 py-2 cursor-pointer text-xs font-semibold rounded-full transition-colors shadow-sm ${
+							isDestructive
+								? "bg-red hover:bg-red text-white"
+								: "bg-accent hover:bg-accent/90 text-background"
+						}`}
+					>
+						{confirmLabel}
+					</button>
+				</div>
+			</div>
+			<div
+				className="absolute inset-0 -z-10"
+				onClick={dismissible ? onCancel : undefined}
+				aria-hidden
+			/>
+		</div>
+	);
 }
