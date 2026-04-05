@@ -25,13 +25,20 @@ export interface RequestFile {
   useInheritedAuth?: boolean;
 }
 
-export interface WebSocketKeyValue {
+export interface KeyValueItem {
   id: string;
   key: string;
   value: string;
   description: string;
   enabled: boolean;
 }
+
+/** @deprecated Use `KeyValueItem` instead */
+export type WebSocketKeyValue = KeyValueItem;
+/** @deprecated Use `KeyValueItem` instead */
+export type GraphQLKeyValue = KeyValueItem;
+/** @deprecated Use `KeyValueItem` instead */
+export type SocketIOKeyValue = KeyValueItem;
 
 export interface WebSocketFile {
   id: string;
@@ -42,9 +49,9 @@ export interface WebSocketFile {
   protocols?: string[];
   messages: WebSocketMessage[];
   headers: Record<string, string>;
-  params?: WebSocketKeyValue[];
-  headerItems?: WebSocketKeyValue[];
-  cookies?: WebSocketKeyValue[];
+  params?: KeyValueItem[];
+  headerItems?: KeyValueItem[];
+  cookies?: KeyValueItem[];
   auth?: import("../bindings").AuthType;
   useInheritedAuth?: boolean;
 }
@@ -64,14 +71,6 @@ export interface WebSocketMessage {
   };
 }
 
-export interface GraphQLKeyValue {
-  id: string;
-  key: string;
-  value: string;
-  description: string;
-  enabled: boolean;
-}
-
 export interface GraphQLFile {
   id: string;
   type: "graphql";
@@ -81,21 +80,13 @@ export interface GraphQLFile {
   query: string;
   variables: string;
   headers: Record<string, string>;
-  headerItems?: GraphQLKeyValue[];
+  headerItems?: KeyValueItem[];
   auth?: import("../bindings").AuthType;
   useInheritedAuth?: boolean;
   schema?: string;
   schemaJSON?: string;
   schemaLastFetched?: number;
   response: ApiResponse | null;
-}
-
-export interface SocketIOKeyValue {
-  id: string;
-  key: string;
-  value: string;
-  description: string;
-  enabled: boolean;
 }
 
 export interface SocketIOFile {
@@ -114,8 +105,8 @@ export interface SocketIOFile {
   maxReconnectAttempts?: number | null;
   messages: SocketIOMessage[];
   headers: Record<string, string>;
-  headerItems?: SocketIOKeyValue[];
-  queryItems?: SocketIOKeyValue[];
+  headerItems?: KeyValueItem[];
+  queryItems?: KeyValueItem[];
   auth?: import("../bindings").AuthType;
   authPayload?: string;
   useInheritedAuth?: boolean;
@@ -173,7 +164,7 @@ export interface Folder {
   id: string;
   type: "folder";
   name: string;
-  children: (Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile | SocketIOFile | MQTTFile)[];
+  children: (Folder | RequestItem)[];
   expanded?: boolean;
 }
 
@@ -191,6 +182,31 @@ export interface Project {
   recentRequests: RecentRequest[];
 }
 
-export type TreeItem = Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile | SocketIOFile | MQTTFile;
+export type RequestType = "request" | "websocket" | "graphql" | "socketio" | "mqtt" | "workflow";
+
+export type RequestItemMap = {
+  request: RequestFile;
+  websocket: WebSocketFile;
+  graphql: GraphQLFile;
+  socketio: SocketIOFile;
+  mqtt: MQTTFile;
+  workflow: WorkflowFile;
+};
+
+export type RequestItem = RequestItemMap[RequestType];
+export type ItemOfType<T extends RequestType> = RequestItemMap[T];
+
+export type TreeItem = Folder | RequestItem;
+
+export function isRequestItem(item: TreeItem): item is RequestItem {
+  return item.type !== "folder";
+}
+
+export function isItemType<T extends RequestType>(
+  item: TreeItem | null | undefined,
+  type: T,
+): item is ItemOfType<T> {
+  return !!item && item.type === type;
+}
 
 export type SortMode = "manual" | "method" | "alphabetical";
