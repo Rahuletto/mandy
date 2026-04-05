@@ -71,6 +71,16 @@ function isValidMqttUrl(input: string) {
 }
 const MAX_MQTT_MESSAGES = 600;
 
+/** Publish topic default / reset: only real Topics-tab rows — never a hardcoded demo string. */
+function defaultPublishTopicFromSubscriptions(
+	subscriptions: MQTTSubscription[],
+): string {
+	const row = subscriptions.find(
+		(s) => s.enabled !== false && s.topic.trim().length > 0,
+	);
+	return row?.topic.trim() ?? "";
+}
+
 function collectTopLevelJsonKeysFromTopic(
 	topic: string,
 	messages: MQTTMessage[],
@@ -144,8 +154,8 @@ export function MQTTEditor({
 	);
 	const [isConnecting, setIsConnecting] = useState(false);
 	const [isSending, setIsSending] = useState(false);
-	const [topic, setTopic] = useState(
-		mqtt.subscriptions[0]?.topic || "demo/topic",
+	const [topic, setTopic] = useState(() =>
+		defaultPublishTopicFromSubscriptions(mqtt.subscriptions),
 	);
 	const [payload, setPayload] = useState("{}");
 	const [retain, setRetain] = useState(false);
@@ -166,6 +176,12 @@ export function MQTTEditor({
 	useEffect(() => {
 		setUrl(mqtt.url);
 	}, [mqtt.url]);
+
+	// Reset publish topic when opening a different MQTT file only (not when editing subscriptions).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: mqtt.subscriptions intentionally omitted
+	useEffect(() => {
+		setTopic(defaultPublishTopicFromSubscriptions(mqtt.subscriptions));
+	}, [mqtt.id]);
 
 	/** Only when switching MQTT files: restore background session + subscription baseline. */
 	useEffect(() => {
@@ -357,6 +373,20 @@ export function MQTTEditor({
 			pushSystemMessage("Disconnected");
 		}
 	}, [mqtt.id, pushSystemMessage]);
+
+	/** Message tab: autocomplete only Topics-tab subscriptions (not traffic-derived names). */
+	const subscriptionTopicSuggestions = useMemo(
+		() =>
+			Array.from(
+				new Set(
+					mqtt.subscriptions
+						.filter((s) => s.enabled !== false)
+						.map((s) => s.topic.trim())
+						.filter((t) => t.length > 0),
+				),
+			).sort((a, b) => a.localeCompare(b)),
+		[mqtt.subscriptions],
+	);
 
 	const knownTopics = useMemo(
 		() =>
@@ -603,7 +633,7 @@ export function MQTTEditor({
 													<AutocompleteInput
 														value={topic}
 														onChange={setTopic}
-														suggestions={knownTopics}
+														suggestions={subscriptionTopicSuggestions}
 														placeholder="my/topic"
 														className="min-w-0"
 														inputClassName="w-full py-2 text-sm text-white outline-none placeholder:text-white/20"
