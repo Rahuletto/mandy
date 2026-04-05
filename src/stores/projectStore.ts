@@ -13,6 +13,9 @@ import type {
   Environment,
   EnvironmentVariable,
   RecentRequest,
+  RequestType,
+  ItemOfType,
+  RequestItem,
 } from "../types/project";
 import type { WorkflowFile } from "../types/workflow";
 import type { ApiResponse } from "../bindings";
@@ -20,6 +23,7 @@ import { createDefaultRequest } from "../reqhelpers/rest";
 import { findSecrets } from "../utils/secretDetection";
 import type { AuthType } from "../bindings";
 import type { Node, Edge } from "@xyflow/react";
+import { getItemConfig } from "../registry";
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -94,81 +98,16 @@ function findItem(root: Folder, itemId: string): TreeItem | null {
 }
 
 function cloneTreeItem(item: TreeItem): TreeItem {
-  if (item.type === "request") {
+  if (item.type === "folder") {
     return {
       ...item,
       id: generateId(),
       name: `${item.name} (copy)`,
-      request: {
-        ...item.request,
-        headers: { ...item.request.headers },
-        query_params: { ...item.request.query_params },
-      },
-      response: null,
+      children: item.children.map(cloneTreeItem),
     };
   }
-  if (item.type === "websocket") {
-    return {
-      ...item,
-      id: generateId(),
-      name: `${item.name} (copy)`,
-      headers: { ...item.headers },
-      params: item.params ? JSON.parse(JSON.stringify(item.params)) : undefined,
-      headerItems: item.headerItems ? JSON.parse(JSON.stringify(item.headerItems)) : undefined,
-      cookies: item.cookies ? JSON.parse(JSON.stringify(item.cookies)) : undefined,
-      auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
-      messages: [],
-    };
-  }
-  if (item.type === "graphql") {
-    return {
-      ...item,
-      id: generateId(),
-      name: `${item.name} (copy)`,
-      headers: { ...item.headers },
-      headerItems: item.headerItems ? JSON.parse(JSON.stringify(item.headerItems)) : undefined,
-      auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
-      response: null,
-    };
-  }
-  if (item.type === "socketio") {
-    return {
-      ...item,
-      id: generateId(),
-      name: `${item.name} (copy)`,
-      headers: { ...item.headers },
-      headerItems: item.headerItems ? JSON.parse(JSON.stringify(item.headerItems)) : undefined,
-      queryItems: item.queryItems ? JSON.parse(JSON.stringify(item.queryItems)) : undefined,
-      auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
-      messages: [],
-    };
-  }
-  if (item.type === "mqtt") {
-    return {
-      ...item,
-      id: generateId(),
-      name: `${item.name} (copy)`,
-      subscriptions: item.subscriptions
-        ? JSON.parse(JSON.stringify(item.subscriptions))
-        : [],
-      messages: [],
-    };
-  }
-  if (item.type === "workflow") {
-    return {
-      ...item,
-      id: generateId(),
-      name: `${item.name} (copy)`,
-      nodes: item.nodes.map((node) => ({ ...node, id: generateId() })),
-      edges: item.edges.map((edge) => ({ ...edge, id: generateId() })),
-    };
-  }
-  return {
-    ...item,
-    id: generateId(),
-    name: `${item.name} (copy)`,
-    children: item.children.map(cloneTreeItem),
-  };
+  const config = getItemConfig(item.type);
+  return config.clone(item as never, { id: generateId() }) as TreeItem;
 }
 
 function sortChildren(children: TreeItem[], mode: SortMode): TreeItem[] {
@@ -206,21 +145,48 @@ function getAllItemIds(folder: Folder): string[] {
   return ids;
 }
 
+/** Helper to add a child into a nested folder tree immutably. */
+function addChildToFolder(root: Folder, parentFolderId: string, child: TreeItem): Folder {
+  if (root.id === parentFolderId) {
+    return { ...root, children: [...root.children, child] };
+  }
+  return {
+    ...root,
+    children: root.children.map((c) =>
+      c.type === "folder" ? addChildToFolder(c, parentFolderId, child) : c
+    ),
+  };
+}
+
 interface ProjectState {
   projects: Project[];
   activeProjectId: string | null;
+  /** Unified active item id — replaces the 6 separate activeXxxId fields. */
+  activeItemId: string | null;
+  /** @deprecated Use activeItemId. Kept for backward compat during migration. */
   activeRequestId: string | null;
+  /** @deprecated Use activeItemId. */
   activeWorkflowId: string | null;
+  /** @deprecated Use activeItemId. */
   activeWebSocketId: string | null;
+  /** @deprecated Use activeItemId. */
   activeGraphQLId: string | null;
+  /** @deprecated Use activeItemId. */
   activeSocketIOId: string | null;
+  /** @deprecated Use activeItemId. */
   activeMqttId: string | null;
   selectedItemId: string | null;
   unsavedChanges: Set<string>;
 
+  /** Set the active item (any request type). Replaces all setActiveXxxId methods. */
+  setActiveItem: (id: string | null) => void;
+  /** Generic add item using registry createDefault. */
+  addItem: <T extends RequestType>(type: T, parentFolderId: string, name?: string) => string;
+  /** Generic update item using registry type. */
+  updateItem: <T extends RequestType>(id: string, type: T, updater: (item: ItemOfType<T>) => ItemOfType<T>) => void;
+
   addToRecentRequests: (requestId: string) => void;
   getRecentRequests: () => RecentRequest[];
-  /** Open a tree item by id (for Recents); routes to the correct editor type. */
   openItemById: (id: string) => void;
 
   createProject: (name: string) => string;
@@ -259,35 +225,51 @@ interface ProjectState {
   getActiveEnvironmentVariables: (projectId?: string) => EnvironmentVariable[];
   resolveVariables: (text: string, projectId?: string) => string;
 
+  /** @deprecated Use setActiveItem */
   setActiveRequestId: (id: string | null) => void;
+  /** @deprecated Use setActiveItem */
   setActiveWorkflowId: (id: string | null) => void;
+  /** @deprecated Use setActiveItem */
   setActiveWebSocketId: (id: string | null) => void;
+  /** @deprecated Use setActiveItem */
   setActiveGraphQLId: (id: string | null) => void;
+  /** @deprecated Use setActiveItem */
   setActiveMqttId: (id: string | null) => void;
+  /** @deprecated Use setActiveItem */
+  setActiveSocketIOId: (id: string | null) => void;
   setSelectedItem: (id: string | null) => void;
+  /** @deprecated Use addItem("request", ...) */
   addRequest: (parentFolderId: string, name?: string) => string;
+  /** @deprecated Use addItem("websocket", ...) */
   addWebSocket: (parentFolderId: string, name?: string) => string;
+  /** @deprecated Use addItem("graphql", ...) */
   addGraphQL: (parentFolderId: string, name?: string) => string;
+  /** @deprecated Use addItem("workflow", ...) */
   addWorkflow: (parentFolderId: string, name?: string) => string;
   addFolder: (parentFolderId: string, name?: string) => string;
+  /** @deprecated Use updateItem("websocket", ...) */
   updateWebSocket: (
     wsId: string,
     updater: (ws: WebSocketFile) => WebSocketFile,
   ) => void;
   getActiveWebSocket: () => WebSocketFile | null;
+  /** @deprecated Use updateItem("graphql", ...) */
   updateGraphQL: (
     gqlId: string,
     updater: (gql: GraphQLFile) => GraphQLFile,
   ) => void;
   getActiveGraphQL: () => GraphQLFile | null;
-  setActiveSocketIOId: (id: string | null) => void;
+  /** @deprecated Use addItem("socketio", ...) */
   addSocketIO: (parentFolderId: string, name?: string) => string;
+  /** @deprecated Use addItem("mqtt", ...) */
   addMqtt: (parentFolderId: string, name?: string) => string;
+  /** @deprecated Use updateItem("socketio", ...) */
   updateSocketIO: (
     sioId: string,
     updater: (sio: SocketIOFile) => SocketIOFile,
   ) => void;
   getActiveSocketIO: () => SocketIOFile | null;
+  /** @deprecated Use updateItem("mqtt", ...) */
   updateMqtt: (
     mqttId: string,
     updater: (mqtt: MQTTFile) => MQTTFile,
@@ -305,10 +287,12 @@ interface ProjectState {
   ) => void;
   moveItemBefore: (itemId: string, beforeItemId: string) => void;
   moveItemAfter: (itemId: string, afterItemId: string) => void;
+  /** @deprecated Use updateItem("request", ...) */
   updateRequest: (
     requestId: string,
     updater: (r: RequestFile) => RequestFile,
   ) => void;
+  /** @deprecated Use updateItem("workflow", ...) */
   updateWorkflow: (
     workflowId: string,
     updater: (w: WorkflowFile) => WorkflowFile,
@@ -345,6 +329,7 @@ export const useProjectStore = create<ProjectState>()(
     (set, get) => ({
       projects: [initialProject],
       activeProjectId: initialProject.id,
+      activeItemId: null,
       activeRequestId: null,
       activeWorkflowId: null,
       activeWebSocketId: null,
@@ -358,11 +343,75 @@ export const useProjectStore = create<ProjectState>()(
 
       setSelectedLanguage: (lang) => set({ selectedLanguage: lang }),
 
+      // ── Generic methods ──────────────────────────────────────────
+
+      setActiveItem: (id) => {
+        set({
+          activeItemId: id,
+          activeRequestId: null,
+          activeWorkflowId: null,
+          activeWebSocketId: null,
+          activeGraphQLId: null,
+          activeSocketIOId: null,
+          activeMqttId: null,
+        });
+        if (id) {
+          get().addToRecentRequests(id);
+        }
+      },
+
+      addItem: (type, parentFolderId, name) => {
+        const newId = generateId();
+        const config = getItemConfig(type);
+        const item = config.createDefault({ id: newId, name }) as RequestItem;
+
+        set((state) => ({
+          ...state,
+          projects: state.projects.map((p) => {
+            if (p.id !== state.activeProjectId) return p;
+            return { ...p, root: addChildToFolder(p.root, parentFolderId, item) };
+          }),
+          activeItemId: newId,
+          activeRequestId: null,
+          activeWorkflowId: null,
+          activeWebSocketId: null,
+          activeGraphQLId: null,
+          activeSocketIOId: null,
+          activeMqttId: null,
+        }));
+        get().addToRecentRequests(newId);
+        return newId;
+      },
+
+      updateItem: (id, type, updater) => {
+        set((state) => {
+          const project = state.projects.find(
+            (p) => p.id === state.activeProjectId,
+          );
+          if (!project) return state;
+          const item = findItem(project.root, id);
+          if (item && item.type === type) {
+            const updated = updater(item as never);
+            Object.assign(item, updated);
+            const newUnsaved = new Set(state.unsavedChanges);
+            newUnsaved.add(id);
+            return {
+              projects: [...state.projects],
+              unsavedChanges: newUnsaved,
+            };
+          }
+          return state;
+        });
+      },
+
+      // ── Project methods ──────────────────────────────────────────
+
       createProject: (name) => {
         const newProject = createEmptyProject(name);
         set((state) => ({
           projects: [...state.projects, newProject],
           activeProjectId: newProject.id,
+          activeItemId: null,
           activeRequestId: null,
           activeWorkflowId: null,
           activeWebSocketId: null,
@@ -376,6 +425,7 @@ export const useProjectStore = create<ProjectState>()(
       selectProject: (id) => {
         set({
           activeProjectId: id,
+          activeItemId: null,
           activeRequestId: null,
           activeWorkflowId: null,
           activeWebSocketId: null,
