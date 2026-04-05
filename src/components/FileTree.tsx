@@ -422,7 +422,7 @@ export function FileTree({
 
   useEffect(() => {
     setRenderedCount(LAZY_BATCH_SIZE);
-  }, []);
+  }, [root.id, searchQuery]);
 
   useEffect(() => {
     if (!containerRef.current) return;
