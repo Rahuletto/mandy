@@ -60,6 +60,8 @@ interface FileTreeProps {
   onImportClick: () => void;
   loadingItems?: Set<string>;
   completedItems?: Set<string>;
+  /** Yellow dot on request rows when the project uses a pre-v1 schema (before migration). */
+  showLegacySchemaIndicator?: boolean;
 }
 
 import {
@@ -116,6 +118,7 @@ interface SortableItemProps {
   itemRectsRef?: React.MutableRefObject<Map<string, DOMRect>>;
   isLoading?: boolean;
   isCompleted?: boolean;
+  showLegacyDot?: boolean;
 }
 
 function SortableItem({
@@ -139,6 +142,7 @@ function SortableItem({
   itemRectsRef,
   isLoading,
   isCompleted,
+  showLegacyDot,
 }: SortableItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: item.id });
@@ -288,7 +292,13 @@ function SortableItem({
         <span className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin shrink-0" />
       )}
       {isUnsaved && !isLoading && (
-        <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+        <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+      )}
+      {showLegacyDot && !isFolder && (
+        <span
+          className="w-2 h-2 rounded-full bg-yellow-400 shrink-0 shadow-[0_0_6px_rgba(250,204,21,0.6)]"
+          title="Older file format — upgrade when prompted"
+        />
       )}
 
       <div className="flex items-center opacity-0 group-hover:opacity-100 gap-1 transition-opacity">
@@ -407,6 +417,7 @@ export function FileTree({
   onImportClick,
   loadingItems = new Set(),
   completedItems = new Set(),
+  showLegacySchemaIndicator = false,
 }: FileTreeProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -817,6 +828,9 @@ export function FileTree({
                 loadingItems.has(item.id)
               }
               isCompleted={completedItems.has(item.id)}
+              showLegacyDot={
+                showLegacySchemaIndicator && item.type !== "folder"
+              }
             />
           ))}
         </SortableContext>

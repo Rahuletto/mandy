@@ -42,6 +42,12 @@ import {
   isProtocolRequestItem,
   renderProtocolEditor,
 } from "./registry/editorViews";
+import {
+  projectNeedsMigration,
+  parseMandyJsonWithMigration,
+  mandyFileBackupPath,
+  isLegacyProject,
+} from "./migration";
 import "./App.css";
 
 function App() {
@@ -87,6 +93,7 @@ function App() {
     selectedItemId,
     setSelectedItem,
     openItemById,
+    migrateLegacyProjects,
   } = useProjectStore();
 
   const activeProject = useProjectStore(
@@ -120,6 +127,11 @@ function App() {
   const activeGraphQL = activeItem?.type === "graphql" ? activeItem : null;
 
   const { addToast } = useToastStore();
+
+  const [schemaMigrationGateOpen, setSchemaMigrationGateOpen] = useState(false);
+  const [schemaMigrationError, setSchemaMigrationError] = useState<
+    string | null
+  >(null);
 
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [completedItems, setCompletedItems] = useState<Set<string>>(
@@ -186,19 +198,64 @@ function App() {
     [activeProject, addItem],
   );
 
+  useEffect(() => {
+    const openGateIfNeeded = () => {
+      if (projectNeedsMigration(useProjectStore.getState().projects)) {
+        setSchemaMigrationGateOpen(true);
+      }
+    };
+    if (useProjectStore.persist.hasHydrated()) {
+      openGateIfNeeded();
+    }
+    return useProjectStore.persist.onFinishHydration(() => {
+      openGateIfNeeded();
+    });
+  }, []);
+
+  const handleWorkspaceSchemaMigration = useCallback(() => {
+    setSchemaMigrationError(null);
+    const ok = migrateLegacyProjects();
+    if (ok) {
+      setSchemaMigrationGateOpen(false);
+    } else {
+      setSchemaMigrationError(
+        "Migration failed for one or more projects. Your original data is unchanged.",
+      );
+    }
+  }, [migrateLegacyProjects]);
+
   // Handle opening .mandy.json files
   useEffect(() => {
     const unlistenPromise = listen<string>("open-mandy-file", async (event) => {
       try {
         const filePath = event.payload;
         const content = await readTextFile(filePath);
-        const imported = parseMandyJSON(content);
-        if (imported) {
-          createProjectFromImport(imported);
-          addToast(`Opened project: ${imported.name}`, "success");
-        } else {
+        const parsed = parseMandyJsonWithMigration(content, {
+          preserveStructureIds: true,
+        });
+        if (!parsed) {
           addToast("Invalid Mandy project file", "error");
+          return;
         }
+        if (parsed.wasLegacyFormat) {
+          try {
+            await writeTextFile(mandyFileBackupPath(filePath), content);
+            await writeTextFile(filePath, exportToMandyJSON(parsed.project));
+          } catch (writeErr) {
+            console.error(writeErr);
+            addToast(
+              "Could not write backup or upgraded file; opened in memory only.",
+              "warning",
+            );
+          }
+        }
+        createProjectFromImport(parsed.project);
+        addToast(
+          parsed.wasLegacyFormat
+            ? `Opened ${parsed.project.name} (upgraded to current format; backup saved beside file).`
+            : `Opened project: ${parsed.project.name}`,
+          "success",
+        );
       } catch (err) {
         console.error(err);
         addToast("Failed to open project", "error");
@@ -550,6 +607,9 @@ function App() {
             className="relative"
             loadingItems={loadingItems}
             completedItems={completedItems}
+            legacyProjectSchema={
+              activeProject != null && isLegacyProject(activeProject)
+            }
           />
         </div>
 
@@ -599,6 +659,9 @@ function App() {
             className="h-full"
             loadingItems={loadingItems}
             completedItems={completedItems}
+            legacyProjectSchema={
+              activeProject != null && isLegacyProject(activeProject)
+            }
           />
         </div>
 
@@ -1012,6 +1075,19 @@ function App() {
           }
         }}
         onCancel={() => setItemToDelete(null)}
+      />
+      <Dialog
+        dismissible={false}
+        isOpen={schemaMigrationGateOpen}
+        title="Workspace format update required"
+        description={
+          schemaMigrationError
+            ? `${schemaMigrationError} Tap Retry to try again.`
+            : "We detected an older Mandy project format (before schema v1). A backup of each project is taken in memory, then data is upgraded and verified. You must continue before using the app."
+        }
+        confirmLabel={schemaMigrationError ? "Retry" : "Continue"}
+        onConfirm={handleWorkspaceSchemaMigration}
+        onCancel={() => {}}
       />
       <ToastContainer />
 

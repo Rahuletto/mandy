@@ -164,6 +164,8 @@ export interface Folder {
 export interface Project {
   id: string;
   name: string;
+  /** `1` = current on-disk schema; missing treated as legacy (0). */
+  schemaVersion?: number;
   description?: string;
   icon?: string;
   iconColor?: string;

@@ -22,46 +22,14 @@ import type { ApiResponse } from "../bindings";
 import { findSecrets } from "../utils/secretDetection";
 import type { AuthType } from "../bindings";
 import { getItemConfig } from "../registry";
-
-const PERSIST_VERSION = 2 as const;
-
-const LEGACY_ACTIVE_ID_KEYS = [
-  "activeRequestId",
-  "activeWorkflowId",
-  "activeWebSocketId",
-  "activeGraphQLId",
-  "activeSocketIOId",
-  "activeMqttId",
-] as const;
-
-type LegacyPersistSlice = Partial<
-  Record<(typeof LEGACY_ACTIVE_ID_KEYS)[number], string | null>
-> & { activeItemId?: string | null };
-
-function migratePersistedStateV2(
-  persisted: unknown,
-): LegacyPersistSlice & Record<string, unknown> {
-  if (!persisted || typeof persisted !== "object") return persisted as never;
-  const p = persisted as LegacyPersistSlice & Record<string, unknown>;
-  let activeItemId: string | null =
-    typeof p.activeItemId === "string" || p.activeItemId === null
-      ? p.activeItemId
-      : null;
-  if (activeItemId == null) {
-    for (const key of LEGACY_ACTIVE_ID_KEYS) {
-      const v = p[key];
-      if (typeof v === "string" && v.length > 0) {
-        activeItemId = v;
-        break;
-      }
-    }
-  }
-  const next = { ...p, activeItemId };
-  for (const key of LEGACY_ACTIVE_ID_KEYS) {
-    delete next[key];
-  }
-  return next;
-}
+import {
+  migratePersistedZustandState,
+  migrateProjectToCurrent,
+  migrateProjectWithBackupSteps,
+  isLegacyProject,
+  CURRENT_PROJECT_SCHEMA_VERSION,
+  ZUSTAND_PERSIST_VERSION,
+} from "../migration";
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -98,6 +66,7 @@ function createEmptyProject(name: string): Project {
     ],
     activeEnvironmentId: null,
     recentRequests: [],
+    schemaVersion: CURRENT_PROJECT_SCHEMA_VERSION,
   };
 }
 
@@ -295,6 +264,8 @@ interface ProjectState {
     detectedCount: number;
   };
   createProjectFromImport: (project: Partial<Project>) => string;
+  /** Migrate all projects below current `schemaVersion`. Returns false if any project failed. */
+  migrateLegacyProjects: () => boolean;
   selectedLanguage: string;
   setSelectedLanguage: (lang: string) => void;
 }
@@ -1056,7 +1027,7 @@ export const useProjectStore = create<ProjectState>()(
 
       createProjectFromImport: (partialProject) => {
         const id = partialProject.id || generateId();
-        const newProject: Project = {
+        const raw: Project = {
           id,
           name: partialProject.name || "Imported Project",
           root: partialProject.root || {
@@ -1079,8 +1050,10 @@ export const useProjectStore = create<ProjectState>()(
           description: partialProject.description,
           baseUrl: partialProject.baseUrl,
           authorization: partialProject.authorization,
-          recentRequests: [],
+          recentRequests: partialProject.recentRequests ?? [],
+          schemaVersion: partialProject.schemaVersion,
         };
+        const newProject = migrateProjectToCurrent(raw);
 
         set((state) => ({
           projects: [...state.projects, newProject],
@@ -1090,6 +1063,22 @@ export const useProjectStore = create<ProjectState>()(
         }));
 
         return newProject.id;
+      },
+
+      migrateLegacyProjects: () => {
+        const state = get();
+        let allOk = true;
+        const next = state.projects.map((p) => {
+          if (!isLegacyProject(p)) return p;
+          const r = migrateProjectWithBackupSteps(p);
+          if (!r.success) {
+            allOk = false;
+            return p;
+          }
+          return r.project;
+        });
+        set({ projects: next });
+        return allOk;
       },
 
       addToRecentRequests: (requestId) => {
@@ -1151,10 +1140,13 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: "mandy-projects",
-      version: PERSIST_VERSION,
+      version: ZUSTAND_PERSIST_VERSION,
       migrate: (persistedState, fromVersion) => {
-        if (fromVersion < PERSIST_VERSION) {
-          return migratePersistedStateV2(persistedState) as {
+        if (fromVersion < ZUSTAND_PERSIST_VERSION) {
+          return migratePersistedZustandState(
+            persistedState,
+            fromVersion,
+          ) as {
             projects: Project[];
             activeProjectId: string | null;
             activeItemId: string | null;
@@ -1242,6 +1234,7 @@ export const useProjectStore = create<ProjectState>()(
                 ],
                 activeEnvironmentId: null,
                 recentRequests: [],
+                schemaVersion: CURRENT_PROJECT_SCHEMA_VERSION,
               },
             ];
             state.activeProjectId = state.projects[0].id;

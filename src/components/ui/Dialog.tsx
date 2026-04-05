@@ -9,6 +9,8 @@ interface DialogProps {
   isDestructive?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** When false: no Cancel, backdrop does not close, Escape does nothing. */
+  dismissible?: boolean;
 }
 
 export function Dialog({
@@ -20,13 +22,14 @@ export function Dialog({
   isDestructive = false,
   onConfirm,
   onCancel,
+  dismissible = true,
 }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && dismissible) {
         onCancel();
       }
       if (e.key === "Enter") {
@@ -44,7 +47,7 @@ export function Dialog({
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
     };
-  }, [isOpen, onCancel, onConfirm]);
+  }, [isOpen, onCancel, onConfirm, dismissible]);
 
   if (!isOpen) return null;
 
@@ -65,13 +68,17 @@ export function Dialog({
         </div>
 
         <div className="flex items-center justify-end gap-3 mt-2">
+          {dismissible && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-3 py-2 text-xs cursor-pointer font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-colors"
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
-            onClick={onCancel}
-            className="px-3 py-2 text-xs cursor-pointer font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-colors"
-          >
-            {cancelLabel}
-          </button>
-          <button
+            type="button"
             onClick={onConfirm}
             className={`px-4 py-2 cursor-pointer text-xs font-semibold rounded-full transition-colors shadow-sm ${
               isDestructive
@@ -84,7 +91,11 @@ export function Dialog({
           </button>
         </div>
       </div>
-      <div className="absolute inset-0 -z-10" onClick={onCancel} />
+      <div
+        className="absolute inset-0 -z-10"
+        onClick={dismissible ? onCancel : undefined}
+        aria-hidden
+      />
     </div>
   );
 }

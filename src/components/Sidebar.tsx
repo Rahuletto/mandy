@@ -37,6 +37,7 @@ interface SidebarProps {
   className?: string;
   loadingItems?: Set<string>;
   completedItems?: Set<string>;
+  legacyProjectSchema?: boolean;
 }
 
 export function Sidebar({
@@ -66,6 +67,7 @@ export function Sidebar({
   className = "",
   loadingItems = new Set(),
   completedItems = new Set(),
+  legacyProjectSchema = false,
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isResizing, setIsResizing] = useState(false);
@@ -234,6 +236,7 @@ export function Sidebar({
             onImportClick={onImportClick}
             loadingItems={loadingItems}
             completedItems={completedItems}
+            showLegacySchemaIndicator={legacyProjectSchema}
           />
         </>
       ) : (

@@ -32,7 +32,14 @@
 
 - **Active item:** `activeItemId: string | null` — use `setActiveItem(id | null)`; it updates recents when opening a real item.
 - **Mutations:** `addItem<T extends RequestType>(type, parentFolderId, name?)` and `updateItem<T>(id, type, updater)` are the main APIs; avoid duplicating per-type setters.
-- **Persistence:** Zustand persist name `mandy-projects`, `version: 2`, `migrate` maps legacy per-protocol `active*Id` fields into `activeItemId`. Bump `version` and extend `migrate` if you change persisted shape.
+- **Persistence (Zustand):** `mandy-projects`, `ZUSTAND_PERSIST_VERSION` in `src/migration/index.ts` — migrates the **storage slice** (e.g. legacy `active*Id` → `activeItemId`). Bump that version only when the localStorage envelope changes.
+- **Project schema (files + in-memory projects):** `Project.schemaVersion` — `CURRENT_PROJECT_SCHEMA_VERSION` lives in `src/migration/index.ts`. Missing or lower values are **legacy**; the app shows a blocking dialog and `migrateLegacyProjects()`, and the file tree shows a yellow dot on items until upgraded. Add project-level transforms in `migrateProjectToCurrent` / `verifyProject` there.
+
+## Migration module (`src/migration/index.ts`)
+
+- **Workspace:** `projectNeedsMigration`, `migrateProjectWithBackupSteps`, store action `migrateLegacyProjects`.
+- **Imports / exports:** `parseMandyJsonWithMigration` (used by `parseMandyJSON` and Tauri “open .mandy.json”); `exportToMandyJSON` stamps current schema via `migrateProjectToCurrent`.
+- **Disk:** Opening an old `.mandy.json` writes a sibling `*.pre-v1-migration.bak.json` with the original bytes, then overwrites the file with the upgraded JSON when possible.
 
 ## UI patterns
 
