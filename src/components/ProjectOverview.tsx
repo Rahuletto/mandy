@@ -40,6 +40,8 @@ interface ProjectOverviewProps {
   onSelectWorkflow?: (workflowId: string) => void;
   onSelectWebSocket?: (webSocketId: string) => void;
   onSelectGraphQL?: (graphqlId: string) => void;
+  onSelectSocketIO?: (socketIoId: string) => void;
+  onSelectMqtt?: (mqttId: string) => void;
   onRunRequest?: (requestId: string) => void;
   onAddEnvironment?: (name: string) => void;
   onUpdateEnvironment?: (envId: string, name: string) => void;
@@ -399,6 +401,8 @@ const FolderSection = React.memo(function FolderSection({
   onSelectWorkflow,
   onSelectWebSocket,
   onSelectGraphQL,
+  onSelectSocketIO,
+  onSelectMqtt,
   onRunRequest,
 }: {
   folder: Folder;
@@ -409,6 +413,8 @@ const FolderSection = React.memo(function FolderSection({
   onSelectWorkflow?: (id: string) => void;
   onSelectWebSocket?: (id: string) => void;
   onSelectGraphQL?: (id: string) => void;
+  onSelectSocketIO?: (id: string) => void;
+  onSelectMqtt?: (id: string) => void;
   onRunRequest?: (id: string) => void;
 }) {
   const isExpanded = expandedIds.has(folder.id);
@@ -455,6 +461,8 @@ const FolderSection = React.memo(function FolderSection({
                   onSelectWorkflow={onSelectWorkflow}
                   onSelectWebSocket={onSelectWebSocket}
                   onSelectGraphQL={onSelectGraphQL}
+                  onSelectSocketIO={onSelectSocketIO}
+                  onSelectMqtt={onSelectMqtt}
                   onRunRequest={onRunRequest}
                 />
               );
@@ -520,12 +528,12 @@ const FolderSection = React.memo(function FolderSection({
               return (
                 <button
                   key={child.id}
-                  onClick={() => onSelectRequest(child.id)}
+                  onClick={() => onSelectSocketIO?.(child.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all hover:bg-white/5 cursor-pointer ${
                     !prev || prev.type !== "socketio" ? "rounded-t-xl" : ""
                   } ${!next || next.type !== "socketio" ? "rounded-b-xl" : ""} bg-white/[0.02] border-b border-white/5 last:border-0`}
                 >
-                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#25C2A0]/20 text-[#25C2A0] shrink-0">
                     SIO
                   </span>
                   <span className="text-sm text-white/80 truncate">
@@ -538,6 +546,36 @@ const FolderSection = React.memo(function FolderSection({
                   )}
                 </button>
               );
+            }
+
+            if (child.type === "mqtt") {
+              const prev = folder.children[index - 1];
+              const next = folder.children[index + 1];
+              return (
+                <button
+                  key={child.id}
+                  onClick={() => onSelectMqtt?.(child.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all hover:bg-white/5 cursor-pointer ${
+                    !prev || prev.type !== "mqtt" ? "rounded-t-xl" : ""
+                  } ${!next || next.type !== "mqtt" ? "rounded-b-xl" : ""} bg-white/[0.02] border-b border-white/5 last:border-0`}
+                >
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-orange-400/20 text-orange-300 shrink-0">
+                    MQTT
+                  </span>
+                  <span className="text-sm text-white/80 truncate">
+                    {child.name}
+                  </span>
+                  {child.url && (
+                    <span className="text-[11px] text-white/20 truncate ml-auto">
+                      {child.url}
+                    </span>
+                  )}
+                </button>
+              );
+            }
+
+            if (child.type !== "request") {
+              return null;
             }
 
             const prev = folder.children[index - 1];
@@ -570,6 +608,8 @@ export function ProjectOverview({
   onSelectWorkflow,
   onSelectWebSocket,
   onSelectGraphQL,
+  onSelectSocketIO,
+  onSelectMqtt,
   onRunRequest,
   onAddEnvironment,
   onUpdateEnvironment,
@@ -881,6 +921,8 @@ export function ProjectOverview({
                 onSelectWorkflow={onSelectWorkflow}
                 onSelectWebSocket={onSelectWebSocket}
                 onSelectGraphQL={onSelectGraphQL}
+                onSelectSocketIO={onSelectSocketIO}
+                onSelectMqtt={onSelectMqtt}
                 onRunRequest={onRunRequest}
               />
 

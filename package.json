@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "icons": "bun run scripts/prep-mandy-icon.mjs && cd src-tauri && bunx tauri icon mandy-icon-tauri.png"
   },
   "license": "MIT",
   "dependencies": {
@@ -39,6 +40,7 @@
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tauri-apps/plugin-opener": "^2",
+    "@vx/vx": "^0.0.199",
     "@xyflow/react": "^12.10.0",
     "cm6-graphql": "^0.2.1",
     "graphql": "^16.13.1",
@@ -58,6 +60,7 @@
     "@types/react-dom": "^19.1.6",
     "@types/react-window": "^2.0.0",
     "@vitejs/plugin-react": "^4.6.0",
+    "sharp": "^0.34.5",
     "typescript": "~5.8.3",
     "vite": "^7.0.4"
   }

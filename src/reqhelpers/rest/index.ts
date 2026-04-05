@@ -43,6 +43,7 @@ export function createDefaultRequest(
     verify_ssl: true,
     proxy: null,
     protocol: null,
+    request_label: null,
   };
 }
 

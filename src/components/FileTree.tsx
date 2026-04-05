@@ -19,7 +19,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { VscChevronRight, VscChevronDown, VscAdd } from "react-icons/vsc";
 import { FaFolder, FaFolderOpen, FaPlus } from "react-icons/fa6";
 import { HiDownload } from "react-icons/hi";
-import { TbPlugConnected, TbWorld, TbBrandGraphql, TbBolt } from "react-icons/tb";
+import { SiMqtt, SiSocketdotio } from "react-icons/si";
+import { TbPlugConnected, TbWorld, TbBrandGraphql } from "react-icons/tb";
 import type { Folder, RequestFile, TreeItem, SortMode } from "../types/project";
 
 import { ContextMenu, MenuItem } from "./ui";
@@ -32,13 +33,14 @@ interface FileTreeProps {
   selectedItemId: string | null;
   onSelect: (
     id: string,
-    type: "folder" | "request" | "workflow" | "websocket" | "graphql" | "socketio",
+    type: "folder" | "request" | "workflow" | "websocket" | "graphql" | "socketio" | "mqtt",
   ) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
   onAddWebSocket: (folderId: string) => void;
   onAddGraphQL: (folderId: string) => void;
   onAddSocketIO: (folderId: string) => void;
+  onAddMqtt: (folderId: string) => void;
   onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -62,6 +64,7 @@ interface FileTreeProps {
   loadingWebSockets?: Set<string>;
   loadingGraphQLs?: Set<string>;
   loadingSocketIOs?: Set<string>;
+  loadingMqtts?: Set<string>;
 }
 
 import {
@@ -245,9 +248,16 @@ function SortableItem({
           />
         </span>
       ) : item.type === "socketio" ? (
-        <span className="text-amber-400 shrink-0 mr-2 w-10 text-right">
-          <TbBolt
+        <span className="text-[#25C2A0] shrink-0 mr-2 w-10 text-right">
+          <SiSocketdotio
             size={14}
+            className="inline-block align-[-2px] relative top-[1px]"
+          />
+        </span>
+      ) : item.type === "mqtt" ? (
+        <span className="text-orange-300 shrink-0 mr-2 w-10 text-right">
+          <SiMqtt
+            size={12}
             className="inline-block align-[-2px] relative top-[1px]"
           />
         </span>
@@ -353,6 +363,16 @@ const DragOverlayItem = memo(function DragOverlayItem({
           <TbBrandGraphql size={16} className="shrink-0 text-fuchsia-400" />
           <span className="truncate text-white/90">{item.name}</span>
         </>
+      ) : item.type === "socketio" ? (
+        <>
+          <SiSocketdotio size={14} className="shrink-0 text-[#25C2A0]" />
+          <span className="truncate text-white/90">{item.name}</span>
+        </>
+      ) : item.type === "mqtt" ? (
+        <>
+          <SiMqtt size={12} className="shrink-0 text-orange-300" />
+          <span className="truncate text-white/90">{item.name}</span>
+        </>
       ) : (
         <>
           <span
@@ -380,6 +400,7 @@ export function FileTree({
   onAddWebSocket,
   onAddGraphQL,
   onAddSocketIO,
+  onAddMqtt,
   onAddWorkflow,
   onAddFolder,
   onRename,
@@ -399,6 +420,7 @@ export function FileTree({
   loadingWebSockets = new Set(),
   loadingGraphQLs = new Set(),
   loadingSocketIOs = new Set(),
+  loadingMqtts = new Set(),
 }: FileTreeProps) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -737,7 +759,7 @@ export function FileTree({
         },
         {
           label: "WebSocket",
-          icon: <TbPlugConnected size={14} className="text-sky-400" />,
+          icon: <TbPlugConnected size={14} className="text-emerald-400" />,
           onClick: () => onAddWebSocket(item.id),
         },
         {
@@ -747,8 +769,13 @@ export function FileTree({
         },
         {
           label: "Socket.IO",
-          icon: <TbBolt size={14} className="text-amber-400" />,
+          icon: <SiSocketdotio size={14} className="text-[#25C2A0]" />,
           onClick: () => onAddSocketIO(item.id),
+        },
+        {
+          label: "MQTT",
+          icon: <SiMqtt size={12} className="text-orange-300" />,
+          onClick: () => onAddMqtt(item.id),
         },
         { label: "", onClick: () => {}, divider: true },
         {
@@ -818,7 +845,8 @@ export function FileTree({
                 (item.type === "request" && loadingRequests.has(item.id)) ||
                 (item.type === "websocket" && loadingWebSockets.has(item.id)) ||
                 (item.type === "graphql" && loadingGraphQLs.has(item.id)) ||
-                (item.type === "socketio" && loadingSocketIOs.has(item.id))
+                (item.type === "socketio" && loadingSocketIOs.has(item.id)) ||
+                (item.type === "mqtt" && loadingMqtts.has(item.id))
               }
               isCompleted={completedRequests.has(item.id)}
             />

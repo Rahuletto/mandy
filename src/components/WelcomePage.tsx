@@ -1,22 +1,24 @@
 import React, { useState, useRef, useEffect } from "react";
 import { BiFile } from "react-icons/bi";
 import { FaFolder } from "react-icons/fa6";
+import { SiMqtt, SiSocketdotio } from "react-icons/si";
 import {
   TbChevronDown,
   TbPlus,
   TbWorld,
   TbPlugConnected,
   TbBrandGraphql,
-  TbBolt,
 } from "react-icons/tb";
+import { VscTypeHierarchySub } from "react-icons/vsc";
 import { Logo } from "./ui";
-import { getShortMethod } from "../utils/methodConstants";
+import { getMethodColor, getShortMethod } from "../utils/methodConstants";
 
 interface WelcomePageProps {
   onNewRequest: () => void;
   onNewWebSocket: () => void;
   onNewGraphQL: () => void;
   onNewSocketIO: () => void;
+  onNewMqtt: () => void;
   onNewFolder: () => void;
   onImportClick: () => void;
   recentRequests: Array<{
@@ -31,28 +33,71 @@ interface WelcomePageProps {
   onNewProject: () => void;
 }
 
-const getMethodColorTw = (method: string) => {
-  switch (method.toUpperCase()) {
-    case "GET":
-      return "text-green/60";
-    case "POST":
-      return "text-yellow/60";
-    case "PUT":
-      return "text-blue-500/60";
-    case "PATCH":
-      return "text-purple-500/60";
-    case "DELETE":
-      return "text-red/60";
+/** Recents type icons: same classes as FileTree row badges. Sizes: 14px Tabler/VSC, 12px SI marks. */
+const RECENT_ICON_TABLER = 14;
+const RECENT_ICON_SI = 12;
+
+function RecentTypeIcon({ method }: { method: string }) {
+  const m = method.toUpperCase();
+  switch (m) {
+    case "WS":
+      return (
+        <TbPlugConnected
+          size={RECENT_ICON_TABLER}
+          className="shrink-0 text-emerald-400"
+          aria-hidden
+        />
+      );
+    case "GQL":
+      return (
+        <TbBrandGraphql
+          size={RECENT_ICON_TABLER}
+          className="shrink-0 text-fuchsia-400"
+          aria-hidden
+        />
+      );
+    case "SIO":
+      return (
+        <SiSocketdotio
+          size={RECENT_ICON_SI}
+          className="shrink-0 text-[#25C2A0]"
+          aria-hidden
+        />
+      );
+    case "MQTT":
+      return (
+        <SiMqtt
+          size={RECENT_ICON_SI}
+          className="shrink-0 text-orange-300"
+          aria-hidden
+        />
+      );
+    case "WF":
+      return (
+        <VscTypeHierarchySub
+          size={RECENT_ICON_TABLER}
+          className="shrink-0 text-accent"
+          aria-hidden
+        />
+      );
     default:
-      return "text-white/20";
+      return (
+        <span
+          className="font-mono text-[11px] font-bold shrink-0 text-right"
+          style={{ color: getMethodColor(method) }}
+        >
+          {getShortMethod(method)}
+        </span>
+      );
   }
-};
+}
 
 export const WelcomePage: React.FC<WelcomePageProps> = ({
   onNewRequest,
   onNewWebSocket,
   onNewGraphQL,
   onNewSocketIO,
+  onNewMqtt,
   onNewFolder,
   onImportClick,
   recentRequests,
@@ -98,7 +143,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
     {
       label: "WebSocket",
       icon: <TbPlugConnected size={16} />,
-      color: "text-sky-400",
+      color: "text-emerald-400",
       onClick: onNewWebSocket,
     },
     {
@@ -109,9 +154,15 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
     },
     {
       label: "Socket.IO",
-      icon: <TbBolt size={16} />,
-      color: "text-amber-400",
+      icon: <SiSocketdotio size={16} />,
+      color: "text-[#25C2A0]",
       onClick: onNewSocketIO,
+    },
+    {
+      label: "MQTT",
+      icon: <SiMqtt size={14} />,
+      color: "text-orange-300",
+      onClick: onNewMqtt,
     },
   ];
 
@@ -263,12 +314,8 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
                   onClick={() => onSelectRecent(req.requestId)}
                   className="group flex items-center gap-3 text-white/40 hover:text-white/80 transition-all duration-200 text-left w-full"
                 >
-                  <div className="w-10 flex justify-end">
-                    <span
-                      className={`text-[9px] font-bold font-mono transition-colors ${getMethodColorTw(req.method)} group-hover:opacity-100`}
-                    >
-                      {getShortMethod(req.method)}
-                    </span>
+                  <div className="flex w-10 shrink-0 items-center justify-end opacity-80 group-hover:opacity-100 transition-opacity [&_svg]:max-h-[14px] [&_svg]:max-w-[14px]">
+                    <RecentTypeIcon method={req.method} />
                   </div>
                   <span className="text-[14px] font-medium truncate">
                     {req.name}
@@ -276,7 +323,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
                 </button>
               ))
             ) : (
-              <div className="text-[13px] text-white/5 italic pl-7">
+              <div className="text-[13px] text-white/5 italic pl-10">
                 No recent requests
               </div>
             )}

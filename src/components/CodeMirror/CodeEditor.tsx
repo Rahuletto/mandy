@@ -43,6 +43,8 @@ interface CodeEditorProps {
   placeholder?: string;
   readOnly?: boolean;
   completions?: CompletionItem[];
+  /** Suggested object keys (e.g. from prior MQTT traffic) — completes after `"` in JSON */
+  jsonKeyCompletions?: string[];
 }
 
 export function CodeEditor({
@@ -51,11 +53,13 @@ export function CodeEditor({
   onChange,
   readOnly = false,
   completions = [],
+  jsonKeyCompletions = [],
 }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const completionsRef = useRef(completions);
+  const jsonKeyCompletionsRef = useRef(jsonKeyCompletions);
   const [copied, setCopied] = useState(false);
   const [activeExtensions, setActiveExtensions] = useState<Extension[]>([]);
   const [themeKey, setThemeKey] = useState(0);
@@ -67,6 +71,10 @@ export function CodeEditor({
   useEffect(() => {
     completionsRef.current = completions;
   }, [completions]);
+
+  useEffect(() => {
+    jsonKeyCompletionsRef.current = jsonKeyCompletions;
+  }, [jsonKeyCompletions]);
 
   useEffect(() => {
     const unsubscribe = subscribeToThemeChanges(() => {
@@ -129,6 +137,27 @@ export function CodeEditor({
       };
     };
 
+    const jsonKeyCompletionsSource = (context: CompletionContext) => {
+      if (language !== "json") return null;
+      const keys = jsonKeyCompletionsRef.current;
+      if (keys.length === 0) return null;
+      const word = context.matchBefore(/"[\w]*$/);
+      if (!word) return null;
+      const typed = word.text.slice(1);
+      const filtered = keys.filter((k) => typed === "" || k.startsWith(typed));
+      if (filtered.length === 0) return null;
+      return {
+        from: word.from + 1,
+        options: filtered.map(
+          (k): Completion => ({
+            label: k,
+            type: "property",
+            apply: k,
+          }),
+        ),
+      };
+    };
+
     const state = EditorState.create({
       doc: code,
       extensions: [
@@ -141,7 +170,7 @@ export function CodeEditor({
         closeBrackets(),
         indentOnInput(),
         autocompletion({
-          override: [workflowCompletions],
+          override: [workflowCompletions, jsonKeyCompletionsSource],
           defaultKeymap: true,
           icons: false,
         }),

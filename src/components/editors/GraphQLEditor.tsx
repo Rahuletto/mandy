@@ -219,6 +219,7 @@ export function GraphQLEditor({
         const result = await commands.graphqlIntrospect({
           url: urlToFetch,
           headers,
+          request_label: gql.name,
         });
 
         if (result.status === "error") {

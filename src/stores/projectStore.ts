@@ -7,6 +7,7 @@ import type {
   WebSocketFile,
   GraphQLFile,
   SocketIOFile,
+  MQTTFile,
   TreeItem,
   SortMode,
   Environment,
@@ -137,7 +138,19 @@ function cloneTreeItem(item: TreeItem): TreeItem {
       name: `${item.name} (copy)`,
       headers: { ...item.headers },
       headerItems: item.headerItems ? JSON.parse(JSON.stringify(item.headerItems)) : undefined,
+      queryItems: item.queryItems ? JSON.parse(JSON.stringify(item.queryItems)) : undefined,
       auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
+      messages: [],
+    };
+  }
+  if (item.type === "mqtt") {
+    return {
+      ...item,
+      id: generateId(),
+      name: `${item.name} (copy)`,
+      subscriptions: item.subscriptions
+        ? JSON.parse(JSON.stringify(item.subscriptions))
+        : [],
       messages: [],
     };
   }
@@ -201,11 +214,14 @@ interface ProjectState {
   activeWebSocketId: string | null;
   activeGraphQLId: string | null;
   activeSocketIOId: string | null;
+  activeMqttId: string | null;
   selectedItemId: string | null;
   unsavedChanges: Set<string>;
 
   addToRecentRequests: (requestId: string) => void;
   getRecentRequests: () => RecentRequest[];
+  /** Open a tree item by id (for Recents); routes to the correct editor type. */
+  openItemById: (id: string) => void;
 
   createProject: (name: string) => string;
   selectProject: (id: string) => void;
@@ -247,6 +263,7 @@ interface ProjectState {
   setActiveWorkflowId: (id: string | null) => void;
   setActiveWebSocketId: (id: string | null) => void;
   setActiveGraphQLId: (id: string | null) => void;
+  setActiveMqttId: (id: string | null) => void;
   setSelectedItem: (id: string | null) => void;
   addRequest: (parentFolderId: string, name?: string) => string;
   addWebSocket: (parentFolderId: string, name?: string) => string;
@@ -265,11 +282,17 @@ interface ProjectState {
   getActiveGraphQL: () => GraphQLFile | null;
   setActiveSocketIOId: (id: string | null) => void;
   addSocketIO: (parentFolderId: string, name?: string) => string;
+  addMqtt: (parentFolderId: string, name?: string) => string;
   updateSocketIO: (
     sioId: string,
     updater: (sio: SocketIOFile) => SocketIOFile,
   ) => void;
   getActiveSocketIO: () => SocketIOFile | null;
+  updateMqtt: (
+    mqttId: string,
+    updater: (mqtt: MQTTFile) => MQTTFile,
+  ) => void;
+  getActiveMqtt: () => MQTTFile | null;
   renameItem: (itemId: string, newName: string) => void;
   deleteItem: (itemId: string) => void;
   duplicateItem: (itemId: string) => void;
@@ -327,6 +350,7 @@ export const useProjectStore = create<ProjectState>()(
       activeWebSocketId: null,
       activeGraphQLId: null,
       activeSocketIOId: null,
+      activeMqttId: null,
       selectedItemId: null,
       unsavedChanges: new Set(),
       clipboard: null,
@@ -340,6 +364,11 @@ export const useProjectStore = create<ProjectState>()(
           projects: [...state.projects, newProject],
           activeProjectId: newProject.id,
           activeRequestId: null,
+          activeWorkflowId: null,
+          activeWebSocketId: null,
+          activeGraphQLId: null,
+          activeSocketIOId: null,
+          activeMqttId: null,
         }));
         return newProject.id;
       },
@@ -348,6 +377,11 @@ export const useProjectStore = create<ProjectState>()(
         set({
           activeProjectId: id,
           activeRequestId: null,
+          activeWorkflowId: null,
+          activeWebSocketId: null,
+          activeGraphQLId: null,
+          activeSocketIOId: null,
+          activeMqttId: null,
           selectedItemId: null,
         });
       },
@@ -393,6 +427,11 @@ export const useProjectStore = create<ProjectState>()(
               projects: [newProject],
               activeProjectId: newProject.id,
               activeRequestId: null,
+              activeWorkflowId: null,
+              activeWebSocketId: null,
+              activeGraphQLId: null,
+              activeSocketIOId: null,
+              activeMqttId: null,
             };
           }
           return {
@@ -403,6 +442,16 @@ export const useProjectStore = create<ProjectState>()(
                 : state.activeProjectId,
             activeRequestId:
               state.activeProjectId === id ? null : state.activeRequestId,
+            activeWorkflowId:
+              state.activeProjectId === id ? null : state.activeWorkflowId,
+            activeWebSocketId:
+              state.activeProjectId === id ? null : state.activeWebSocketId,
+            activeGraphQLId:
+              state.activeProjectId === id ? null : state.activeGraphQLId,
+            activeSocketIOId:
+              state.activeProjectId === id ? null : state.activeSocketIOId,
+            activeMqttId:
+              state.activeProjectId === id ? null : state.activeMqttId,
           };
         });
       },
@@ -564,22 +613,40 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       setActiveRequestId: (id) => {
-        set({ activeRequestId: id, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null });
+        set({ activeRequestId: id, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null, activeMqttId: null });
         if (id) {
           get().addToRecentRequests(id);
         }
       },
       setActiveWorkflowId: (id) => {
-        set({ activeWorkflowId: id, activeRequestId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null });
+        set({ activeWorkflowId: id, activeRequestId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null, activeMqttId: null });
+        if (id) {
+          get().addToRecentRequests(id);
+        }
       },
       setActiveWebSocketId: (id) => {
-        set({ activeWebSocketId: id, activeRequestId: null, activeWorkflowId: null, activeGraphQLId: null, activeSocketIOId: null });
+        set({ activeWebSocketId: id, activeRequestId: null, activeWorkflowId: null, activeGraphQLId: null, activeSocketIOId: null, activeMqttId: null });
+        if (id) {
+          get().addToRecentRequests(id);
+        }
       },
       setActiveGraphQLId: (id) => {
-        set({ activeGraphQLId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeSocketIOId: null });
+        set({ activeGraphQLId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeSocketIOId: null, activeMqttId: null });
+        if (id) {
+          get().addToRecentRequests(id);
+        }
       },
       setActiveSocketIOId: (id) => {
-        set({ activeSocketIOId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null });
+        set({ activeSocketIOId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null, activeMqttId: null });
+        if (id) {
+          get().addToRecentRequests(id);
+        }
+      },
+      setActiveMqttId: (id) => {
+        set({ activeMqttId: id, activeRequestId: null, activeWorkflowId: null, activeWebSocketId: null, activeGraphQLId: null, activeSocketIOId: null });
+        if (id) {
+          get().addToRecentRequests(id);
+        }
       },
       setSelectedItem: (id) => set({ selectedItemId: id }),
 
@@ -657,6 +724,9 @@ export const useProjectStore = create<ProjectState>()(
           activeWebSocketId: newId,
           activeRequestId: null,
           activeWorkflowId: null,
+          activeGraphQLId: null,
+          activeSocketIOId: null,
+          activeMqttId: null,
         }));
         return newId;
       },
@@ -700,6 +770,8 @@ export const useProjectStore = create<ProjectState>()(
           activeRequestId: null,
           activeWorkflowId: null,
           activeWebSocketId: null,
+          activeSocketIOId: null,
+          activeMqttId: null,
         }));
         return newId;
       },
@@ -1250,9 +1322,18 @@ export const useProjectStore = create<ProjectState>()(
           type: "socketio",
           name,
           url: "",
+          namespace: "/",
+          path: "/socket.io/",
+          transport: "websocket",
+          reconnect: true,
+          reconnectOnDisconnect: false,
+          reconnectDelayMinMs: 300,
+          reconnectDelayMaxMs: 5000,
+          maxReconnectAttempts: 20,
           messages: [],
           headers: {},
           headerItems: [],
+          queryItems: [],
           auth: "None",
           useInheritedAuth: true,
         };
@@ -1281,6 +1362,49 @@ export const useProjectStore = create<ProjectState>()(
           activeWorkflowId: null,
           activeWebSocketId: null,
           activeGraphQLId: null,
+        }));
+        return newId;
+      },
+
+      addMqtt: (parentFolderId, name = "New MQTT") => {
+        const newId = generateId();
+        const mqtt: MQTTFile = {
+          id: newId,
+          type: "mqtt",
+          name,
+          url: "mqtt://broker.emqx.io:1883",
+          clientId: `mandy-${newId.slice(0, 8)}`,
+          cleanSession: true,
+          keepAliveSecs: 30,
+          subscriptions: [],
+          messages: [],
+        };
+
+        set((state) => ({
+          ...state,
+          projects: state.projects.map((p) => {
+            if (p.id !== state.activeProjectId) return p;
+
+            const addChildToFolder = (folder: Folder): Folder => {
+              if (folder.id === parentFolderId) {
+                return { ...folder, children: [...folder.children, mqtt] };
+              }
+              return {
+                ...folder,
+                children: folder.children.map((child) =>
+                  child.type === "folder" ? addChildToFolder(child) : child
+                ),
+              };
+            };
+
+            return { ...p, root: addChildToFolder(p.root) };
+          }),
+          activeMqttId: newId,
+          activeRequestId: null,
+          activeWorkflowId: null,
+          activeWebSocketId: null,
+          activeGraphQLId: null,
+          activeSocketIOId: null,
         }));
         return newId;
       },
@@ -1314,6 +1438,37 @@ export const useProjectStore = create<ProjectState>()(
         if (!project || !state.activeSocketIOId) return null;
         const item = findItem(project.root, state.activeSocketIOId);
         return item?.type === "socketio" ? item : null;
+      },
+
+      updateMqtt: (mqttId, updater) => {
+        set((state) => {
+          const project = state.projects.find(
+            (p) => p.id === state.activeProjectId,
+          );
+          if (!project) return state;
+          const item = findItem(project.root, mqttId);
+          if (item && item.type === "mqtt") {
+            const updated = updater(item);
+            Object.assign(item, updated);
+            const newUnsaved = new Set(state.unsavedChanges);
+            newUnsaved.add(mqttId);
+            return {
+              projects: [...state.projects],
+              unsavedChanges: newUnsaved,
+            };
+          }
+          return state;
+        });
+      },
+
+      getActiveMqtt: () => {
+        const state = get();
+        const project = state.projects.find(
+          (p) => p.id === state.activeProjectId,
+        );
+        if (!project || !state.activeMqttId) return null;
+        const item = findItem(project.root, state.activeMqttId);
+        return item?.type === "mqtt" ? item : null;
       },
 
       markSaved: (requestId) => {
@@ -1409,6 +1564,11 @@ export const useProjectStore = create<ProjectState>()(
           projects: [...state.projects, newProject],
           activeProjectId: newProject.id,
           activeRequestId: null,
+          activeWorkflowId: null,
+          activeWebSocketId: null,
+          activeGraphQLId: null,
+          activeSocketIOId: null,
+          activeMqttId: null,
         }));
 
         return newProject.id;
@@ -1422,13 +1582,45 @@ export const useProjectStore = create<ProjectState>()(
           if (!project) return state;
 
           const item = findItem(project.root, requestId);
-          if (!item || item.type !== "request") return state;
+          if (!item) return state;
+
+          let method: string;
+          let url: string;
+
+          switch (item.type) {
+            case "request":
+              method = item.request.method;
+              url = item.request.url;
+              break;
+            case "websocket":
+              method = "WS";
+              url = item.url;
+              break;
+            case "graphql":
+              method = "GQL";
+              url = item.url;
+              break;
+            case "socketio":
+              method = "SIO";
+              url = item.url;
+              break;
+            case "mqtt":
+              method = "MQTT";
+              url = item.url;
+              break;
+            case "workflow":
+              method = "WF";
+              url = "";
+              break;
+            default:
+              return state;
+          }
 
           const recent: RecentRequest = {
             requestId: item.id,
             name: item.name,
-            method: item.request.method,
-            url: item.request.url,
+            method,
+            url,
             timestamp: Date.now(),
           };
 
@@ -1443,6 +1635,40 @@ export const useProjectStore = create<ProjectState>()(
             ),
           };
         });
+      },
+
+      openItemById: (id) => {
+        const project = get().projects.find(
+          (p) => p.id === get().activeProjectId,
+        );
+        if (!project) return;
+        const item = findItem(project.root, id);
+        if (!item) return;
+
+        set({ selectedItemId: id });
+
+        switch (item.type) {
+          case "request":
+            get().setActiveRequestId(id);
+            break;
+          case "workflow":
+            get().setActiveWorkflowId(id);
+            break;
+          case "websocket":
+            get().setActiveWebSocketId(id);
+            break;
+          case "graphql":
+            get().setActiveGraphQLId(id);
+            break;
+          case "socketio":
+            get().setActiveSocketIOId(id);
+            break;
+          case "mqtt":
+            get().setActiveMqttId(id);
+            break;
+          default:
+            break;
+        }
       },
 
       getRecentRequests: () => {
@@ -1463,6 +1689,7 @@ export const useProjectStore = create<ProjectState>()(
         activeWebSocketId: state.activeWebSocketId,
         activeGraphQLId: state.activeGraphQLId,
         activeSocketIOId: state.activeSocketIOId,
+        activeMqttId: state.activeMqttId,
         selectedItemId: state.selectedItemId,
         selectedLanguage: state.selectedLanguage,
       }),

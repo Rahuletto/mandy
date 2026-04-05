@@ -5,10 +5,14 @@ use std::io::Read;
 use std::time::Duration;
 use url::Url;
 
+use crate::helpers::request_notify::{
+    notify_request_completed_if_background, pick_display_name,
+};
 use crate::types::{
     ApiKeyLocation, ApiRequest, ApiResponse, AuthType, BodyType, Cookie,
     FetchUrlResponse, Methods, ResponseRenderer, SizeInfo, TimingInfo,
 };
+use tauri::AppHandle;
 
 fn method_to_curl_string(method: &Methods) -> &'static str {
     match method {
@@ -549,12 +553,27 @@ fn uuid_simple() -> String {
     format!("{:x}{:x}", now.as_secs(), now.subsec_nanos())
 }
 
+fn rest_fallback_label(req: &ApiRequest) -> String {
+    let host = Url::parse(&req.url)
+        .ok()
+        .and_then(|u| u.host_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "request".to_string());
+    format!("{} {}", method_to_curl_string(&req.method), host)
+}
+
 #[tauri::command]
 #[specta::specta]
-pub async fn rest_request(req: ApiRequest) -> Result<ApiResponse, String> {
-    tokio::task::spawn_blocking(move || execute_curl_request(req))
+pub async fn rest_request(app: AppHandle, req: ApiRequest) -> Result<ApiResponse, String> {
+    let label = req.request_label.clone();
+    let fallback = rest_fallback_label(&req);
+    let result = tokio::task::spawn_blocking(move || execute_curl_request(req))
         .await
-        .map_err(|e| format!("Task error: {}", e))?
+        .map_err(|e| format!("Task error: {}", e))?;
+    if result.is_ok() {
+        let name = pick_display_name(&label, &fallback);
+        notify_request_completed_if_background(&app, &name);
+    }
+    result
 }
 
 fn execute_fetch_url(url: String) -> Result<FetchUrlResponse, String> {

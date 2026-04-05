@@ -95,9 +95,57 @@ async sioEmit(req: SioEmitRequest) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async sioEmitWithAck(req: SioEmitAckRequest) : Promise<Result<SioEmitAckResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sio_emit_with_ack", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async sioDisconnect(connectionId: string) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("sio_disconnect", { connectionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async mqttConnect(req: MqttConnectRequest) : Promise<Result<MqttConnectResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("mqtt_connect", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async mqttPublish(req: MqttPublishRequest) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("mqtt_publish", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async mqttSubscribe(req: MqttSubscribeRequest) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("mqtt_subscribe", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async mqttUnsubscribe(req: MqttUnsubscribeRequest) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("mqtt_unsubscribe", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async mqttDisconnect(connectionId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("mqtt_disconnect", { connectionId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -116,7 +164,11 @@ async sioDisconnect(connectionId: string) : Promise<Result<null, string>> {
 /** user-defined types **/
 
 export type ApiKeyLocation = "Header" | "Query"
-export type ApiRequest = { method: Methods; url: string; headers: Partial<{ [key in string]: string }>; body: BodyType; auth: AuthType; query_params: Partial<{ [key in string]: string }>; cookies: Cookie[]; timeout_ms: number | null; follow_redirects: boolean | null; max_redirects: number | null; verify_ssl: boolean | null; proxy: ProxyConfig | null; protocol: HttpProtocol | null }
+export type ApiRequest = { method: Methods; url: string; headers: Partial<{ [key in string]: string }>; body: BodyType; auth: AuthType; query_params: Partial<{ [key in string]: string }>; cookies: Cookie[]; timeout_ms: number | null; follow_redirects: boolean | null; max_redirects: number | null; verify_ssl: boolean | null; proxy: ProxyConfig | null; protocol: HttpProtocol | null; 
+/**
+ * Tab / request name for background completion notifications (REST only).
+ */
+request_label?: string | null }
 export type ApiResponse = { status: number; status_text: string; headers: Partial<{ [key in string]: string }>; cookies: Cookie[]; body_base64: string; timing: TimingInfo; request_size: SizeInfo; response_size: SizeInfo; redirects: RedirectEntry[]; remote_addr: string | null; http_version: string; available_renderers: ResponseRenderer[]; detected_content_type: string | null; protocol_used: string; error: string | null }
 export type AuthType = "None" | { Basic: { username: string; password: string } } | { Bearer: { token: string } } | { ApiKey: { key: string; value: string; add_to: ApiKeyLocation } }
 export type BodyType = "None" | { Raw: { content: string; content_type: string | null } } | { FormUrlEncoded: { fields: Partial<{ [key in string]: string }> } } | { Multipart: { fields: MultipartField[] } } | { Binary: { data: number[]; filename: string | null } }
@@ -128,7 +180,11 @@ export type FetchUrlResponse = { status: number; body: string }
 /**
  * Request to fetch (introspect) a GraphQL schema.
  */
-export type GraphQLIntrospectRequest = { url: string; headers: Partial<{ [key in string]: string }> }
+export type GraphQLIntrospectRequest = { url: string; headers: Partial<{ [key in string]: string }>; 
+/**
+ * GraphQL file name for background completion notifications.
+ */
+request_label?: string | null }
 /**
  * Result of a GraphQL introspection fetch.
  */
@@ -139,6 +195,14 @@ export type GraphQLIntrospectResponse = {
 schema_json: string | null; error: string | null }
 export type HttpProtocol = "Tcp"
 export type Methods = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS" | "TRACE" | "CONNECT"
+export type MqttConnectRequest = { connection_id: string; url: string; client_id: string; username: string | null; password: string | null; clean_session: boolean | null; keep_alive_secs: number | null; subscriptions: MqttSubscription[] }
+export type MqttConnectResponse = { connection_id: string; url: string; client_id: string; error: string | null }
+export type MqttDisconnectedEvent = { connection_id: string; reason: string }
+export type MqttIncomingMessage = { connection_id: string; id: string; topic: string; data: string; qos: number; retain: boolean; timestamp_ms: number }
+export type MqttPublishRequest = { connection_id: string; topic: string; data: string; qos: number; retain: boolean | null }
+export type MqttSubscribeRequest = { connection_id: string; topic: string; qos: number }
+export type MqttSubscription = { topic: string; qos: number }
+export type MqttUnsubscribeRequest = { connection_id: string; topic: string }
 export type MultipartField = { name: string; value: MultipartValue }
 export type MultipartValue = { Text: string } | { File: { data: number[]; filename: string; content_type: string | null } }
 export type ProxyConfig = { url: string; username: string | null; password: string | null }
@@ -167,7 +231,31 @@ headers: Partial<{ [key in string]: string }>;
 /**
  * Optional auth payload sent during the handshake.
  */
-auth: string | null }
+auth: string | null; 
+/**
+ * Transport selection.
+ */
+transport: string | null; 
+/**
+ * Whether automatic reconnects are enabled.
+ */
+reconnect: boolean | null; 
+/**
+ * Whether to reconnect after an explicit server disconnect.
+ */
+reconnect_on_disconnect: boolean | null; 
+/**
+ * Minimum reconnect delay in milliseconds.
+ */
+reconnect_delay_min_ms: number | null; 
+/**
+ * Maximum reconnect delay in milliseconds.
+ */
+reconnect_delay_max_ms: number | null; 
+/**
+ * Max reconnect attempts. Null means library default/infinite depending on client behavior.
+ */
+max_reconnect_attempts: number | null }
 /**
  * Response returned from `sio_connect`.
  */
@@ -176,6 +264,14 @@ export type SioConnectResponse = { connection_id: string; url: string; namespace
  * Pushed as a Tauri event when the connection is closed.
  */
 export type SioDisconnectedEvent = { connection_id: string; reason: string }
+/**
+ * Sent from the frontend to emit an event and await an ack payload.
+ */
+export type SioEmitAckRequest = { connection_id: string; event: string; data: string; timeout_ms: number }
+/**
+ * Result returned from an ack-aware emit.
+ */
+export type SioEmitAckResponse = { event: string; data: string; timed_out: boolean }
 /**
  * Sent from the frontend to emit an event.
  */

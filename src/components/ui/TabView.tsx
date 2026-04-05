@@ -2,6 +2,8 @@ interface Tab {
   id: string;
   label: string;
   badge?: number | string;
+  /** Native tooltip on hover */
+  title?: string;
 }
 
 interface TabViewProps {
@@ -28,6 +30,7 @@ export function TabView({
           <button
             key={tab.id}
             type="button"
+            title={tab.title}
             onClick={() => onTabChange(tab.id)}
             className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer relative ${
               activeTab === tab.id
@@ -62,6 +65,7 @@ export function TabView({
         <button
           key={tab.id}
           type="button"
+          title={tab.title}
           onClick={() => onTabChange(tab.id)}
           className={`${sizeClasses} cursor-pointer font-medium rounded-md transition-colors ${
             activeTab === tab.id

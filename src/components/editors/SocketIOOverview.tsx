@@ -1,34 +1,19 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { autoSizeTextarea } from "../../utils";
 import type { SocketIOFile } from "../../types/project";
 import { CodeViewer } from "../CodeMirror";
+import { Dropdown } from "../ui";
+import {
+  generateSocketIoSnippet,
+  SOCKETIO_SNIPPET_LANGS,
+  type SocketIOSnippetLang,
+} from "../../utils/realtimeSnippets";
 
 interface SocketIOOverviewProps {
   sio: SocketIOFile;
   status: "connected" | "connecting" | "disconnected";
   onUpdate: (updater: (sio: SocketIOFile) => SocketIOFile) => void;
   onConnect: () => void;
-}
-
-function generateSioSnippet(url: string, namespace: string) {
-  const normalizedNamespace = namespace?.trim() || "/";
-  const normalizedUrl = url?.trim() || "https://api.example.com";
-  return `import { io } from "socket.io-client";
-
-const socket = io("${normalizedUrl}", {
-  path: "/socket.io",
-  transports: ["websocket"],
-  auth: {},
-});
-
-socket.on("connect", () => {
-  console.log("connected", socket.id);
-});
-
-socket.emit("message", { hello: "world" });
-socket.onAny((event, payload) => {
-  console.log(event, payload);
-});`;
 }
 
 export const SocketIOOverview = ({
@@ -41,6 +26,8 @@ export const SocketIOOverview = ({
   const [name, setName] = useState(sio.name);
   const [description, setDescription] = useState(sio.description || "");
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const [snippetLang, setSnippetLang] = useState<SocketIOSnippetLang>("JavaScript");
+  const [showSnippetDropdown, setShowSnippetDropdown] = useState(false);
 
   useEffect(() => {
     setName(sio.name);
@@ -51,9 +38,9 @@ export const SocketIOOverview = ({
     autoSizeTextarea(descriptionRef.current);
   }, [description]);
 
-  const snippet = useMemo(
-    () => generateSioSnippet(sio.url, sio.namespace || "/"),
-    [sio.url, sio.namespace],
+  const { code: snippetCode, language: snippetLanguage } = generateSocketIoSnippet(
+    sio,
+    snippetLang,
   );
 
   const enabledHeaders = (sio.headerItems || []).filter((h) => h.enabled && h.key);
@@ -169,25 +156,49 @@ export const SocketIOOverview = ({
           <div className="h-full rounded-xl bg-background border border-white/5 overflow-hidden flex flex-col">
             <div className="flex shrink-0 items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                <span className="inline-flex items-center text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#25C2A0]/20 text-[#25C2A0]">
                   SIO
                 </span>
                 <span className="text-xs text-white/40 truncate max-w-[220px]">
                   {sio.url || "No URL set"}
                 </span>
               </div>
-              <span className="text-xs text-white/40">
-                {status === "connected"
-                  ? "Connected"
-                  : status === "connecting"
-                    ? "Connecting..."
-                    : "Disconnected"}
-              </span>
+              <div className="relative">
+                <button
+                  onClick={() => setShowSnippetDropdown(!showSnippetDropdown)}
+                  className="text-[11px] text-white/60 hover:text-white flex items-center gap-1"
+                >
+                  {snippetLang}
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                {showSnippetDropdown && (
+                  <Dropdown
+                    className="top-full right-0 mt-1"
+                    onClose={() => setShowSnippetDropdown(false)}
+                    items={SOCKETIO_SNIPPET_LANGS.map((snippet) => ({
+                      label: snippet.label,
+                      onClick: () => {
+                        setSnippetLang(snippet.lang);
+                        setShowSnippetDropdown(false);
+                      },
+                    }))}
+                  />
+                )}
+              </div>
             </div>
 
             <div className="flex-1 min-h-0 text-[11px] relative">
               <div className="absolute inset-0 overflow-auto">
-                <CodeViewer code={snippet} language="javascript" />
+                <CodeViewer code={snippetCode} language={snippetLanguage} />
               </div>
               <button
                 type="button"

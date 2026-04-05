@@ -5,11 +5,12 @@ use dashmap::DashMap;
 use rust_socketio::asynchronous::{Client, ClientBuilder};
 use rust_socketio::{Payload, TransportType};
 use tauri::{AppHandle, Emitter};
+use tokio::sync::{oneshot, Mutex};
 use tokio::time::{timeout, Duration};
 
 use crate::types::{
-    SioConnectRequest, SioConnectResponse, SioDisconnectedEvent, SioEmitRequest,
-    SioIncomingMessage,
+    SioConnectRequest, SioConnectResponse, SioDisconnectedEvent, SioEmitAckRequest,
+    SioEmitAckResponse, SioEmitRequest, SioIncomingMessage,
 };
 
 pub struct SioRegistry(DashMap<String, Client>);
@@ -52,6 +53,35 @@ pub fn disconnected_event(connection_id: &str) -> String {
     format!("sio://disconnected/{}", connection_id)
 }
 
+fn transport_from_request(transport: Option<&str>) -> TransportType {
+    match transport.unwrap_or("websocket") {
+        "polling" => TransportType::Polling,
+        "websocket-upgrade" => TransportType::WebsocketUpgrade,
+        "auto" => TransportType::Any,
+        _ => TransportType::Websocket,
+    }
+}
+
+fn payload_to_string(payload: Payload) -> String {
+    match payload {
+        Payload::Text(values) => {
+            if values.is_empty() {
+                String::new()
+            } else if values.len() == 1 {
+                values[0].to_string()
+            } else {
+                serde_json::Value::Array(values).to_string()
+            }
+        }
+        Payload::Binary(bytes) => bytes
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<Vec<_>>()
+            .join(" "),
+        _ => String::new(),
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn sio_connect(
@@ -72,34 +102,26 @@ pub async fn sio_connect(
 
     let mut builder = ClientBuilder::new(&req.url)
         .namespace(&namespace)
-        .transport_type(TransportType::Websocket)
-        .reconnect(false)
-        .reconnect_on_disconnect(false)
-        .reconnect_delay(SIO_RECONNECT_DELAY_MIN_MS, SIO_RECONNECT_DELAY_MAX_MS)
-        .max_reconnect_attempts(SIO_MAX_RECONNECT_ATTEMPTS)
+        .transport_type(transport_from_request(req.transport.as_deref()))
+        .reconnect(req.reconnect.unwrap_or(true))
+        .reconnect_on_disconnect(req.reconnect_on_disconnect.unwrap_or(false))
+        .reconnect_delay(
+            req.reconnect_delay_min_ms
+                .map(|value| value as u64)
+                .unwrap_or(SIO_RECONNECT_DELAY_MIN_MS),
+            req.reconnect_delay_max_ms
+                .map(|value| value as u64)
+                .unwrap_or(SIO_RECONNECT_DELAY_MAX_MS),
+        )
+        .max_reconnect_attempts(
+            req.max_reconnect_attempts
+                .unwrap_or(SIO_MAX_RECONNECT_ATTEMPTS),
+        )
         .on_any(move |event, payload, _client| {
             let conn_id = conn_id_msg.clone();
             let app_handle = app_msg.clone();
             Box::pin(async move {
-                let data = match payload {
-                    Payload::Text(values) => {
-                        if values.is_empty() {
-                            String::new()
-                        } else if values.len() == 1 {
-                            values[0].to_string()
-                        } else {
-                            serde_json::Value::Array(values).to_string()
-                        }
-                    }
-                    Payload::Binary(bytes) => {
-                        bytes
-                            .iter()
-                            .map(|b| format!("{b:02x}"))
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                    }
-                    _ => String::new(),
-                };
+                let data = payload_to_string(payload);
 
                 let evt = SioIncomingMessage {
                     connection_id: conn_id.clone(),
@@ -183,6 +205,57 @@ pub async fn sio_emit(
         .emit(req.event.as_str(), payload)
         .await
         .map_err(|e| format!("Emit failed: {e}"))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn sio_emit_with_ack(
+    req: SioEmitAckRequest,
+    registry: tauri::State<'_, Arc<SioRegistry>>,
+) -> Result<SioEmitAckResponse, String> {
+    let client = registry
+        .get_client(&req.connection_id)
+        .ok_or_else(|| format!("No active Socket.IO connection '{}'", req.connection_id))?;
+
+    let payload: serde_json::Value = serde_json::from_str(&req.data)
+        .unwrap_or_else(|_| serde_json::Value::String(req.data.clone()));
+
+    let (tx, rx) = oneshot::channel::<String>();
+    let sender = Arc::new(Mutex::new(Some(tx)));
+
+    client
+        .emit_with_ack(
+            req.event.as_str(),
+            payload,
+            Duration::from_millis(req.timeout_ms as u64),
+            {
+                let sender = Arc::clone(&sender);
+                move |payload, _client| {
+                    let sender = Arc::clone(&sender);
+                    Box::pin(async move {
+                        let mut guard = sender.lock().await;
+                        if let Some(tx) = guard.take() {
+                            let _ = tx.send(payload_to_string(payload));
+                        }
+                    })
+                }
+            },
+        )
+        .await
+        .map_err(|e| format!("Emit with ack failed: {e}"))?;
+
+    match timeout(Duration::from_millis(req.timeout_ms as u64 + 250), rx).await {
+        Ok(Ok(data)) => Ok(SioEmitAckResponse {
+            event: req.event,
+            data,
+            timed_out: false,
+        }),
+        _ => Ok(SioEmitAckResponse {
+            event: req.event,
+            data: String::new(),
+            timed_out: true,
+        }),
+    }
 }
 
 #[tauri::command]

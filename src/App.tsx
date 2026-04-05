@@ -22,6 +22,7 @@ import { AuthEditor } from "./components/editors/AuthEditor";
 import { WebSocketEditor } from "./components/editors/WebSocketEditor";
 import { GraphQLEditor } from "./components/editors/GraphQLEditor";
 import { SocketIOEditor } from "./components/editors/SocketIOEditor";
+import { MQTTEditor } from "./components/editors/MQTTEditor";
 import { Sidebar } from "./components/Sidebar";
 import {
   Dropdown,
@@ -57,7 +58,6 @@ import {
 } from "./utils/migration";
 import { useProjectStore } from "./stores/projectStore";
 import { useToastStore } from "./stores/toastStore";
-
 import "./App.css";
 
 function App() {
@@ -89,6 +89,7 @@ function App() {
     addWebSocket,
     addGraphQL,
     addSocketIO,
+    addMqtt,
     addWorkflow,
     addFolder,
     renameItem,
@@ -102,6 +103,7 @@ function App() {
     updateWebSocket,
     updateGraphQL,
     updateSocketIO,
+    updateMqtt,
     setRequestResponse,
     markSaved,
     activeWorkflowId,
@@ -112,6 +114,8 @@ function App() {
     setActiveGraphQLId,
     activeSocketIOId,
     setActiveSocketIOId,
+    activeMqttId,
+    setActiveMqttId,
     clipboard,
     copyToClipboard,
     cutToClipboard,
@@ -119,6 +123,7 @@ function App() {
     selectedItemId,
     setSelectedItem,
     addToRecentRequests,
+    openItemById,
   } = useProjectStore();
 
   const activeProject = useProjectStore(
@@ -135,7 +140,8 @@ function App() {
       state.activeWorkflowId ||
       state.activeWebSocketId ||
       state.activeGraphQLId ||
-      state.activeSocketIOId;
+      state.activeSocketIOId ||
+      state.activeMqttId;
     if (!activeId) return null;
 
     const findItem = (root: any, itemId: string): any => {
@@ -158,6 +164,7 @@ function App() {
   const activeWebSocket = activeItem?.type === "websocket" ? activeItem : null;
   const activeGraphQL = activeItem?.type === "graphql" ? activeItem : null;
   const activeSocketIO = activeItem?.type === "socketio" ? activeItem : null;
+  const activeMqtt = activeItem?.type === "mqtt" ? activeItem : null;
 
   const { addToast } = useToastStore();
 
@@ -176,6 +183,7 @@ function App() {
   const [loadingSocketIOs, setLoadingSocketIOs] = useState<Set<string>>(
     new Set(),
   );
+  const [loadingMqtts, setLoadingMqtts] = useState<Set<string>>(new Set());
   const loading = activeRequest ? loadingRequests.has(activeRequest.id) : false;
   const [activeTab, setActiveTab] = useState<
     "overview" | "params" | "authorization" | "body" | "headers" | "cookies"
@@ -285,6 +293,18 @@ function App() {
     });
   }, []);
 
+  const startMqttLoading = useCallback((mqttId: string) => {
+    setLoadingMqtts((prev) => new Set(prev).add(mqttId));
+  }, []);
+
+  const stopMqttLoading = useCallback((mqttId: string) => {
+    setLoadingMqtts((prev) => {
+      const next = new Set(prev);
+      next.delete(mqttId);
+      return next;
+    });
+  }, []);
+
   const handleNewWebSocket = () => {
     if (activeProject) {
       addWebSocket(activeProject.root.id);
@@ -304,6 +324,14 @@ function App() {
   const handleNewSocketIO = () => {
     if (activeProject) {
       addSocketIO(activeProject.root.id);
+    } else {
+      setShowNewProjectModal(true);
+    }
+  };
+
+  const handleNewMqtt = () => {
+    if (activeProject) {
+      addMqtt(activeProject.root.id);
     } else {
       setShowNewProjectModal(true);
     }
@@ -437,7 +465,8 @@ function App() {
           activeWebSocketId ||
           activeWorkflowId ||
           activeGraphQLId ||
-          activeSocketIOId;
+          activeSocketIOId ||
+          activeMqttId;
         if (idToSave) {
           markSaved(idToSave);
         }
@@ -654,6 +683,7 @@ function App() {
         query_params: {},
         body: isGet ? "None" : activeRequest.request.body,
         auth: effectiveAuth,
+        request_label: activeRequest.name,
       };
       const resp = await sendRequest(resolvedRequest);
       setRequestResponse(activeRequest.id, resp);
@@ -809,6 +839,7 @@ function App() {
         verify_ssl: null,
         proxy: null,
         protocol: null,
+        request_label: activeGraphQL.name,
       });
 
       updateGraphQL(gqlId, (prev) => ({ ...prev, response: resp }));
@@ -1350,6 +1381,9 @@ function App() {
               } else if (type === "socketio") {
                 setActiveSocketIOId(id);
                 setShowProjectOverview(false);
+              } else if (type === "mqtt") {
+                setActiveMqttId(id);
+                setShowProjectOverview(false);
               }
             }}
             selectedItemId={
@@ -1359,13 +1393,15 @@ function App() {
                   activeWorkflowId ||
                   activeWebSocketId ||
                   activeGraphQLId ||
-                  activeSocketIOId
+                  activeSocketIOId ||
+                  activeMqttId
             }
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
             onAddWebSocket={addWebSocket}
             onAddGraphQL={addGraphQL}
             onAddSocketIO={addSocketIO}
+            onAddMqtt={addMqtt}
             onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
@@ -1398,6 +1434,7 @@ function App() {
             loadingWebSockets={loadingWebSockets}
             loadingGraphQLs={loadingGraphQLs}
             loadingSocketIOs={loadingSocketIOs}
+            loadingMqtts={loadingMqtts}
           />
         </div>
 
@@ -1430,6 +1467,9 @@ function App() {
               } else if (type === "socketio") {
                 setActiveSocketIOId(id);
                 setShowProjectOverview(false);
+              } else if (type === "mqtt") {
+                setActiveMqttId(id);
+                setShowProjectOverview(false);
               }
             }}
             selectedItemId={
@@ -1439,13 +1479,15 @@ function App() {
                   activeWorkflowId ||
                   activeWebSocketId ||
                   activeGraphQLId ||
-                  activeSocketIOId
+                  activeSocketIOId ||
+                  activeMqttId
             }
             onToggleFolder={toggleFolder}
             onAddRequest={addRequest}
             onAddWebSocket={addWebSocket}
             onAddGraphQL={addGraphQL}
             onAddSocketIO={addSocketIO}
+            onAddMqtt={addMqtt}
             onAddWorkflow={addWorkflow}
             onAddFolder={addFolder}
             onRename={renameItem}
@@ -1478,6 +1520,7 @@ function App() {
             loadingWebSockets={loadingWebSockets}
             loadingGraphQLs={loadingGraphQLs}
             loadingSocketIOs={loadingSocketIOs}
+            loadingMqtts={loadingMqtts}
           />
         </div>
 
@@ -1521,6 +1564,14 @@ function App() {
               }}
               onSelectGraphQL={(id) => {
                 setActiveGraphQLId(id);
+                setShowProjectOverview(false);
+              }}
+              onSelectSocketIO={(id) => {
+                setActiveSocketIOId(id);
+                setShowProjectOverview(false);
+              }}
+              onSelectMqtt={(id) => {
+                setActiveMqttId(id);
                 setShowProjectOverview(false);
               }}
               onRunRequest={(id) => {
@@ -1754,6 +1805,7 @@ function App() {
                     headers: resolvedHeaders,
                     query_params: resolvedParams,
                     body: finalBody,
+                    request_label: request.name,
                   });
 
                   setRequestResponse(requestId, resp);
@@ -1842,11 +1894,21 @@ function App() {
               onStartLoading={startSioLoading}
               onStopLoading={stopSioLoading}
             />
+          ) : activeMqtt && !showProjectOverview ? (
+            <MQTTEditor
+              key={activeMqtt.id}
+              mqtt={activeMqtt}
+              onUpdate={(updater) => updateMqtt(activeMqtt.id, updater)}
+              resolveVariables={resolveVariables}
+              onStartLoading={startMqttLoading}
+              onStopLoading={stopMqttLoading}
+            />
           ) : !activeRequest &&
             !activeWorkflow &&
             !activeWebSocket &&
             !activeGraphQL &&
             !activeSocketIO &&
+            !activeMqtt &&
             !showProjectOverview ? (
             <WelcomePage
               onNewRequest={() => {
@@ -1863,6 +1925,7 @@ function App() {
               onNewWebSocket={handleNewWebSocket}
               onNewGraphQL={handleNewGraphQL}
               onNewSocketIO={handleNewSocketIO}
+              onNewMqtt={handleNewMqtt}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");
@@ -1873,7 +1936,8 @@ function App() {
               onImportClick={() => setShowImportModal(true)}
               recentRequests={activeProject?.recentRequests || []}
               onSelectRecent={(id) => {
-                setActiveRequestId(id);
+                setShowProjectOverview(false);
+                openItemById(id);
               }}
               projects={projects}
               activeProjectId={activeProject?.id || null}
@@ -2475,6 +2539,7 @@ function App() {
               onNewWebSocket={handleNewWebSocket}
               onNewGraphQL={handleNewGraphQL}
               onNewSocketIO={handleNewSocketIO}
+              onNewMqtt={handleNewMqtt}
               onNewFolder={() => {
                 if (activeProject) {
                   addFolder(activeProject.root.id, "New Folder");
@@ -2485,7 +2550,8 @@ function App() {
               onImportClick={() => setShowImportModal(true)}
               recentRequests={activeProject?.recentRequests || []}
               onSelectRecent={(id) => {
-                setActiveRequestId(id);
+                setShowProjectOverview(false);
+                openItemById(id);
               }}
               projects={projects}
               activeProjectId={activeProject?.id || null}

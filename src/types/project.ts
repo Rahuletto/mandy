@@ -105,9 +105,17 @@ export interface SocketIOFile {
   description?: string;
   url: string;
   namespace?: string;
+  path?: string;
+  transport?: "auto" | "websocket" | "polling" | "websocket-upgrade";
+  reconnect?: boolean;
+  reconnectOnDisconnect?: boolean;
+  reconnectDelayMinMs?: number;
+  reconnectDelayMaxMs?: number;
+  maxReconnectAttempts?: number | null;
   messages: SocketIOMessage[];
   headers: Record<string, string>;
   headerItems?: SocketIOKeyValue[];
+  queryItems?: SocketIOKeyValue[];
   auth?: import("../bindings").AuthType;
   authPayload?: string;
   useInheritedAuth?: boolean;
@@ -119,6 +127,38 @@ export interface SocketIOMessage {
   event: string;
   data: string;
   timestamp: number;
+}
+
+export interface MQTTSubscription {
+  id: string;
+  topic: string;
+  qos: 0 | 1 | 2;
+  enabled?: boolean;
+}
+
+export interface MQTTFile {
+  id: string;
+  type: "mqtt";
+  name: string;
+  description?: string;
+  url: string;
+  clientId: string;
+  username?: string;
+  password?: string;
+  cleanSession?: boolean;
+  keepAliveSecs?: number;
+  subscriptions: MQTTSubscription[];
+  messages: MQTTMessage[];
+}
+
+export interface MQTTMessage {
+  id: string;
+  direction: "send" | "receive" | "system";
+  topic: string;
+  data: string;
+  timestamp: number;
+  qos?: 0 | 1 | 2;
+  retain?: boolean;
 }
 
 export interface RecentRequest {
@@ -133,7 +173,7 @@ export interface Folder {
   id: string;
   type: "folder";
   name: string;
-  children: (Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile | SocketIOFile)[];
+  children: (Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile | SocketIOFile | MQTTFile)[];
   expanded?: boolean;
 }
 
@@ -151,6 +191,6 @@ export interface Project {
   recentRequests: RecentRequest[];
 }
 
-export type TreeItem = Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile | SocketIOFile;
+export type TreeItem = Folder | RequestFile | WorkflowFile | WebSocketFile | GraphQLFile | SocketIOFile | MQTTFile;
 
 export type SortMode = "manual" | "method" | "alphabetical";

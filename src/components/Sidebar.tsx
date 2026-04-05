@@ -3,7 +3,8 @@ import type { Project, SortMode } from "../types/project";
 import { FileTree } from "./FileTree";
 import { ContextMenu, MenuItem, IconPicker, getIconComponent } from "./ui";
 import { FaFolder, FaPlus } from "react-icons/fa6";
-import { TbPlugConnected, TbWorld, TbBrandGraphql, TbBolt } from "react-icons/tb";
+import { SiMqtt, SiSocketdotio } from "react-icons/si";
+import { TbPlugConnected, TbWorld, TbBrandGraphql } from "react-icons/tb";
 import { VscTypeHierarchySub } from "react-icons/vsc";
 
 interface SidebarProps {
@@ -12,13 +13,14 @@ interface SidebarProps {
   unsavedIds: Set<string>;
   onSelect: (
     id: string,
-    type: "folder" | "request" | "workflow" | "websocket" | "graphql" | "socketio",
+    type: "folder" | "request" | "workflow" | "websocket" | "graphql" | "socketio" | "mqtt",
   ) => void;
   onToggleFolder: (id: string) => void;
   onAddRequest: (folderId: string) => void;
   onAddWebSocket: (folderId: string) => void;
   onAddGraphQL: (folderId: string) => void;
   onAddSocketIO: (folderId: string) => void;
+  onAddMqtt: (folderId: string) => void;
   onAddWorkflow: (folderId: string) => void;
   onAddFolder: (folderId: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -47,6 +49,7 @@ interface SidebarProps {
   loadingWebSockets?: Set<string>;
   loadingGraphQLs?: Set<string>;
   loadingSocketIOs?: Set<string>;
+  loadingMqtts?: Set<string>;
 }
 
 export function Sidebar({
@@ -59,6 +62,7 @@ export function Sidebar({
   onAddWebSocket,
   onAddGraphQL,
   onAddSocketIO,
+  onAddMqtt,
   onAddWorkflow,
   onAddFolder,
   onRename,
@@ -83,6 +87,7 @@ export function Sidebar({
   loadingWebSockets = new Set(),
   loadingGraphQLs = new Set(),
   loadingSocketIOs = new Set(),
+  loadingMqtts = new Set(),
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isResizing, setIsResizing] = useState(false);
@@ -140,7 +145,7 @@ export function Sidebar({
         },
         {
           label: "WebSocket",
-          icon: <TbPlugConnected size={14} className="text-sky-400 opacity-100" />,
+          icon: <TbPlugConnected size={14} className="text-emerald-400 opacity-100" />,
           onClick: () => onAddWebSocket(activeProject.root.id),
         },
         {
@@ -150,8 +155,13 @@ export function Sidebar({
         },
         {
           label: "Socket.IO",
-          icon: <TbBolt size={14} className="text-amber-400 opacity-100" />,
+          icon: <SiSocketdotio size={14} className="text-[#25C2A0] opacity-100" />,
           onClick: () => onAddSocketIO(activeProject.root.id),
+        },
+        {
+          label: "MQTT",
+          icon: <SiMqtt size={12} className="text-orange-300 opacity-100" />,
+          onClick: () => onAddMqtt(activeProject.root.id),
         },
         { label: "", onClick: () => {}, divider: true },
         {
@@ -246,6 +256,7 @@ export function Sidebar({
             onAddWebSocket={onAddWebSocket}
             onAddGraphQL={onAddGraphQL}
             onAddSocketIO={onAddSocketIO}
+            onAddMqtt={onAddMqtt}
             onAddWorkflow={onAddWorkflow}
             onAddFolder={onAddFolder}
             onRename={onRename}
@@ -265,6 +276,7 @@ export function Sidebar({
             loadingWebSockets={loadingWebSockets}
             loadingGraphQLs={loadingGraphQLs}
             loadingSocketIOs={loadingSocketIOs}
+            loadingMqtts={loadingMqtts}
           />
         </>
       ) : (

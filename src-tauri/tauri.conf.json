@@ -33,6 +33,12 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": [
+      "resources/macos-tahoe-tinted-dark.png",
+      "resources/macos-tahoe-light.png",
+      "resources/mandy-about-icon.png",
+      "resources/mandy-about-icon-dark.png"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

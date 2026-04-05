@@ -82,6 +82,9 @@ pub struct ApiRequest {
     pub verify_ssl: Option<bool>,
     pub proxy: Option<ProxyConfig>,
     pub protocol: Option<HttpProtocol>,
+    /// Tab / request name for background completion notifications (REST only).
+    #[serde(default)]
+    pub request_label: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Type, Clone)]
@@ -163,6 +166,7 @@ impl Default for ApiRequest {
             verify_ssl: Some(true),
             proxy: None,
             protocol: None,
+            request_label: None,
         }
     }
 }
@@ -242,6 +246,9 @@ pub struct FetchUrlResponse {
 pub struct GraphQLIntrospectRequest {
     pub url: String,
     pub headers: HashMap<String, String>,
+    /// GraphQL file name for background completion notifications.
+    #[serde(default)]
+    pub request_label: Option<String>,
 }
 
 /// Result of a GraphQL introspection fetch.
@@ -267,6 +274,18 @@ pub struct SioConnectRequest {
     pub headers: HashMap<String, String>,
     /// Optional auth payload sent during the handshake.
     pub auth: Option<String>,
+    /// Transport selection.
+    pub transport: Option<String>,
+    /// Whether automatic reconnects are enabled.
+    pub reconnect: Option<bool>,
+    /// Whether to reconnect after an explicit server disconnect.
+    pub reconnect_on_disconnect: Option<bool>,
+    /// Minimum reconnect delay in milliseconds.
+    pub reconnect_delay_min_ms: Option<u32>,
+    /// Maximum reconnect delay in milliseconds.
+    pub reconnect_delay_max_ms: Option<u32>,
+    /// Max reconnect attempts. Null means library default/infinite depending on client behavior.
+    pub max_reconnect_attempts: Option<u8>,
 }
 
 /// Response returned from `sio_connect`.
@@ -301,4 +320,88 @@ pub struct SioEmitRequest {
     pub connection_id: String,
     pub event: String,
     pub data: String,
+}
+
+/// Sent from the frontend to emit an event and await an ack payload.
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct SioEmitAckRequest {
+    pub connection_id: String,
+    pub event: String,
+    pub data: String,
+    pub timeout_ms: u32,
+}
+
+/// Result returned from an ack-aware emit.
+#[derive(Serialize, Deserialize, Type)]
+pub struct SioEmitAckResponse {
+    pub event: String,
+    pub data: String,
+    pub timed_out: bool,
+}
+
+// ─── MQTT types ─────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct MqttSubscription {
+    pub topic: String,
+    pub qos: u8,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct MqttConnectRequest {
+    pub connection_id: String,
+    pub url: String,
+    pub client_id: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub clean_session: Option<bool>,
+    pub keep_alive_secs: Option<u16>,
+    pub subscriptions: Vec<MqttSubscription>,
+}
+
+#[derive(Serialize, Deserialize, Type)]
+pub struct MqttConnectResponse {
+    pub connection_id: String,
+    pub url: String,
+    pub client_id: String,
+    pub error: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct MqttIncomingMessage {
+    pub connection_id: String,
+    pub id: String,
+    pub topic: String,
+    pub data: String,
+    pub qos: u8,
+    pub retain: bool,
+    pub timestamp_ms: f64,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct MqttDisconnectedEvent {
+    pub connection_id: String,
+    pub reason: String,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct MqttPublishRequest {
+    pub connection_id: String,
+    pub topic: String,
+    pub data: String,
+    pub qos: u8,
+    pub retain: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct MqttSubscribeRequest {
+    pub connection_id: String,
+    pub topic: String,
+    pub qos: u8,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct MqttUnsubscribeRequest {
+    pub connection_id: String,
+    pub topic: String,
 }
