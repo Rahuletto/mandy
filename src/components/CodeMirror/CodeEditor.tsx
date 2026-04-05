@@ -57,6 +57,9 @@ export function CodeEditor({
 }: CodeEditorProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
+	/** Initial doc when creating the view; avoids stale `code` without listing it in the init effect deps. */
+	const latestCodeForInitRef = useRef(code);
+	latestCodeForInitRef.current = code;
 	const onChangeRef = useRef(onChange);
 	const completionsRef = useRef(completions);
 	const jsonKeyCompletionsRef = useRef(jsonKeyCompletions);
@@ -159,8 +162,17 @@ export function CodeEditor({
 			};
 		};
 
+		// Capture doc before destroy — and never depend on `code` here: it changes every
+		// keystroke and would recreate the whole editor (focus loss, cursor to start).
+		const previousDoc =
+			viewRef.current?.state.doc.toString() ?? latestCodeForInitRef.current;
+
+		if (viewRef.current) {
+			viewRef.current.destroy();
+		}
+
 		const state = EditorState.create({
-			doc: code,
+			doc: previousDoc,
 			extensions: [
 				lineNumbers(),
 				highlightActiveLine(),
@@ -232,10 +244,6 @@ export function CodeEditor({
 			],
 		});
 
-		if (viewRef.current) {
-			viewRef.current.destroy();
-		}
-
 		const view = new EditorView({
 			state,
 			parent: containerRef.current,
@@ -247,14 +255,7 @@ export function CodeEditor({
 			view.destroy();
 			viewRef.current = null;
 		};
-	}, [
-		language,
-		readOnly,
-		handlePrettify,
-		activeExtensions,
-		code,
-		themeCompartment,
-	]);
+	}, [language, readOnly, handlePrettify, activeExtensions, themeCompartment]);
 
 	useEffect(() => {
 		const view = viewRef.current;

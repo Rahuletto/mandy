@@ -43,6 +43,8 @@ export function GraphQLCodeEditor({
 }: GraphQLCodeEditorProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
+	const latestCodeForInitRef = useRef(code);
+	latestCodeForInitRef.current = code;
 	const onChangeRef = useRef(onChange);
 	const [copied, setCopied] = useState(false);
 	const [_themeKey, setThemeKey] = useState(0);
@@ -167,11 +169,14 @@ export function GraphQLCodeEditor({
 			}),
 		];
 
-		const state = EditorState.create({ doc: code, extensions });
+		const previousDoc =
+			viewRef.current?.state.doc.toString() ?? latestCodeForInitRef.current;
 
 		if (viewRef.current) {
 			viewRef.current.destroy();
 		}
+
+		const state = EditorState.create({ doc: previousDoc, extensions });
 
 		const view = new EditorView({
 			state,
@@ -184,7 +189,7 @@ export function GraphQLCodeEditor({
 			view.destroy();
 			viewRef.current = null;
 		};
-	}, [readOnly, schema, code, themeCompartment]);
+	}, [readOnly, schema, themeCompartment]);
 
 	useEffect(() => {
 		const view = viewRef.current;
