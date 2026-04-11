@@ -257,13 +257,14 @@ export function CodeEditor({
 		};
 	}, [language, readOnly, handlePrettify, activeExtensions, themeCompartment]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: _themeKey triggers theme reconfiguration on global theme change
 	useEffect(() => {
 		const view = viewRef.current;
 		if (!view) return;
 		view.dispatch({
 			effects: themeCompartment.reconfigure(getMandyExtension()),
 		});
-	}, [themeCompartment]);
+	}, [themeCompartment, _themeKey]);
 
 	useEffect(() => {
 		if (viewRef.current) {

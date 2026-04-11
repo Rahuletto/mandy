@@ -65,6 +65,7 @@ export function useVirtualizedFollowList({
 		[clearFollowTimeout],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: messageVersion triggers auto-scroll when new messages arrive
 	useEffect(() => {
 		if (!followOutput || filteredCount === 0) return;
 		followScrollInFlightRef.current = true;
@@ -88,6 +89,7 @@ export function useVirtualizedFollowList({
 		};
 	}, [
 		filteredCount,
+		messageVersion,
 		followOutput,
 		listRef,
 		scheduleFollowScrollEnd,

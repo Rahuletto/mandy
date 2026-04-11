@@ -181,8 +181,9 @@ export function Sidebar({
 			{activeProject ? (
 				<>
 					<div className="shrink-0">
-						<div
-							className={`flex cursor-pointer items-center gap-2 px-3 py-2 opacity-80 transition-colors ${
+						<button
+							type="button"
+							className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 opacity-80 transition-colors ${
 								showProjectOverview ? "bg-accent/10" : "hover:bg-white/5"
 							}`}
 							onClick={onProjectClick}
@@ -215,7 +216,7 @@ export function Sidebar({
 							>
 								{activeProject.name}
 							</span>
-						</div>
+						</button>
 					</div>
 					<FileTree
 						root={activeProject.root}
@@ -246,6 +247,7 @@ export function Sidebar({
 				</div>
 			)}
 
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: resize handle is mouse-only */}
 			<div
 				className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize transition-colors hover:bg-accent/50"
 				onMouseDown={handleMouseDown}
