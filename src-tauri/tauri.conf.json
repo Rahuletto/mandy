@@ -32,7 +32,7 @@
 	},
 	"plugins": {
 		"updater": {
-			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4NDg1RjJBMzVEQUQ5NzkKUldSNTJkbzFLbDlJNktKUG9acUYvM0QzQU84S2gyVXdBb040RFRBMHBQejVDUk9VdWlWU285YUIK",
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYwN0M1OUZCOTMwMDc5NEIKUldSTGVRQ1QrMWw4WU1hWWpOcEpjcUI4Y3FhbUdWZzVQdnNMUmYzWFBEQU5YcmUwZEJtTHpLQUEK",
 			"endpoints": [
 				"https://github.com/Rahuletto/mandy/releases/latest/download/latest.json"
 			]
