@@ -1,8 +1,11 @@
 name: Build
 
-# Matrix build + draft release (same pattern as before tauri-action).
-# Secrets: TAURI_SIGNING_PRIVATE_KEY (+ optional TAURI_SIGNING_PRIVATE_KEY_PASSWORD)
-# for updater .sig files when createUpdaterArtifacts is enabled in tauri.conf.json.
+# Same layout as b7ea8d8032c734d012d036904988fa2e2c1c1953 (matrix + draft release).
+# Build/upload/release is handled by tauri-action so one draft release gets a merged
+# latest.json + signed updater artifacts across macOS / Linux / Windows. Plain
+# softprops + upload-artifact cannot merge per-platform latest.json files.
+#
+# Secrets: TAURI_SIGNING_PRIVATE_KEY (+ optional TAURI_SIGNING_PRIVATE_KEY_PASSWORD).
 
 on:
   push:
@@ -55,58 +58,18 @@ jobs:
       - name: Install frontend dependencies
         run: bun install
 
-      - name: Build Tauri app
+      - name: Build and upload to draft release
+        uses: tauri-apps/tauri-action@v0.6.2
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: bun tauri build ${{ matrix.args }}
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
         with:
-          name: binaries-${{ matrix.target }}
-          path: |
-            src-tauri/target/release/bundle/**/*.dmg
-            src-tauri/target/release/bundle/**/*.deb
-            src-tauri/target/release/bundle/**/*.AppImage
-            src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.exe
-            src-tauri/target/release/bundle/**/*.tar.gz
-            src-tauri/target/release/bundle/**/*.sig
-            src-tauri/target/release/bundle/**/latest.json
-            src-tauri/target/*/release/bundle/**/*.dmg
-            src-tauri/target/*/release/bundle/**/*.deb
-            src-tauri/target/*/release/bundle/**/*.AppImage
-            src-tauri/target/*/release/bundle/**/*.msi
-            src-tauri/target/*/release/bundle/**/*.exe
-            src-tauri/target/*/release/bundle/**/*.tar.gz
-            src-tauri/target/*/release/bundle/**/*.sig
-            src-tauri/target/*/release/bundle/**/latest.json
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Get version
-        id: version
-        run: echo "version=$(jq -r .version src-tauri/tauri.conf.json)" >> $GITHUB_OUTPUT
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Mandy v${{ steps.version.outputs.version }}
-          draft: true
-          body: |
+          tauriScript: bun run tauri
+          tagName: v__VERSION__
+          releaseName: Mandy v__VERSION__
+          releaseDraft: true
+          releaseBody: |
             ## macOS: "Mandy is damaged and can't be opened"
 
             These builds are not signed with an Apple Developer ID, so Gatekeeper may refuse to open the app.
@@ -117,11 +80,9 @@ jobs:
             xattr -cr /Applications/Mandy.app
             ```
 
-            Then open Mandy again.
+            Then open Mandy again. In-app updates use Tauri's update signatures; they do not replace Apple code signing or notarization.
 
             ## Downloads
 
-            **.dmg** (macOS), **.msi** / **.exe** (Windows), **.deb** / **.AppImage** (Linux). Updater signatures (`.sig`) and any `latest.json` from the build are attached if present.
-          files: artifacts/**/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            Use the **.dmg** (macOS), **.msi** / **.exe** (Windows), or **.deb** / **.AppImage** (Linux). The in-app updater reads **latest.json** from this release.
+          args: ${{ matrix.args }}
