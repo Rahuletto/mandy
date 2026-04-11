@@ -267,39 +267,45 @@ export function MQTTEditor({
 			return;
 		}
 
-		const previous = previousSubscriptionsRef.current;
-		const current = mqtt.subscriptions;
-		previousSubscriptionsRef.current = current;
+		const timerId = window.setTimeout(() => {
+			const previous = previousSubscriptionsRef.current;
+			const current = mqtt.subscriptions;
+			previousSubscriptionsRef.current = current;
 
-		const previousActive = previous.filter((item) => item.enabled !== false);
-		const currentActive = current.filter((item) => item.enabled !== false);
+			const previousActive = previous.filter((item) => item.enabled !== false);
+			const currentActive = current.filter((item) => item.enabled !== false);
 
-		const prevMap = new Map(
-			previousActive.map((item) => [item.topic, item.qos]),
-		);
-		const currentMap = new Map(
-			currentActive.map((item) => [item.topic, item.qos]),
-		);
+			const prevMap = new Map(
+				previousActive.map((item) => [item.topic, item.qos]),
+			);
+			const currentMap = new Map(
+				currentActive.map((item) => [item.topic, item.qos]),
+			);
 
-		for (const previousItem of previousActive) {
-			if (!currentMap.has(previousItem.topic)) {
-				void commands.mqttUnsubscribe({
-					connection_id: mqtt.id,
-					topic: previousItem.topic,
-				});
+			for (const previousItem of previousActive) {
+				if (!currentMap.has(previousItem.topic)) {
+					void commands.mqttUnsubscribe({
+						connection_id: mqtt.id,
+						topic: previousItem.topic,
+					});
+				}
 			}
-		}
 
-		for (const currentItem of currentActive) {
-			const prevQos = prevMap.get(currentItem.topic);
-			if (prevQos === undefined || prevQos !== currentItem.qos) {
-				void commands.mqttSubscribe({
-					connection_id: mqtt.id,
-					topic: currentItem.topic,
-					qos: currentItem.qos,
-				});
+			for (const currentItem of currentActive) {
+				const prevQos = prevMap.get(currentItem.topic);
+				if (prevQos === undefined || prevQos !== currentItem.qos) {
+					void commands.mqttSubscribe({
+						connection_id: mqtt.id,
+						topic: currentItem.topic,
+						qos: currentItem.qos,
+					});
+				}
 			}
-		}
+		}, 500);
+
+		return () => {
+			window.clearTimeout(timerId);
+		};
 	}, [isConnected, mqtt.id, mqtt.subscriptions]);
 
 	const connect = useCallback(async () => {

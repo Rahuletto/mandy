@@ -67,6 +67,8 @@ export function CodeEditor({
 	const [activeExtensions, setActiveExtensions] = useState<Extension[]>([]);
 	const [_themeKey, setThemeKey] = useState(0);
 	const themeCompartment = useRef(new Compartment()).current;
+	const languageCompartment = useRef(new Compartment()).current;
+	const readOnlyCompartment = useRef(new Compartment()).current;
 
 	useEffect(() => {
 		onChangeRef.current = onChange;
@@ -177,7 +179,7 @@ export function CodeEditor({
 				lineNumbers(),
 				highlightActiveLine(),
 				drawSelection(),
-				...activeExtensions,
+				languageCompartment.of(activeExtensions),
 				history(),
 				bracketMatching(),
 				closeBrackets(),
@@ -232,10 +234,12 @@ export function CodeEditor({
 						},
 					},
 				]),
-				EditorView.editable.of(!readOnly),
-				EditorView.contentAttributes.of({
-					"aria-readonly": readOnly ? "true" : "false",
-				}),
+				readOnlyCompartment.of([
+					EditorView.editable.of(!readOnly),
+					EditorView.contentAttributes.of({
+						"aria-readonly": readOnly ? "true" : "false",
+					}),
+				]),
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged && !readOnly) {
 						onChangeRef.current(update.state.doc.toString());
@@ -255,7 +259,7 @@ export function CodeEditor({
 			view.destroy();
 			viewRef.current = null;
 		};
-	}, [language, readOnly, handlePrettify, activeExtensions, themeCompartment]);
+	}, [themeCompartment, languageCompartment, readOnlyCompartment]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: _themeKey triggers theme reconfiguration on global theme change
 	useEffect(() => {
@@ -265,6 +269,27 @@ export function CodeEditor({
 			effects: themeCompartment.reconfigure(getMandyExtension()),
 		});
 	}, [themeCompartment, _themeKey]);
+
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: languageCompartment.reconfigure(activeExtensions),
+		});
+	}, [languageCompartment, activeExtensions]);
+
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: readOnlyCompartment.reconfigure([
+				EditorView.editable.of(!readOnly),
+				EditorView.contentAttributes.of({
+					"aria-readonly": readOnly ? "true" : "false",
+				}),
+			]),
+		});
+	}, [readOnlyCompartment, readOnly]);
 
 	useEffect(() => {
 		if (viewRef.current) {

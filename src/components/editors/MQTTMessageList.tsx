@@ -246,7 +246,12 @@ function getValueAtJsonPath(root: unknown, path: string): unknown {
 
 function getNumericAtJsonPath(root: unknown, path: string): number | undefined {
 	const v = getValueAtJsonPath(root, path);
-	return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+	if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+	if (typeof v === "string") {
+		const n = Number(v);
+		return v.trim() !== "" && Number.isFinite(n) ? n : undefined;
+	}
+	return undefined;
 }
 
 /**
@@ -1712,6 +1717,7 @@ export function MQTTMessageList({
 	const followOutputRef = useRef(false);
 	const isAtBottomRef = useRef(true);
 	const followScrollInFlightRef = useRef(false);
+	const lastScrollTimeRef = useRef(0);
 	const listRef = useListRef(null);
 	const {
 		ref: listContainerRef,
@@ -1798,19 +1804,22 @@ export function MQTTMessageList({
 
 	useEffect(() => {
 		if (!followOutput || filteredMessages.length === 0) return;
-		followScrollInFlightRef.current = true;
-		const id = requestAnimationFrame(() => {
+		const now = Date.now();
+		const elapsed = now - lastScrollTimeRef.current;
+		const delay = elapsed >= 200 ? 0 : 200 - elapsed;
+		const timeoutId = window.setTimeout(() => {
+			lastScrollTimeRef.current = Date.now();
+			followScrollInFlightRef.current = true;
 			listRef.current?.scrollToRow({
 				index: filteredMessages.length - 1,
 				align: "end",
 				behavior: "smooth",
 			});
-		});
-		const timeoutId = window.setTimeout(() => {
-			followScrollInFlightRef.current = false;
-		}, 350);
+			window.setTimeout(() => {
+				followScrollInFlightRef.current = false;
+			}, 350);
+		}, delay);
 		return () => {
-			cancelAnimationFrame(id);
 			window.clearTimeout(timeoutId);
 		};
 	}, [filteredMessages.length, followOutput, listRef]);

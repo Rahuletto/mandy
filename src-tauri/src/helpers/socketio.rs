@@ -44,6 +44,7 @@ const SIO_CONNECT_TIMEOUT_SECS: u64 = 15;
 const SIO_RECONNECT_DELAY_MIN_MS: u64 = 300;
 const SIO_RECONNECT_DELAY_MAX_MS: u64 = 5_000;
 const SIO_MAX_RECONNECT_ATTEMPTS: u8 = 20;
+const ACK_IPC_BUFFER_MS: u64 = 250;
 
 pub fn msg_event(connection_id: &str) -> String {
     format!("sio://message/{}", connection_id)
@@ -244,7 +245,7 @@ pub async fn sio_emit_with_ack(
         .await
         .map_err(|e| format!("Emit with ack failed: {e}"))?;
 
-    match timeout(Duration::from_millis(req.timeout_ms as u64 + 250), rx).await {
+    match timeout(Duration::from_millis(req.timeout_ms as u64 + ACK_IPC_BUFFER_MS), rx).await {
         Ok(Ok(data)) => Ok(SioEmitAckResponse {
             event: req.event,
             data,
