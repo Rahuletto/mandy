@@ -13,6 +13,14 @@ async restRequest(req: ApiRequest) : Promise<Result<ApiResponse, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async restCancelRequest(cancelKey: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("rest_cancel_request", { cancelKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Fetch a raw URL and return the response body as a string.
  * Used by the ImportModal to download remote OpenAPI specs via Rust
@@ -21,6 +29,14 @@ async restRequest(req: ApiRequest) : Promise<Result<ApiResponse, string>> {
 async fetchUrl(url: string) : Promise<Result<FetchUrlResponse, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("fetch_url", { url }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setDockBadge(label: string | null) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_dock_badge", { label }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -168,7 +184,11 @@ export type ApiRequest = { method: Methods; url: string; headers: Partial<{ [key
 /**
  * Tab / request name for background completion notifications (REST only).
  */
-request_label?: string | null }
+request_label?: string | null; 
+/**
+ * When set, `rest_cancel_request` can abort this transfer (libcurl progress hook).
+ */
+cancel_key?: string | null }
 export type ApiResponse = { status: number; status_text: string; headers: Partial<{ [key in string]: string }>; cookies: Cookie[]; body_base64: string; timing: TimingInfo; request_size: SizeInfo; response_size: SizeInfo; redirects: RedirectEntry[]; remote_addr: string | null; http_version: string; available_renderers: ResponseRenderer[]; detected_content_type: string | null; protocol_used: string; error: string | null }
 export type AuthType = "None" | { Basic: { username: string; password: string } } | { Bearer: { token: string } } | { ApiKey: { key: string; value: string; add_to: ApiKeyLocation } }
 export type BodyType = "None" | { Raw: { content: string; content_type: string | null } } | { FormUrlEncoded: { fields: Partial<{ [key in string]: string }> } } | { Multipart: { fields: MultipartField[] } } | { Binary: { data: number[]; filename: string | null } }

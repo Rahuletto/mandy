@@ -4,9 +4,9 @@ import App from "./App";
 import { ErrorBoundary } from "./components/ui";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>,
+	<React.StrictMode>
+		<ErrorBoundary>
+			<App />
+		</ErrorBoundary>
+	</React.StrictMode>,
 );

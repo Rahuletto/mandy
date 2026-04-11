@@ -1,19 +1,16 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Capability for the main window",
-  "windows": [
-    "main"
-  ],
-  "platforms": ["linux", "windows"],
-  "permissions": [
-    "core:default",
-    "opener:default",
-    "dialog:default",
-    "fs:default",
-    "core:window:default",
-    "core:window:allow-start-dragging",
-    "fs:allow-write-text-file",
-    "notification:default"
-  ]
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "Capability for the main window",
+	"windows": ["main"],
+	"platforms": ["linux", "windows"],
+	"permissions": [
+		"core:default",
+		"dialog:default",
+		"fs:default",
+		"core:window:default",
+		"core:window:allow-start-dragging",
+		"fs:allow-write-text-file",
+		"notification:default"
+	]
 }

@@ -1,7 +1,10 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use curl::easy::{Easy, HttpVersion, List};
+use dashmap::DashMap;
 use std::collections::HashMap;
 use std::io::Read;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use url::Url;
 
@@ -13,6 +16,12 @@ use crate::types::{
     FetchUrlResponse, Methods, ResponseRenderer, SizeInfo, TimingInfo,
 };
 use tauri::AppHandle;
+
+static REST_CANCEL_FLAGS: OnceLock<DashMap<String, Arc<AtomicBool>>> = OnceLock::new();
+
+fn rest_cancel_flags() -> &'static DashMap<String, Arc<AtomicBool>> {
+    REST_CANCEL_FLAGS.get_or_init(DashMap::new)
+}
 
 fn method_to_curl_string(method: &Methods) -> &'static str {
     match method {
@@ -194,7 +203,10 @@ fn build_url_with_params(
     Ok(url.to_string())
 }
 
-fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
+fn execute_curl_request(
+    req: ApiRequest,
+    cancel: Option<Arc<AtomicBool>>,
+) -> Result<ApiResponse, String> {
     let mut easy = Easy::new();
 
     let api_key_query = match &req.auth {
@@ -381,6 +393,13 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
             .map_err(|e| e.to_string())?;
     }
 
+    if let Some(flag) = cancel.as_ref() {
+        easy.progress(true).map_err(|e| e.to_string())?;
+        let flag = Arc::clone(flag);
+        easy.progress_function(move |_, _, _, _| !flag.load(Ordering::SeqCst))
+            .map_err(|e| e.to_string())?;
+    }
+
     let mut response_headers_raw: Vec<u8> = Vec::new();
     let mut response_body: Vec<u8> = Vec::new();
 
@@ -411,7 +430,15 @@ fn execute_curl_request(req: ApiRequest) -> Result<ApiResponse, String> {
                 .map_err(|e| e.to_string())?;
         }
 
-        transfer.perform().map_err(|e| format_curl_error(&e))?;
+        transfer.perform().map_err(|e| {
+            if cancel
+                .as_ref()
+                .is_some_and(|f| f.load(Ordering::SeqCst))
+            {
+                return "Request cancelled".to_string();
+            }
+            format_curl_error(&e)
+        })?;
     }
 
     let total_time = easy.total_time().unwrap_or_default().as_secs_f64() * 1000.0;
@@ -563,12 +590,31 @@ fn rest_fallback_label(req: &ApiRequest) -> String {
 
 #[tauri::command]
 #[specta::specta]
+pub fn rest_cancel_request(cancel_key: String) -> Result<(), String> {
+    if let Some(entry) = rest_cancel_flags().get(&cancel_key) {
+        entry.value().store(true, Ordering::SeqCst);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn rest_request(app: AppHandle, req: ApiRequest) -> Result<ApiResponse, String> {
+    let cancel_flag = req.cancel_key.as_ref().map(|key| {
+        let flag = Arc::new(AtomicBool::new(false));
+        rest_cancel_flags().insert(key.clone(), Arc::clone(&flag));
+        flag
+    });
+    let cancel_key = req.cancel_key.clone();
     let label = req.request_label.clone();
     let fallback = rest_fallback_label(&req);
-    let result = tokio::task::spawn_blocking(move || execute_curl_request(req))
+    let join_result = tokio::task::spawn_blocking(move || execute_curl_request(req, cancel_flag))
         .await
-        .map_err(|e| format!("Task error: {}", e))?;
+        .map_err(|e| format!("Task error: {}", e));
+    if let Some(ref k) = cancel_key {
+        rest_cancel_flags().remove(k);
+    }
+    let result = join_result?;
     if result.is_ok() {
         let name = pick_display_name(&label, &fallback);
         notify_request_completed_if_background(&app, &name);
