@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import type { Update } from "@tauri-apps/plugin-updater";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TbLayoutSidebar } from "react-icons/tb";
 import type { Cookie } from "./bindings";
@@ -194,6 +195,17 @@ function App() {
 	const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 	const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
 
+	const pendingUpdateRef = useRef<Update | null>(null);
+	/** Set when `check()` finds a newer version; header chip + optional install dialog. */
+	const [updateAvailable, setUpdateAvailable] = useState<{
+		version: string;
+		body?: string;
+	} | null>(null);
+	const [updateModal, setUpdateModal] = useState<{
+		open: boolean;
+		installing: boolean;
+	}>({ open: false, installing: false });
+
 	const handleWelcomeNewItem = useCallback(
 		(type: RequestType) => {
 			if (activeProject) {
@@ -217,6 +229,33 @@ function App() {
 		return useProjectStore.persist.onFinishHydration(() => {
 			openGateIfNeeded();
 		});
+	}, []);
+
+	useEffect(() => {
+		if (!import.meta.env.PROD) return;
+
+		let cancelled = false;
+		const timer = window.setTimeout(() => {
+			void (async () => {
+				try {
+					const { check } = await import("@tauri-apps/plugin-updater");
+					const update = await check();
+					if (cancelled || !update) return;
+					pendingUpdateRef.current = update;
+					setUpdateAvailable({
+						version: update.version,
+						body: update.body,
+					});
+				} catch {
+					/* Web preview, offline, or updater unavailable */
+				}
+			})();
+		}, 5000);
+
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
 	}, []);
 
 	useEffect(() => {
@@ -558,17 +597,29 @@ function App() {
 				</div>
 
 				<div className="flex-1" />
-				<button
-					type="button"
-					onClick={() => {
-						setActiveItem(null);
-						setShowProjectOverview(false);
-					}}
-					className="flex h-6 w-6 cursor-pointer items-center justify-center overflow-hidden rounded-md text-white opacity-30 transition-all duration-200 ease-out hover:bg-white/20 hover:opacity-50"
-					title="Homepage"
-				>
-					<Logo className="h-4 w-4 shrink-0" />
-				</button>
+				<div className="no-drag flex shrink-0 items-center gap-2">
+					{updateAvailable && (
+						<button
+							type="button"
+							onClick={() => setUpdateModal({ open: true, installing: false })}
+							className="cursor-pointer rounded-full bg-accent/15 px-2.5 py-0.5 font-medium text-accent text-xs transition-colors hover:bg-accent/25"
+							title={`Mandy v${updateAvailable.version} is available`}
+						>
+							Update available
+						</button>
+					)}
+					<button
+						type="button"
+						onClick={() => {
+							setActiveItem(null);
+							setShowProjectOverview(false);
+						}}
+						className="flex h-6 w-6 cursor-pointer items-center justify-center overflow-hidden rounded-md text-white opacity-30 transition-all duration-200 ease-out hover:bg-white/20 hover:opacity-50"
+						title="Homepage"
+					>
+						<Logo className="h-4 w-4 shrink-0" />
+					</button>
+				</div>
 			</header>
 
 			<div className="relative flex flex-1 overflow-hidden">
@@ -1081,6 +1132,52 @@ function App() {
 					}
 				}}
 				onCancel={() => setItemToDelete(null)}
+			/>
+			<Dialog
+				isOpen={updateModal.open}
+				title={
+					updateModal.installing
+						? "Installing update"
+						: `Update available (v${updateAvailable?.version ?? ""})`
+				}
+				description={
+					updateModal.installing
+						? "Download and install are in progress. The app will restart when finished."
+						: updateAvailable?.body?.trim() ||
+							"A newer version of Mandy is available from GitHub releases."
+				}
+				confirmLabel={
+					updateModal.installing ? "Please wait…" : "Install and restart"
+				}
+				cancelLabel="Not now"
+				dismissible={!updateModal.installing}
+				confirmDisabled={updateModal.installing}
+				onConfirm={() => {
+					const pending = pendingUpdateRef.current;
+					if (!pending || updateModal.installing) return;
+					setUpdateModal({ open: true, installing: true });
+					void (async () => {
+						try {
+							await pending.downloadAndInstall();
+							const { relaunch } = await import("@tauri-apps/plugin-process");
+							await relaunch();
+						} catch (err) {
+							console.error(err);
+							addToast(
+								`Update failed: ${getErrorMessage(err)}`,
+								"error",
+							);
+							void pending.close();
+							pendingUpdateRef.current = null;
+							setUpdateAvailable(null);
+							setUpdateModal({ open: false, installing: false });
+						}
+					})();
+				}}
+				onCancel={() => {
+					if (updateModal.installing) return;
+					setUpdateModal({ open: false, installing: false });
+				}}
 			/>
 			<Dialog
 				dismissible={false}
