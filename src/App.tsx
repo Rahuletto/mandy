@@ -1163,11 +1163,7 @@ function App() {
 							await relaunch();
 						} catch (err) {
 							console.error(err);
-							addToast(
-								`Update failed: ${getErrorMessage(err)}`,
-								"error",
-							);
-							void pending.close();
+							addToast(`Update failed: ${getErrorMessage(err)}`, "error");
 							pendingUpdateRef.current = null;
 							setUpdateAvailable(null);
 							setUpdateModal({ open: false, installing: false });

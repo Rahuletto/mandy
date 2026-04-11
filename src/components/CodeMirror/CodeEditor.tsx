@@ -122,6 +122,7 @@ export function CodeEditor({
 		}
 	}, [code]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Omitting code/readOnly/language/activeExtensions/handlePrettify from deps — listing them would destroy and recreate the editor on every keystroke or fight the compartment-specific effects below.
 	useEffect(() => {
 		if (!containerRef.current) return;
 

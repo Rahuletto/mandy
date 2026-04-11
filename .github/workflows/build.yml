@@ -1,9 +1,8 @@
 name: Build
 
-# Publishes draft GitHub releases with bundles + signed updater artifacts (`latest.json`).
-# Add repo secrets: TAURI_SIGNING_PRIVATE_KEY (full key file contents) and optionally
-# TAURI_SIGNING_PRIVATE_KEY_PASSWORD. The public key in src-tauri/tauri.conf.json must
-# match the private key used in CI.
+# Matrix build + draft release (same pattern as before tauri-action).
+# Secrets: TAURI_SIGNING_PRIVATE_KEY (+ optional TAURI_SIGNING_PRIVATE_KEY_PASSWORD)
+# for updater .sig files when createUpdaterArtifacts is enabled in tauri.conf.json.
 
 on:
   push:
@@ -14,7 +13,7 @@ permissions:
   contents: write
 
 jobs:
-  publish:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -22,9 +21,6 @@ jobs:
           - platform: macos-latest
             args: --target aarch64-apple-darwin
             target: aarch64-apple-darwin
-          - platform: macos-latest
-            args: --target x86_64-apple-darwin
-            target: x86_64-apple-darwin
           - platform: ubuntu-22.04
             args: ""
             target: x86_64-unknown-linux-gnu
@@ -42,8 +38,6 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
@@ -61,17 +55,58 @@ jobs:
       - name: Install frontend dependencies
         run: bun install
 
-      - uses: tauri-apps/tauri-action@v1
+      - name: Build Tauri app
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bun tauri build ${{ matrix.args }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tauriScript: bun run tauri
-          tagName: v__VERSION__
-          releaseName: Mandy v__VERSION__
-          releaseDraft: true
-          releaseBody: |
+          name: binaries-${{ matrix.target }}
+          path: |
+            src-tauri/target/release/bundle/**/*.dmg
+            src-tauri/target/release/bundle/**/*.deb
+            src-tauri/target/release/bundle/**/*.AppImage
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.tar.gz
+            src-tauri/target/release/bundle/**/*.sig
+            src-tauri/target/release/bundle/**/latest.json
+            src-tauri/target/*/release/bundle/**/*.dmg
+            src-tauri/target/*/release/bundle/**/*.deb
+            src-tauri/target/*/release/bundle/**/*.AppImage
+            src-tauri/target/*/release/bundle/**/*.msi
+            src-tauri/target/*/release/bundle/**/*.exe
+            src-tauri/target/*/release/bundle/**/*.tar.gz
+            src-tauri/target/*/release/bundle/**/*.sig
+            src-tauri/target/*/release/bundle/**/latest.json
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Get version
+        id: version
+        run: echo "version=$(jq -r .version src-tauri/tauri.conf.json)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Mandy v${{ steps.version.outputs.version }}
+          draft: true
+          body: |
             ## macOS: "Mandy is damaged and can't be opened"
 
             These builds are not signed with an Apple Developer ID, so Gatekeeper may refuse to open the app.
@@ -82,9 +117,11 @@ jobs:
             xattr -cr /Applications/Mandy.app
             ```
 
-            Then open Mandy again. In-app updates use Tauri's update signatures; they do not replace Apple code signing or notarization.
+            Then open Mandy again.
 
             ## Downloads
 
-            Use the **.dmg** (macOS), **.msi** / **.exe** (Windows), or **.deb** / **.AppImage** (Linux). The in-app updater reads **latest.json** from this release.
-          args: ${{ matrix.args }}
+            **.dmg** (macOS), **.msi** / **.exe** (Windows), **.deb** / **.AppImage** (Linux). Updater signatures (`.sig`) and any `latest.json` from the build are attached if present.
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
