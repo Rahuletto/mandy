@@ -1,51 +1,57 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Mandy",
-  "version": "0.4.0",
-  "identifier": "com.marban.mandy",
-  "build": {
-    "beforeDevCommand": "bun run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
-    "frontendDist": "../dist"
-  },
-  "app": {
-    "macOSPrivateApi": true,
-    "windows": [
-      {
-        "title": "Mandy",
-        "transparent": true,
-        "titleBarStyle": "Overlay",
-        "width": 1200,
-        "height": 800,
-        "hiddenTitle": true,
-        "dragDropEnabled": true,
-        "trafficLightPosition": {
-          "x": 18,
-          "y": 22
-        }
-      }
-    ],
-    "security": {
-      "csp": null
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
-    "fileAssociations": [
-      {
-        "ext": ["mandy.json"],
-        "mimeType": "application/x-mandy+json",
-        "name": "Mandy Project"
-      }
-    ]
-  }
+	"$schema": "https://schema.tauri.app/config/2",
+	"productName": "Mandy",
+	"version": "1.0.0",
+	"identifier": "com.marban.mandy",
+	"build": {
+		"beforeDevCommand": "bun run dev",
+		"devUrl": "http://localhost:1420",
+		"beforeBuildCommand": "bun run build",
+		"frontendDist": "../dist"
+	},
+	"app": {
+		"macOSPrivateApi": true,
+		"windows": [
+			{
+				"title": "Mandy",
+				"transparent": true,
+				"titleBarStyle": "Overlay",
+				"width": 1200,
+				"height": 800,
+				"hiddenTitle": true,
+				"dragDropEnabled": true,
+				"trafficLightPosition": {
+					"x": 18,
+					"y": 22
+				}
+			}
+		],
+		"security": {
+			"csp": null
+		}
+	},
+	"bundle": {
+		"active": true,
+		"targets": "all",
+		"resources": [
+			"resources/macos-tahoe-tinted-dark.png",
+			"resources/macos-tahoe-light.png",
+			"resources/mandy-about-icon.png",
+			"resources/mandy-about-icon-dark.png"
+		],
+		"icon": [
+			"icons/32x32.png",
+			"icons/128x128.png",
+			"icons/128x128@2x.png",
+			"icons/icon.icns",
+			"icons/icon.ico"
+		],
+		"fileAssociations": [
+			{
+				"ext": ["mandy.json"],
+				"mimeType": "application/x-mandy+json",
+				"name": "Mandy Project"
+			}
+		]
+	}
 }

@@ -3,7 +3,12 @@ use std::io::{Cursor, Read};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::helpers::request_notify::{
+    notify_request_completed_if_background, pick_display_name,
+};
 use crate::types::{GraphQLIntrospectRequest, GraphQLIntrospectResponse};
+use tauri::AppHandle;
+use url::Url;
 
 static INTROSPECTION_QUERY: &str = r#"
 query IntrospectionQuery {
@@ -252,6 +257,14 @@ fn execute_introspection(
     })
 }
 
+fn graphql_introspect_fallback(req: &GraphQLIntrospectRequest) -> String {
+    let host = Url::parse(&req.url)
+        .ok()
+        .and_then(|u| u.host_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "GraphQL".to_string());
+    format!("Schema introspection ({host})")
+}
+
 /// Fetch and return a GraphQL server's introspection schema.
 ///
 /// This runs the full introspection query via the Rust/curl stack so the
@@ -259,9 +272,17 @@ fn execute_introspection(
 #[tauri::command]
 #[specta::specta]
 pub async fn graphql_introspect(
+    app: AppHandle,
     req: GraphQLIntrospectRequest,
 ) -> Result<GraphQLIntrospectResponse, String> {
-    tokio::task::spawn_blocking(move || execute_introspection(&req.url, &req.headers))
+    let label = req.request_label.clone();
+    let fallback = graphql_introspect_fallback(&req);
+    let result = tokio::task::spawn_blocking(move || execute_introspection(&req.url, &req.headers))
         .await
-        .map_err(|e| format!("Task error: {e}"))?
+        .map_err(|e| format!("Task error: {e}"))?;
+    if result.is_ok() {
+        let name = pick_display_name(&label, &fallback);
+        notify_request_completed_if_background(&app, &name);
+    }
+    result
 }

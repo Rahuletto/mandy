@@ -1,6 +1,6 @@
 [package]
 name = "Mandy"
-version = "0.4.0"
+version = "1.0.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -18,8 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api"] }
-tauri-plugin-opener = "2"
+tauri = { version = "2", features = ["macos-private-api", "image-png"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 specta-typescript = "0.0.9"
@@ -38,6 +37,30 @@ tauri-plugin-dialog = "2.6.0"
 tauri-plugin-fs = "2.4.5"
 uuid = { version = "1", features = ["v4"] }
 dashmap = "6"
+rust_socketio = { version = "0.6", features = ["async"] }
+rumqttc = { version = "0.24", default-features = false, features = ["use-rustls"] }
+tauri-plugin-notification = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-macos-haptics = "1.0.0"
+objc2 = "0.6.4"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+    "NSApplication",
+    "NSAppearance",
+    "NSDockTile",
+    "NSImage",
+    "NSResponder",
+    "NSAttributedString",
+    "NSParagraphStyle",
+    "NSText",
+    "NSFont",
+] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+    "NSString",
+    "NSAttributedString",
+    "NSDictionary",
+    "NSRange",
+    "NSObject",
+    "NSNotification",
+    "NSDistributedNotificationCenter",
+] }

@@ -1,9 +1,9 @@
 export { CodeEditor, type CompletionItem } from "./CodeEditor";
 export { CodeViewer } from "./CodeViewer";
 export { GraphQLCodeEditor } from "./GraphQLCodeEditor";
+export { type Language, languageExtensions } from "./languageExtensions";
 export {
-  getMandyExtension,
-  createMandyTheme,
-  createMandyHighlighting,
+	createMandyHighlighting,
+	createMandyTheme,
+	getMandyExtension,
 } from "./theme";
-export { languageExtensions, type Language } from "./languageExtensions";
