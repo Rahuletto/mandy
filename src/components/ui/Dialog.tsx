@@ -11,6 +11,7 @@ interface DialogProps {
 	onCancel: () => void;
 	/** When false: no Cancel, backdrop does not close, Escape does nothing. */
 	dismissible?: boolean;
+	confirmDisabled?: boolean;
 }
 
 export function Dialog({
@@ -23,6 +24,7 @@ export function Dialog({
 	onConfirm,
 	onCancel,
 	dismissible = true,
+	confirmDisabled = false,
 }: DialogProps) {
 	const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -79,8 +81,13 @@ export function Dialog({
 					)}
 					<button
 						type="button"
+						disabled={confirmDisabled}
 						onClick={onConfirm}
-						className={`cursor-pointer rounded-full px-4 py-2 font-semibold text-xs shadow-sm transition-colors ${
+						className={`rounded-full px-4 py-2 font-semibold text-xs shadow-sm transition-colors ${
+							confirmDisabled
+								? "cursor-not-allowed opacity-50"
+								: "cursor-pointer"
+						} ${
 							isDestructive
 								? "bg-red text-white hover:bg-red"
 								: "bg-accent text-background hover:bg-accent/90"

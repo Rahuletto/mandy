@@ -1,7 +1,7 @@
 {
 	"$schema": "https://schema.tauri.app/config/2",
 	"productName": "Mandy",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"identifier": "com.marban.mandy",
 	"build": {
 		"beforeDevCommand": "bun run dev",
@@ -30,8 +30,17 @@
 			"csp": null
 		}
 	},
+	"plugins": {
+		"updater": {
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4NDg1RjJBMzVEQUQ5NzkKUldSNTJkbzFLbDlJNktKUG9acUYvM0QzQU84S2gyVXdBb040RFRBMHBQejVDUk9VdWlWU285YUIK",
+			"endpoints": [
+				"https://github.com/Rahuletto/mandy/releases/latest/download/latest.json"
+			]
+		}
+	},
 	"bundle": {
 		"active": true,
+		"createUpdaterArtifacts": true,
 		"targets": "all",
 		"resources": [
 			"resources/macos-tahoe-tinted-dark.png",

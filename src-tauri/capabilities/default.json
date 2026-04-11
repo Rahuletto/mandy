@@ -11,6 +11,8 @@
 		"core:window:default",
 		"core:window:allow-start-dragging",
 		"fs:allow-write-text-file",
-		"notification:default"
+		"notification:default",
+		"updater:default",
+		"process:default"
 	]
 }
