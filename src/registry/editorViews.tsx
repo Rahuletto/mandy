@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { GraphQLEditor } from "../components/editors/GraphQLEditor";
 import { GrpcEditor } from "../components/editors/GrpcEditor";
 import { MQTTEditor } from "../components/editors/MQTTEditor";
-import { SseEditor } from "../components/editors/SseEditor";
 import { SocketIOEditor } from "../components/editors/SocketIOEditor";
+import { SseEditor } from "../components/editors/SseEditor";
 import { WebSocketEditor } from "../components/editors/WebSocketEditor";
 import type {
 	GraphQLFile,
@@ -150,6 +150,11 @@ export function isProtocolRequestItem(
 ): item is ProtocolRequestItem {
 	const t = item?.type;
 	return (
-		t === "websocket" || t === "graphql" || t === "socketio" || t === "mqtt" || t === "grpc" || t === "sse"
+		t === "websocket" ||
+		t === "graphql" ||
+		t === "socketio" ||
+		t === "mqtt" ||
+		t === "grpc" ||
+		t === "sse"
 	);
 }

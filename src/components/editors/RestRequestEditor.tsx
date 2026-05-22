@@ -143,13 +143,13 @@ export const RestRequestEditor = forwardRef<
 	const headersToKeyValueItems = useCallback((): KeyValueItem[] => {
 		const items: KeyValueItem[] = [];
 		const existingItems = activeRequest.headerItems || [];
-		
+
 		// Create a map of existing items by key for quick lookup
 		const existingMap = new Map<string, KeyValueItem>();
 		for (const item of existingItems) {
 			existingMap.set(item.key, item);
 		}
-		
+
 		// Convert headers to KeyValueItems, preserving enabled state from existing items
 		for (const [key, value] of Object.entries(activeRequest.request.headers)) {
 			const existing = existingMap.get(key);
@@ -161,20 +161,20 @@ export const RestRequestEditor = forwardRef<
 				enabled: existing?.enabled ?? true,
 			});
 		}
-		
+
 		return items;
 	}, [activeRequest.request.headers, activeRequest.headerItems]);
 
 	const cookiesToKeyValueItems = useCallback((): KeyValueItem[] => {
 		const items: KeyValueItem[] = [];
 		const existingItems = activeRequest.cookieItems || [];
-		
+
 		// Create a map of existing items by cookie name for quick lookup
 		const existingMap = new Map<string, KeyValueItem>();
 		for (const item of existingItems) {
 			existingMap.set(item.key, item);
 		}
-		
+
 		// Convert cookies to KeyValueItems, preserving enabled state from existing items
 		for (let i = 0; i < activeRequest.request.cookies.length; i++) {
 			const cookie = activeRequest.request.cookies[i];
@@ -187,37 +187,43 @@ export const RestRequestEditor = forwardRef<
 				enabled: existing?.enabled ?? true,
 			});
 		}
-		
+
 		return items;
 	}, [activeRequest.request.cookies, activeRequest.cookieItems]);
 
-	const keyValueItemsToHeaders = useCallback((items: KeyValueItem[]): Record<string, string> => {
-		const headers: Record<string, string> = {};
-		for (const item of items) {
-			if (item.key.trim()) {
-				headers[item.key] = item.value;
+	const keyValueItemsToHeaders = useCallback(
+		(items: KeyValueItem[]): Record<string, string> => {
+			const headers: Record<string, string> = {};
+			for (const item of items) {
+				if (item.key.trim()) {
+					headers[item.key] = item.value;
+				}
 			}
-		}
-		return headers;
-	}, []);
+			return headers;
+		},
+		[],
+	);
 
-	const keyValueItemsToCookies = useCallback((items: KeyValueItem[]): Cookie[] => {
-		const cookies: Cookie[] = [];
-		for (const item of items) {
-			if (item.key.trim()) {
-				cookies.push({
-					name: item.key,
-					value: item.value,
-					domain: null,
-					path: null,
-					expires: null,
-					http_only: null,
-					secure: null,
-				});
+	const keyValueItemsToCookies = useCallback(
+		(items: KeyValueItem[]): Cookie[] => {
+			const cookies: Cookie[] = [];
+			for (const item of items) {
+				if (item.key.trim()) {
+					cookies.push({
+						name: item.key,
+						value: item.value,
+						domain: null,
+						path: null,
+						expires: null,
+						http_only: null,
+						secure: null,
+					});
+				}
 			}
-		}
-		return cookies;
-	}, []);
+			return cookies;
+		},
+		[],
+	);
 	const timingTimeoutRef = useRef<number | null>(null);
 	const sizeTimeoutRef = useRef<number | null>(null);
 
@@ -260,18 +266,27 @@ export const RestRequestEditor = forwardRef<
 	const isItemEnabled = useCallback(
 		(type: "param" | "header" | "cookie", key: string) => {
 			if (type === "header") {
-				const headerItems = activeRequest.headerItems || headersToKeyValueItems();
-				const item = headerItems.find(item => item.key === key);
+				const headerItems =
+					activeRequest.headerItems || headersToKeyValueItems();
+				const item = headerItems.find((item) => item.key === key);
 				return item?.enabled ?? true;
 			} else if (type === "cookie") {
-				const cookieItems = activeRequest.cookieItems || cookiesToKeyValueItems();
-				const item = cookieItems.find(item => item.key === key);
+				const cookieItems =
+					activeRequest.cookieItems || cookiesToKeyValueItems();
+				const item = cookieItems.find((item) => item.key === key);
 				return item?.enabled ?? true;
 			}
 			// For params, still use disabledItems for now
 			return !disabledItems.has(`${activeRequest.id}:${type}:${key}`);
 		},
-		[activeRequest.id, activeRequest.headerItems, activeRequest.cookieItems, headersToKeyValueItems, cookiesToKeyValueItems, disabledItems],
+		[
+			activeRequest.id,
+			activeRequest.headerItems,
+			activeRequest.cookieItems,
+			headersToKeyValueItems,
+			cookiesToKeyValueItems,
+			disabledItems,
+		],
 	);
 
 	const getComputedHeaders = useCallback(() => {
@@ -309,7 +324,7 @@ export const RestRequestEditor = forwardRef<
 
 		// Check cookies from cookieItems for enabled state
 		const cookieItems = activeRequest.cookieItems || cookiesToKeyValueItems();
-		const enabledCookies = cookieItems.filter(item => item.enabled);
+		const enabledCookies = cookieItems.filter((item) => item.enabled);
 		if (enabledCookies.length > 0) {
 			computed.push({
 				id: "computed:cookie",
@@ -358,7 +373,7 @@ export const RestRequestEditor = forwardRef<
 		}
 
 		return computed;
-	}, [activeRequest, isItemEnabled]);
+	}, [activeRequest, cookiesToKeyValueItems]);
 
 	useEffect(() => {
 		if (activeRequest && activeTab === "body") {
@@ -479,8 +494,8 @@ export const RestRequestEditor = forwardRef<
 			// Filter cookies based on enabled state in cookieItems
 			const cookieItems = activeRequest.cookieItems || cookiesToKeyValueItems();
 			const resolvedCookies = cookieItems
-				.filter(item => item.enabled && item.key.trim())
-				.map(item => ({
+				.filter((item) => item.enabled && item.key.trim())
+				.map((item) => ({
 					name: item.key,
 					value: resolveVariables(item.value),
 					domain: null,
@@ -590,7 +605,8 @@ export const RestRequestEditor = forwardRef<
 		activeTab,
 		addToast,
 		addToRecentRequests,
-		isItemEnabled,
+		cookiesToKeyValueItems,
+		headersToKeyValueItems,
 		onSendSuccess,
 		resolveVariables,
 		setRequestResponse,
@@ -1006,7 +1022,9 @@ export const RestRequestEditor = forwardRef<
 											key: key,
 											value: value || "",
 											description: "",
-											enabled: !disabledItems.has(`${activeRequest.id}:param:${key}`),
+											enabled: !disabledItems.has(
+												`${activeRequest.id}:param:${key}`,
+											),
 										}),
 									)}
 									onChange={(items) => {
@@ -1071,7 +1089,7 @@ export const RestRequestEditor = forwardRef<
 											(i) => !i.id.startsWith("computed:"),
 										);
 										const newHeaders = keyValueItemsToHeaders(userItems);
-										
+
 										updateItem(activeRequest.id, "request", (r) => ({
 											...r,
 											request: { ...r.request, headers: newHeaders },
@@ -1093,7 +1111,7 @@ export const RestRequestEditor = forwardRef<
 									items={activeRequest.cookieItems || cookiesToKeyValueItems()}
 									onChange={(items) => {
 										const newCookies = keyValueItemsToCookies(items);
-										
+
 										updateItem(activeRequest.id, "request", (r) => ({
 											...r,
 											request: { ...r.request, cookies: newCookies },

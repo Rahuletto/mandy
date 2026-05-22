@@ -11,6 +11,6 @@ export const editorTabButtonClass = (active: boolean) =>
 		active ? "bg-accent/10 text-accent" : "text-white/80 hover:text-white/60"
 	}`;
 
-/** Overview snippet panel primary action — use div to avoid nesting inside other buttons. */
+/** Overview snippet panel primary action (positioned over snippet). */
 export const PANEL_PRIMARY_ACTION_CLASS =
 	"absolute right-4 bottom-4 z-20 flex cursor-pointer items-center gap-2 rounded-full bg-accent px-4 py-1.5 font-semibold text-background text-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50";

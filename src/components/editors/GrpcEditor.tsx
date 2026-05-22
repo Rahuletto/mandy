@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { type AuthType, commands } from "../../bindings";
+import { usePopoverHover } from "../../hooks/usePopoverHover";
 import { getItemConfig } from "../../registry";
 import { useToastStore } from "../../stores/toastStore";
 import type { GrpcFile, GrpcResponse } from "../../types/project";
@@ -16,9 +24,9 @@ import {
 	generateGrpcSnippet,
 } from "../../utils/realtimeSnippets";
 import { CodeEditor, CodeViewer } from "../CodeMirror";
+import { KeyValueTable } from "../KeyValueTable";
 import { SizePopover } from "../popovers/SizePopover";
 import { TimingPopover } from "../popovers/TimingPopover";
-import { KeyValueTable } from "../KeyValueTable";
 import { UrlInput } from "../ui";
 import { AuthEditor } from "./AuthEditor";
 import { EditorRequestBar, ProtocolEditorLeading } from "./EditorRequestBar";
@@ -27,6 +35,7 @@ import {
 	editorTabButtonClass,
 	PANEL_PRIMARY_ACTION_CLASS,
 } from "./editorRequestBarStyles";
+import { MetadataRows } from "./MetadataRows";
 import { ProtocolOverview } from "./ProtocolOverview";
 
 interface GrpcEditorProps {
@@ -67,42 +76,24 @@ export function GrpcEditor({
 		"headers" | "trailers"
 	>("headers");
 	const responsePanelRef = useRef<HTMLDivElement>(null);
-	const [showTimingPopover, setShowTimingPopover] = useState(false);
-	const [showSizePopover, setShowSizePopover] = useState(false);
+	const timingHover = usePopoverHover();
+	const sizeHover = usePopoverHover();
 	const timingRef = useRef<HTMLButtonElement>(null);
 	const sizeRef = useRef<HTMLButtonElement>(null);
-	const timingTimeoutRef = useRef<number | null>(null);
-	const sizeTimeoutRef = useRef<number | null>(null);
+	const serviceFieldId = useId();
+	const methodFieldId = useId();
+	const protoFieldId = useId();
 
 	const handleTimingEnter = () => {
-		if (timingTimeoutRef.current) {
-			clearTimeout(timingTimeoutRef.current);
-			timingTimeoutRef.current = null;
-		}
-		setShowSizePopover(false);
-		setShowTimingPopover(true);
+		sizeHover.setOpen(false);
+		timingHover.onEnter();
 	};
-
-	const handleTimingLeave = () => {
-		timingTimeoutRef.current = window.setTimeout(() => {
-			setShowTimingPopover(false);
-		}, 200);
-	};
-
+	const handleTimingLeave = timingHover.onLeave;
 	const handleSizeEnter = () => {
-		if (sizeTimeoutRef.current) {
-			clearTimeout(sizeTimeoutRef.current);
-			sizeTimeoutRef.current = null;
-		}
-		setShowTimingPopover(false);
-		setShowSizePopover(true);
+		timingHover.setOpen(false);
+		sizeHover.onEnter();
 	};
-
-	const handleSizeLeave = () => {
-		sizeTimeoutRef.current = window.setTimeout(() => {
-			setShowSizePopover(false);
-		}, 200);
-	};
+	const handleSizeLeave = sizeHover.onLeave;
 
 	useEffect(() => {
 		const handleMouseMove = (e: MouseEvent) => {
@@ -124,7 +115,9 @@ export function GrpcEditor({
 		if (isResizing || isResizingResponse) {
 			document.addEventListener("mousemove", handleMouseMove);
 			document.addEventListener("mouseup", handleMouseUp);
-			document.body.style.cursor = isResizingResponse ? "row-resize" : "col-resize";
+			document.body.style.cursor = isResizingResponse
+				? "row-resize"
+				: "col-resize";
 			document.body.style.userSelect = "none";
 		}
 		return () => {
@@ -228,19 +221,42 @@ export function GrpcEditor({
 	const showResponsePanel = grpc.response != null;
 	const response = grpc.response;
 
-	const grpcStatusColor = response
-		? getGrpcStatusColor(
-				response.error && response.statusCode === 0 ? 2 : response.statusCode,
-			)
-		: "#6b7280";
-	const grpcStatusLabel = response
-		? getGrpcStatusLabel(
-				response.statusCode,
-				response.error && response.statusCode === 0
-					? response.error
-					: response.statusMessage,
-			)
-		: "";
+	const grpcStatusColor = useMemo(
+		() =>
+			response
+				? getGrpcStatusColor(
+						response.error && response.statusCode === 0
+							? 2
+							: response.statusCode,
+					)
+				: "#6b7280",
+		[response],
+	);
+	const grpcStatusLabel = useMemo(
+		() =>
+			response
+				? getGrpcStatusLabel(
+						response.statusCode,
+						response.error && response.statusCode === 0
+							? response.error
+							: response.statusMessage,
+					)
+				: "",
+		[response],
+	);
+	const timingLabel = useMemo(() => {
+		if (!response) return "";
+		const ms = response.timing?.total_ms ?? response.timingMs;
+		return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${ms.toFixed(2)} ms`;
+	}, [response]);
+	const metadataRows = useMemo((): [string, string][] => {
+		if (!response) return [];
+		const record =
+			responseDetailTab === "headers"
+				? (response.headers ?? {})
+				: (response.trailers ?? {});
+		return Object.entries(record);
+	}, [response, responseDetailTab]);
 
 	const tabs: GrpcTab[] = [
 		"overview",
@@ -339,25 +355,14 @@ export function GrpcEditor({
 									generateGrpcSnippet(grpc, lang as GrpcSnippetLang)
 								}
 								action={
-									<div
-										role="button"
-										tabIndex={grpc.url && !isCalling ? 0 : -1}
-										aria-disabled={!grpc.url || isCalling}
-										onClick={() => {
-											if (!grpc.url || isCalling) return;
-											void call();
-										}}
-										onKeyDown={(e) => {
-											if (e.key === "Enter" || e.key === " ") {
-												e.preventDefault();
-												if (!grpc.url || isCalling) return;
-												void call();
-											}
-										}}
+									<button
+										type="button"
+										disabled={!grpc.url || isCalling}
+										onClick={() => void call()}
 										className={PANEL_PRIMARY_ACTION_CLASS}
 									>
 										{isCalling ? "Calling…" : "Call"}
-									</div>
+									</button>
 								}
 								leftFooter={leftFooter}
 							/>
@@ -380,10 +385,14 @@ export function GrpcEditor({
 							<div className="flex h-full min-h-0 flex-col gap-3 p-4">
 								<div className="grid shrink-0 grid-cols-2 gap-3">
 									<div>
-										<label className="mb-1 block text-xs font-medium text-white/40">
+										<label
+											htmlFor={serviceFieldId}
+											className="mb-1 block font-medium text-white/40 text-xs"
+										>
 											Service
 										</label>
 										<input
+											id={serviceFieldId}
 											type="text"
 											value={grpc.service}
 											onChange={(e) =>
@@ -397,10 +406,14 @@ export function GrpcEditor({
 										/>
 									</div>
 									<div>
-										<label className="mb-1 block text-xs font-medium text-white/40">
+										<label
+											htmlFor={methodFieldId}
+											className="mb-1 block font-medium text-white/40 text-xs"
+										>
 											Method
 										</label>
 										<input
+											id={methodFieldId}
 											type="text"
 											value={grpc.method}
 											onChange={(e) =>
@@ -415,9 +428,12 @@ export function GrpcEditor({
 									</div>
 								</div>
 								<div className="flex min-h-0 flex-1 flex-col">
-									<label className="mb-1 block shrink-0 text-xs font-medium text-white/40">
+									<span
+										id={protoFieldId}
+										className="mb-1 block shrink-0 font-medium text-white/40 text-xs"
+									>
 										Protocol Buffer definition
-									</label>
+									</span>
 									<div className="min-h-0 flex-1">
 										<CodeEditor
 											code={grpc.proto}
@@ -485,7 +501,7 @@ export function GrpcEditor({
 								style={{ height: `${responseSplitY}%` }}
 							>
 								{response.error && !response.body ? (
-									<pre className="p-4 font-mono text-red-400/90 text-sm whitespace-pre-wrap">
+									<pre className="whitespace-pre-wrap p-4 font-mono text-red-400/90 text-sm">
 										{response.error}
 									</pre>
 								) : (
@@ -513,12 +529,7 @@ export function GrpcEditor({
 										onMouseLeave={handleTimingLeave}
 										className="cursor-default rounded px-2 py-1 text-[11px] text-white/50 transition-colors hover:bg-white/5 hover:text-white/80"
 									>
-										{(() => {
-											const ms = response.timing?.total_ms ?? response.timingMs;
-											return ms >= 1000
-												? `${(ms / 1000).toFixed(2)} s`
-												: `${ms.toFixed(2)} ms`;
-										})()}
+										{timingLabel}
 									</button>
 									<span className="text-white/20">•</span>
 									<button
@@ -533,24 +544,24 @@ export function GrpcEditor({
 								</div>
 							</div>
 
-							{timingRef.current && response.timing && (
+							{response.timing && (
 								<TimingPopover
 									timing={response.timing}
 									anchorRef={timingRef}
-									open={showTimingPopover}
-									onClose={() => setShowTimingPopover(false)}
+									open={timingHover.open}
+									onClose={() => timingHover.setOpen(false)}
 									onMouseEnter={handleTimingEnter}
 									onMouseLeave={handleTimingLeave}
 								/>
 							)}
 
-							{sizeRef.current && response.requestSize && response.responseSize && (
+							{response.requestSize && response.responseSize && (
 								<SizePopover
 									requestSize={response.requestSize}
 									responseSize={response.responseSize}
 									anchorRef={sizeRef}
-									open={showSizePopover}
-									onClose={() => setShowSizePopover(false)}
+									open={sizeHover.open}
+									onClose={() => sizeHover.setOpen(false)}
 									onMouseEnter={handleSizeEnter}
 									onMouseLeave={handleSizeLeave}
 								/>
@@ -591,39 +602,10 @@ export function GrpcEditor({
 								</div>
 
 								<div className="flex-1 overflow-auto">
-									{(() => {
-										const rows = Object.entries(
-											responseDetailTab === "headers"
-												? (response.headers ?? {})
-												: (response.trailers ?? {}),
-										);
-										if (rows.length === 0) {
-											return (
-												<div className="p-3 text-white/30 text-xs">
-													No {responseDetailTab}
-												</div>
-											);
-										}
-										return (
-											<table className="w-full border-collapse font-mono text-xs">
-												<tbody>
-													{rows.map(([k, v]) => (
-														<tr
-															key={k}
-															className="border-white/5 border-b transition-colors hover:bg-white/2"
-														>
-															<td className="w-1/3 min-w-[120px] border-white/5 border-r px-3 py-2 align-top text-white/40">
-																{k}
-															</td>
-															<td className="whitespace-pre-wrap break-all px-3 py-2 align-top text-white/60">
-																{v}
-															</td>
-														</tr>
-													))}
-												</tbody>
-											</table>
-										);
-									})()}
+									<MetadataRows
+										rows={metadataRows}
+										emptyLabel={responseDetailTab}
+									/>
 								</div>
 							</div>
 						</div>

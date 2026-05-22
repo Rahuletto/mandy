@@ -50,7 +50,9 @@ export function TimingPopover({
 
 	const proto_compile_ms = Math.max(
 		0.0,
-		timing.transfer_start_ms - timing.tcp_handshake_ms - timing.tls_handshake_ms,
+		timing.transfer_start_ms -
+			timing.tcp_handshake_ms -
+			timing.tls_handshake_ms,
 	);
 
 	const phases = [

@@ -1,5 +1,10 @@
 import type { Language } from "../components/CodeMirror";
-import type { GrpcFile, MQTTFile, SocketIOFile, SseFile } from "../types/project";
+import type {
+	GrpcFile,
+	MQTTFile,
+	SocketIOFile,
+	SseFile,
+} from "../types/project";
 
 export type SocketIOSnippetLang =
 	| "JavaScript"

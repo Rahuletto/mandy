@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { AuthType } from "../../bindings";
 import { useSse } from "../../hooks/useSse";
 import { getItemConfig } from "../../registry";
@@ -110,26 +110,17 @@ export function SseEditor({
 
 	const tabs: SseTab[] = ["overview", "connection", "authorization", "headers"];
 
+	const lastEventIdFieldId = useId();
+
 	const connectAction = (
-		<div
-			role="button"
-			tabIndex={!url || isConnecting || isConnected ? -1 : 0}
-			aria-disabled={!url || isConnecting || isConnected}
-			onClick={() => {
-				if (!url || isConnecting || isConnected) return;
-				void connect(url);
-			}}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					if (!url || isConnecting || isConnected) return;
-					void connect(url);
-				}
-			}}
+		<button
+			type="button"
+			disabled={!url || isConnecting || isConnected}
+			onClick={() => void connect(url)}
 			className={PANEL_PRIMARY_ACTION_CLASS}
 		>
 			{isConnecting ? "Connecting…" : "Connect"}
-		</div>
+		</button>
 	);
 
 	return (
@@ -233,10 +224,14 @@ export function SseEditor({
 						{activeTab === "connection" && (
 							<div className="flex h-full flex-col p-4">
 								<div>
-									<label className="mb-1 block text-xs font-medium text-white/40">
+									<label
+										htmlFor={lastEventIdFieldId}
+										className="mb-1 block font-medium text-white/40 text-xs"
+									>
 										Last Event ID (resume)
 									</label>
 									<input
+										id={lastEventIdFieldId}
 										type="text"
 										value={sse.lastEventId || ""}
 										onChange={(e) =>

@@ -182,27 +182,15 @@ export function Sidebar({
 				<>
 					<div className="shrink-0">
 						<div
-							role="button"
-							tabIndex={0}
-							className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 opacity-80 transition-colors ${
+							className={`flex w-full items-center gap-2 px-3 py-2 opacity-80 transition-colors ${
 								showProjectOverview ? "bg-accent/10" : "hover:bg-white/5"
 							}`}
-							onClick={onProjectClick}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" || e.key === " ") {
-									e.preventDefault();
-									onProjectClick();
-								}
-							}}
 						>
 							<button
 								type="button"
 								ref={iconButtonRef}
-								onClick={(e) => {
-									e.stopPropagation();
-									setShowIconPicker(true);
-								}}
-								className="flex h-5 w-5 cursor-pointer items-center justify-center transition-colors"
+								onClick={() => setShowIconPicker(true)}
+								className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center transition-colors"
 								style={{
 									color: showProjectOverview
 										? "var(--accent)"
@@ -214,15 +202,17 @@ export function Sidebar({
 									return <IconComponent size={16} />;
 								})()}
 							</button>
-							<span
-								className={`flex-1 truncate text-left text-xs transition-colors ${
+							<button
+								type="button"
+								onClick={onProjectClick}
+								className={`min-w-0 flex-1 truncate text-left text-xs transition-colors ${
 									showProjectOverview
 										? "font-medium text-accent"
 										: "text-white/70 hover:text-white"
 								}`}
 							>
 								{activeProject.name}
-							</span>
+							</button>
 						</div>
 					</div>
 					<FileTree
