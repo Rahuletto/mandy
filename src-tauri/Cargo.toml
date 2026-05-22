@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api", "image-png"] }
+tauri = { version = "2.11", features = ["macos-private-api", "image-png"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 specta-typescript = "0.0.9"
@@ -38,7 +38,9 @@ tauri-plugin-fs = "2.4.5"
 uuid = { version = "1", features = ["v4"] }
 dashmap = "6"
 rust_socketio = { version = "0.6", features = ["async"] }
-rumqttc = { version = "0.24", default-features = false, features = ["use-rustls"] }
+rumqttc = { version = "0.25", default-features = false, features = [
+	"use-native-tls",
+] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
 tonic = { version = "0.12", features = ["transport", "tls-webpki-roots", "tls-native-roots"] }
 prost = "0.13"

@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use dashmap::DashMap;
 use rumqttc::{
-    AsyncClient, Event, Incoming, MqttOptions, QoS, Transport,
+    AsyncClient, Event, Incoming, MqttOptions, QoS, TlsConfiguration, Transport,
 };
 use tauri::{AppHandle, Emitter};
 use tokio::task::JoinHandle;
@@ -106,7 +106,7 @@ fn build_mqtt_options(req: &MqttConnectRequest) -> Result<MqttOptions, String> {
     }
 
     if parsed_url.scheme() == "mqtts" || parsed_url.scheme() == "ssl" || parsed_url.scheme() == "tls" {
-        options.set_transport(Transport::tls_with_default_config());
+        options.set_transport(Transport::tls_with_config(TlsConfiguration::Native));
     }
 
     Ok(options)
