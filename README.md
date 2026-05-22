@@ -81,8 +81,8 @@ Mandy supports importing from popular API tools:
 - [x] WebSockets
 - [x] SocketIO
 - [x] MQTT
-- [ ] SSE
-- [ ] gRPC
+- [x] SSE
+- [x] gRPC
 
 ### More Screenshots
 

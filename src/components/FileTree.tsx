@@ -31,6 +31,10 @@ import { haptic } from "../utils/haptics";
 import { getShortcutDisplay, getSimpleShortcut } from "../utils/platform";
 import { ContextMenu, type MenuItem } from "./ui";
 
+function isRestTreeItem(item: TreeItem): item is RequestFile {
+	return item.type === "request";
+}
+
 interface FileTreeProps {
 	root: Folder;
 	selectedItemId: string | null;
@@ -229,21 +233,17 @@ function SortableItem({
 						)}
 					</span>
 				</div>
-			) : item.type === "workflow" ||
-				item.type === "websocket" ||
-				item.type === "graphql" ||
-				item.type === "socketio" ||
-				item.type === "mqtt" ? (
-				<RequestTypeIcon type={item.type} variant="treeColumn" />
-			) : (
+			) : isRestTreeItem(item) ? (
 				<span
 					className="mr-2 w-10 shrink-0 text-right font-bold font-mono text-[11px]"
 					style={{
-						color: getMethodColor((item as RequestFile).request.method),
+						color: getMethodColor(item.request.method),
 					}}
 				>
-					{getShortMethod((item as RequestFile).request.method)}
+					{getShortMethod(item.request.method)}
 				</span>
+			) : (
+				<RequestTypeIcon type={item.type} variant="treeColumn" />
 			)}
 
 			{isRenaming ? (
@@ -331,42 +331,21 @@ const DragOverlayItem = memo(function DragOverlayItem({
 						{item.name}
 					</span>
 				</>
-			) : item.type === "websocket" ? (
-				<>
-					<RequestTypeIcon type="websocket" size={16} className="shrink-0" />
-					<span className="truncate text-white/90">{item.name}</span>
-				</>
-			) : item.type === "workflow" ? (
-				<>
-					<RequestTypeIcon type="workflow" size={16} className="shrink-0" />
-					<span className="truncate text-white/90">{item.name}</span>
-				</>
-			) : item.type === "graphql" ? (
-				<>
-					<RequestTypeIcon type="graphql" size={16} className="shrink-0" />
-					<span className="truncate text-white/90">{item.name}</span>
-				</>
-			) : item.type === "socketio" ? (
-				<>
-					<RequestTypeIcon type="socketio" size={14} className="shrink-0" />
-					<span className="truncate text-white/90">{item.name}</span>
-				</>
-			) : item.type === "mqtt" ? (
-				<>
-					<RequestTypeIcon type="mqtt" size={12} className="shrink-0" />
-					<span className="truncate text-white/90">{item.name}</span>
-				</>
-			) : (
+			) : isRestTreeItem(item) ? (
 				<>
 					<span
 						className="mr-1 shrink-0 font-bold font-mono text-[10px]"
 						style={{
-							color:
-								METHOD_COLORS[(item as RequestFile).request.method] || "#888",
+							color: METHOD_COLORS[item.request.method] || "#888",
 						}}
 					>
-						{(item as RequestFile).request.method}
+						{item.request.method}
 					</span>
+					<span className="truncate text-white/90">{item.name}</span>
+				</>
+			) : (
+				<>
+					<RequestTypeIcon type={item.type} size={16} className="shrink-0" />
 					<span className="truncate text-white/90">{item.name}</span>
 				</>
 			)}

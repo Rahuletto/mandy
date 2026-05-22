@@ -4,6 +4,7 @@ import {
 	commands,
 	type MqttIncomingMessage,
 	type SioIncomingMessage,
+	type SseIncomingMessage,
 	type WsClosedEvent,
 	type WsIncomingMessage,
 } from "../bindings";
@@ -13,12 +14,14 @@ import { findTreeItemById } from "../utils/findTreeItem";
 import {
 	persistedMqttSessionIds,
 	persistedSioSessionIds,
+	persistedSseSessionIds,
 	persistedWsSessionIds,
 } from "./backgroundSessionIds";
 import {
 	clearAllRealtimeUiSubscribers,
 	emitMqttRemoteDisconnect,
 	emitSocketIoRemoteDisconnect,
+	emitSseRemoteDisconnect,
 	emitWebSocketRemoteClosed,
 } from "./realtimeUiBus";
 import {
@@ -31,17 +34,19 @@ function notifyEditorsForcedRealtimeClose(connectionId: string) {
 	emitWebSocketRemoteClosed(connectionId, { code: 1000 });
 	emitSocketIoRemoteDisconnect(connectionId);
 	emitMqttRemoteDisconnect(connectionId);
+	emitSseRemoteDisconnect(connectionId);
 }
 
 const MAX_SOCKETIO_MESSAGES = 600;
 const MAX_MQTT_MESSAGES = 600;
+const MAX_SSE_EVENTS = 600;
 
 function appendCapped<T>(messages: T[], entry: T, max: number): T[] {
 	const next = [...messages, entry];
 	return next.length > max ? next.slice(next.length - max) : next;
 }
 
-export type RealtimeBridgeKind = "websocket" | "socketio" | "mqtt";
+export type RealtimeBridgeKind = "websocket" | "socketio" | "mqtt" | "sse";
 
 type BridgeEntry = { kind: RealtimeBridgeKind; dispose: () => void };
 
@@ -118,6 +123,50 @@ function appendMqttReceive(connectionId: string, payload: MqttIncomingMessage) {
 					retain: payload.retain ?? false,
 				},
 				MAX_MQTT_MESSAGES,
+			),
+		}));
+	});
+}
+
+function appendSseEvent(connectionId: string, payload: SseIncomingMessage) {
+	if (!canUpdateItem(connectionId, "sse")) return;
+	startTransition(() => {
+		useProjectStore.getState().updateItem(connectionId, "sse", (prev) => {
+			const nextEvents = appendCapped(
+				prev.events,
+				{
+					id: payload.id || crypto.randomUUID(),
+					timestamp: payload.timestamp_ms || Date.now(),
+					event: payload.event || "message",
+					data: payload.data || "",
+					sseId: payload.sse_id ?? undefined,
+				},
+				MAX_SSE_EVENTS,
+			);
+			const last = nextEvents[nextEvents.length - 1];
+			return {
+				...prev,
+				events: nextEvents,
+				lastEventId: last?.sseId ?? prev.lastEventId,
+			};
+		});
+	});
+}
+
+function appendSseSystem(connectionId: string, text: string) {
+	if (!canUpdateItem(connectionId, "sse")) return;
+	startTransition(() => {
+		useProjectStore.getState().updateItem(connectionId, "sse", (prev) => ({
+			...prev,
+			events: appendCapped(
+				prev.events,
+				{
+					id: crypto.randomUUID(),
+					timestamp: Date.now(),
+					event: "system",
+					data: text,
+				},
+				MAX_SSE_EVENTS,
 			),
 		}));
 	});
@@ -274,6 +323,46 @@ async function attachMqtt(connectionId: string): Promise<() => void> {
 	};
 }
 
+async function attachSse(connectionId: string): Promise<() => void> {
+	const unsubs: UnlistenFn[] = [];
+	try {
+		unsubs.push(
+			await listen<SseIncomingMessage>(
+				`sse://message/${connectionId}`,
+				(event) => {
+					appendSseEvent(connectionId, event.payload);
+				},
+			),
+		);
+
+		unsubs.push(
+			await listen<{ reason: string }>(
+				`sse://disconnected/${connectionId}`,
+				(event) => {
+					persistedSseSessionIds.delete(connectionId);
+					appendSseSystem(
+						connectionId,
+						`Disconnected: ${event.payload?.reason || "connection closed"}`,
+					);
+					emitSseRemoteDisconnect(connectionId);
+					queueMicrotask(() => releaseRealtimeBridge(connectionId));
+				},
+			),
+		);
+	} catch (e) {
+		for (const u of unsubs) {
+			u();
+		}
+		throw e;
+	}
+
+	return () => {
+		for (const u of unsubs) {
+			u();
+		}
+	};
+}
+
 async function attachWebSocket(connectionId: string): Promise<() => void> {
 	const unsubs: UnlistenFn[] = [];
 	try {
@@ -339,6 +428,8 @@ export async function ensureRealtimeBridge(
 		dispose = await attachSocketIo(connectionId);
 	} else if (kind === "mqtt") {
 		dispose = await attachMqtt(connectionId);
+	} else if (kind === "sse") {
+		dispose = await attachSse(connectionId);
 	} else {
 		dispose = await attachWebSocket(connectionId);
 	}
@@ -362,7 +453,9 @@ async function rustDisconnectByKind(
 			? commands.wsDisconnect(connectionId)
 			: kind === "socketio"
 				? commands.sioDisconnect(connectionId)
-				: commands.mqttDisconnect(connectionId);
+				: kind === "sse"
+					? commands.sseDisconnect(connectionId)
+					: commands.mqttDisconnect(connectionId);
 	await p.catch(() => {});
 }
 
@@ -372,6 +465,7 @@ async function rustDisconnectAllKinds(connectionId: string): Promise<void> {
 		commands.wsDisconnect(connectionId).catch(() => {}),
 		commands.sioDisconnect(connectionId).catch(() => {}),
 		commands.mqttDisconnect(connectionId).catch(() => {}),
+		commands.sseDisconnect(connectionId).catch(() => {}),
 	]);
 }
 
@@ -385,6 +479,7 @@ export async function teardownRealtimeForConnection(
 	persistedWsSessionIds.delete(connectionId);
 	persistedSioSessionIds.delete(connectionId);
 	persistedMqttSessionIds.delete(connectionId);
+	persistedSseSessionIds.delete(connectionId);
 	releaseExclusiveWebSocketLock(connectionId);
 
 	const entry = active.get(connectionId);
@@ -418,6 +513,7 @@ export async function shutdownAllRealtimeTransports(): Promise<void> {
 	persistedWsSessionIds.clear();
 	persistedSioSessionIds.clear();
 	persistedMqttSessionIds.clear();
+	persistedSseSessionIds.clear();
 	assignExclusiveWebSocketOwner(null);
 	clearAllRealtimeUiSubscribers();
 }

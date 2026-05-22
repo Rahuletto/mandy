@@ -409,3 +409,65 @@ pub struct MqttUnsubscribeRequest {
     pub connection_id: String,
     pub topic: String,
 }
+
+// ─── SSE types ──────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct SseConnectRequest {
+    pub connection_id: String,
+    pub url: String,
+    pub headers: HashMap<String, String>,
+    pub auth: AuthType,
+    /// Resume stream after disconnect (Last-Event-ID).
+    pub last_event_id: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Type)]
+pub struct SseConnectResponse {
+    pub connection_id: String,
+    pub url: String,
+    pub error: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct SseIncomingMessage {
+    pub connection_id: String,
+    pub id: String,
+    pub event: String,
+    pub data: String,
+    pub timestamp_ms: f64,
+    pub sse_id: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct SseDisconnectedEvent {
+    pub connection_id: String,
+    pub reason: String,
+}
+
+// ─── gRPC types ─────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct GrpcCallRequest {
+    pub url: String,
+    pub proto: String,
+    pub service: String,
+    pub method: String,
+    pub body: String,
+    pub headers: HashMap<String, String>,
+    pub auth: AuthType,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct GrpcCallResponse {
+    pub status_code: i32,
+    pub status_message: String,
+    pub body: Option<String>,
+    pub timing_ms: f64,
+    pub timing: TimingInfo,
+    pub request_size: SizeInfo,
+    pub response_size: SizeInfo,
+    pub headers: HashMap<String, String>,
+    pub trailers: HashMap<String, String>,
+    pub error: Option<String>,
+}

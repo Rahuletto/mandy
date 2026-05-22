@@ -1,6 +1,9 @@
+pub mod auth;
 pub mod rest;
 pub mod request_notify;
 pub mod websocket;
 pub mod graphql;
 pub mod socketio;
 pub mod mqtt;
+pub mod sse;
+pub mod grpc;

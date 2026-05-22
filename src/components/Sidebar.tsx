@@ -181,12 +181,19 @@ export function Sidebar({
 			{activeProject ? (
 				<>
 					<div className="shrink-0">
-						<button
-							type="button"
+						<div
+							role="button"
+							tabIndex={0}
 							className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 opacity-80 transition-colors ${
 								showProjectOverview ? "bg-accent/10" : "hover:bg-white/5"
 							}`}
 							onClick={onProjectClick}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									onProjectClick();
+								}
+							}}
 						>
 							<button
 								type="button"
@@ -216,7 +223,7 @@ export function Sidebar({
 							>
 								{activeProject.name}
 							</span>
-						</button>
+						</div>
 					</div>
 					<FileTree
 						root={activeProject.root}

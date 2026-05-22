@@ -39,6 +39,15 @@ uuid = { version = "1", features = ["v4"] }
 dashmap = "6"
 rust_socketio = { version = "0.6", features = ["async"] }
 rumqttc = { version = "0.24", default-features = false, features = ["use-rustls"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+tonic = { version = "0.12", features = ["transport", "tls-webpki-roots", "tls-native-roots"] }
+prost = "0.13"
+prost-reflect = { version = "0.14", features = ["serde"] }
+prost-types = "0.13"
+protoc-bin-vendored = "3"
+sha2 = "0.10"
+http = "1"
+bytes = "1"
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2.10.1"
 tauri-plugin-process = "2.3.1"

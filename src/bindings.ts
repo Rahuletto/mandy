@@ -166,6 +166,30 @@ async mqttDisconnect(connectionId: string) : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async sseConnect(req: SseConnectRequest) : Promise<Result<SseConnectResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sse_connect", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async sseDisconnect(connectionId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("sse_disconnect", { connectionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async grpcCall(req: GrpcCallRequest) : Promise<Result<GrpcCallResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("grpc_call", { req }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -213,6 +237,8 @@ export type GraphQLIntrospectResponse = {
  * Raw introspection JSON (the `data` field from the response).
  */
 schema_json: string | null; error: string | null }
+export type GrpcCallRequest = { url: string; proto: string; service: string; method: string; body: string; headers: Partial<{ [key in string]: string }>; auth: AuthType }
+export type GrpcCallResponse = { status_code: number; status_message: string; body: string | null; timing_ms: number; timing: TimingInfo; request_size: SizeInfo; response_size: SizeInfo; headers: Partial<{ [key in string]: string }>; trailers: Partial<{ [key in string]: string }>; error: string | null }
 export type HttpProtocol = "Tcp"
 export type Methods = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS" | "TRACE" | "CONNECT"
 export type MqttConnectRequest = { connection_id: string; url: string; client_id: string; username: string | null; password: string | null; clean_session: boolean | null; keep_alive_secs: number | null; subscriptions: MqttSubscription[] }
@@ -301,6 +327,14 @@ export type SioEmitRequest = { connection_id: string; event: string; data: strin
  */
 export type SioIncomingMessage = { connection_id: string; id: string; event: string; data: string; timestamp_ms: number }
 export type SizeInfo = { headers_bytes: number; body_bytes: number; total_bytes: number }
+export type SseConnectRequest = { connection_id: string; url: string; headers: Partial<{ [key in string]: string }>; auth: AuthType; 
+/**
+ * Resume stream after disconnect (Last-Event-ID).
+ */
+last_event_id: string | null }
+export type SseConnectResponse = { connection_id: string; url: string; error: string | null }
+export type SseDisconnectedEvent = { connection_id: string; reason: string }
+export type SseIncomingMessage = { connection_id: string; id: string; event: string; data: string; timestamp_ms: number; sse_id: string | null }
 export type TimingInfo = { total_ms: number; dns_lookup_ms: number; tcp_handshake_ms: number; tls_handshake_ms: number; transfer_start_ms: number; ttfb_ms: number; content_download_ms: number }
 /**
  * Pushed as a Tauri event (`ws://closed/<connection_id>`) when the connection

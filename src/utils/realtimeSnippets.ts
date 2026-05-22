@@ -1,5 +1,5 @@
 import type { Language } from "../components/CodeMirror";
-import type { MQTTFile, SocketIOFile } from "../types/project";
+import type { GrpcFile, MQTTFile, SocketIOFile, SseFile } from "../types/project";
 
 export type SocketIOSnippetLang =
 	| "JavaScript"
@@ -333,6 +333,85 @@ export const SOCKETIO_SNIPPET_LANGS: {
 	{ label: "Rust Socket.IO", lang: "Rust" },
 	{ label: "Java Socket.IO", lang: "Java" },
 	{ label: "PHP Elephant.IO", lang: "PHP" },
+];
+
+export type SseSnippetLang = "JavaScript" | "Python" | "Rust" | "curl";
+export type GrpcSnippetLang = "grpcurl" | "Go" | "Rust tonic";
+
+export function generateSseSnippet(
+	sse: SseFile,
+	lang: SseSnippetLang,
+): { code: string; language: Language } {
+	const url = sse.url?.trim() || "https://example.com/events";
+	switch (lang) {
+		case "JavaScript":
+			return {
+				language: "javascript",
+				code: `const source = new EventSource("${url}");
+source.onmessage = (event) => console.log(event.data);
+source.addEventListener("custom", (event) => console.log(event.type, event.data));`,
+			};
+		case "Python":
+			return {
+				language: "python",
+				code: `import httpx
+
+with httpx.stream("GET", "${url}", headers={"Accept": "text/event-stream"}) as response:
+    for line in response.iter_lines():
+        if line:
+            print(line.decode())`,
+			};
+		case "Rust":
+			return {
+				language: "rust",
+				code: `// Use Mandy — SSE runs in the desktop runtime with full header/auth support.`,
+			};
+		case "curl":
+			return {
+				language: "shell",
+				code: `curl -N -H "Accept: text/event-stream" "${url}"`,
+			};
+	}
+}
+
+export function generateGrpcSnippet(
+	grpc: GrpcFile,
+	lang: GrpcSnippetLang,
+): { code: string; language: Language } {
+	const url = grpc.url?.trim() || "localhost:50051";
+	const service = grpc.service?.trim() || "ExampleService";
+	const method = grpc.method?.trim() || "ExampleMethod";
+	switch (lang) {
+		case "grpcurl":
+			return {
+				language: "shell",
+				code: `grpcurl -plaintext -d '{}' ${url.replace(/^https?:\/\//, "")} ${service}/${method}`,
+			};
+		case "Go":
+			return {
+				language: "go",
+				code: `conn, _ := grpc.Dial("${url}", grpc.WithInsecure())
+defer conn.Close()
+client := pb.New${service}Client(conn)
+_, _ = client.${method}(context.Background(), &pb.Request{})`,
+			};
+		case "Rust tonic":
+			return {
+				language: "rust",
+				code: `// Use Mandy — gRPC runs in the desktop runtime with your proto definition.`,
+			};
+	}
+}
+
+export const SSE_SNIPPET_LANGS: { label: string; lang: SseSnippetLang }[] = [
+	{ label: "JavaScript EventSource", lang: "JavaScript" },
+	{ label: "Python httpx", lang: "Python" },
+	{ label: "Shell curl", lang: "curl" },
+];
+
+export const GRPC_SNIPPET_LANGS: { label: string; lang: GrpcSnippetLang }[] = [
+	{ label: "grpcurl", lang: "grpcurl" },
+	{ label: "Go grpc", lang: "Go" },
 ];
 
 export const MQTT_SNIPPET_LANGS: {

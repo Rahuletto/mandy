@@ -760,6 +760,8 @@ function App() {
 							onSelectGraphQL={openItemFromProjectOverview}
 							onSelectSocketIO={openItemFromProjectOverview}
 							onSelectMqtt={openItemFromProjectOverview}
+							onSelectGrpc={openItemFromProjectOverview}
+							onSelectSse={openItemFromProjectOverview}
 							onRunRequest={(id) => {
 								openItemFromProjectOverview(id);
 								setTimeout(() => restEditorRef.current?.send(), 100);
@@ -1045,6 +1047,8 @@ function App() {
 						activeItem?.type !== "websocket" &&
 						activeItem?.type !== "graphql" &&
 						activeItem?.type !== "socketio" &&
+						activeItem?.type !== "grpc" &&
+						activeItem?.type !== "sse" &&
 						activeItem?.type !== "mqtt" ? (
 						<WelcomePage
 							onNewItem={handleWelcomeNewItem}

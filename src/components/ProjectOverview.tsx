@@ -6,10 +6,12 @@ import { useProjectStore } from "../stores/projectStore";
 import type {
 	Folder,
 	GraphQLFile,
+	GrpcFile,
 	MQTTFile,
 	Project,
 	RequestFile,
 	SocketIOFile,
+	SseFile,
 	WebSocketFile,
 } from "../types/project";
 import type { WorkflowFile } from "../types/workflow";
@@ -48,6 +50,8 @@ interface ProjectOverviewProps {
 	onSelectGraphQL?: (graphqlId: string) => void;
 	onSelectSocketIO?: (socketIoId: string) => void;
 	onSelectMqtt?: (mqttId: string) => void;
+	onSelectGrpc?: (grpcId: string) => void;
+	onSelectSse?: (sseId: string) => void;
 	onRunRequest?: (requestId: string) => void;
 	onAddEnvironment?: (name: string) => void;
 	onUpdateEnvironment?: (envId: string, name: string) => void;
@@ -304,9 +308,11 @@ type ProtocolOverviewItem =
 	| WebSocketFile
 	| GraphQLFile
 	| SocketIOFile
-	| MQTTFile;
+	| MQTTFile
+	| GrpcFile
+	| SseFile;
 
-/** WebSocket / GraphQL / Socket.IO / MQTT — same chrome as workflow cards in project overview. */
+/** Protocol requests — same chrome as workflow cards in project overview. */
 const ProtocolOverviewCard = React.memo(function ProtocolOverviewCard({
 	item,
 	onSelect,
@@ -448,6 +454,8 @@ const FolderSection = React.memo(function FolderSection({
 	onSelectGraphQL,
 	onSelectSocketIO,
 	onSelectMqtt,
+	onSelectGrpc,
+	onSelectSse,
 	onRunRequest,
 	loadingItems,
 }: {
@@ -461,6 +469,8 @@ const FolderSection = React.memo(function FolderSection({
 	onSelectGraphQL?: (id: string) => void;
 	onSelectSocketIO?: (id: string) => void;
 	onSelectMqtt?: (id: string) => void;
+	onSelectGrpc?: (id: string) => void;
+	onSelectSse?: (id: string) => void;
 	onRunRequest?: (id: string) => void;
 	loadingItems?: ReadonlySet<string>;
 }) {
@@ -511,6 +521,8 @@ const FolderSection = React.memo(function FolderSection({
 									onSelectGraphQL={onSelectGraphQL}
 									onSelectSocketIO={onSelectSocketIO}
 									onSelectMqtt={onSelectMqtt}
+									onSelectGrpc={onSelectGrpc}
+									onSelectSse={onSelectSse}
 									onRunRequest={onRunRequest}
 									loadingItems={loadingItems}
 								/>
@@ -535,7 +547,9 @@ const FolderSection = React.memo(function FolderSection({
 							child.type === "websocket" ||
 							child.type === "graphql" ||
 							child.type === "socketio" ||
-							child.type === "mqtt"
+							child.type === "mqtt" ||
+							child.type === "grpc" ||
+							child.type === "sse"
 						) {
 							const prev = folder.children[index - 1];
 							const next = folder.children[index + 1];
@@ -547,7 +561,11 @@ const FolderSection = React.memo(function FolderSection({
 										? () => onSelectGraphQL?.(child.id)
 										: t === "socketio"
 											? () => onSelectSocketIO?.(child.id)
-											: () => onSelectMqtt?.(child.id);
+											: t === "mqtt"
+												? () => onSelectMqtt?.(child.id)
+												: t === "grpc"
+													? () => onSelectGrpc?.(child.id)
+													: () => onSelectSse?.(child.id);
 							return (
 								<ProtocolOverviewCard
 									key={child.id}
@@ -597,6 +615,8 @@ export function ProjectOverview({
 	onSelectGraphQL,
 	onSelectSocketIO,
 	onSelectMqtt,
+	onSelectGrpc,
+	onSelectSse,
 	onRunRequest,
 	onAddEnvironment,
 	onUpdateEnvironment,
@@ -913,6 +933,8 @@ export function ProjectOverview({
 								onSelectGraphQL={onSelectGraphQL}
 								onSelectSocketIO={onSelectSocketIO}
 								onSelectMqtt={onSelectMqtt}
+								onSelectGrpc={onSelectGrpc}
+								onSelectSse={onSelectSse}
 								onRunRequest={onRunRequest}
 								loadingItems={loadingItems}
 							/>

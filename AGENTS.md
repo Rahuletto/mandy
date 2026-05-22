@@ -37,7 +37,7 @@ Fix any TypeScript issues your change introduces, even if the repo has pre-exist
 
 **File:** `src/types/project.ts`
 
-- **`RequestType`** — string union of all non-folder item kinds: `"request" | "websocket" | "graphql" | "socketio" | "mqtt" | "workflow"`.
+- **`RequestType`** — string union of all non-folder item kinds: `"request" | "websocket" | "graphql" | "socketio" | "mqtt" | "grpc" | "sse" | "workflow"`.
 - **`RequestItem`** — discriminated union: each `type` has a matching interface (`RequestFile`, `WebSocketFile`, …).
 - **`RequestItemMap` / `ItemOfType<T>`** — use these for generic helpers keyed by `RequestType`.
 - **`TreeItem`** — `Folder | RequestItem`.
@@ -94,11 +94,13 @@ Each type is defined with **`defineItemType({ ... })`** (see `itemTypes.ts`).
 
 ### Protocol editors: `src/registry/editorViews.tsx`
 
-- **`ProtocolRequestItem`** — union of `WebSocketFile | GraphQLFile | SocketIOFile | MQTTFile`.
+- **`ProtocolRequestItem`** — union of `WebSocketFile | GraphQLFile | SocketIOFile | MQTTFile | GrpcFile | SseFile`.
 - **`renderProtocolEditor(item, ctx)`** — **single switch** that mounts the correct editor with shared props (`updateItem`, `resolveVariables`, loading hooks, etc.). Add a new `case` here when introducing a protocol editor.
 - **`isProtocolRequestItem(item)`** — type guard used in `App.tsx`.
 
 REST and workflow are **not** here; they are special-cased in `App.tsx`.
+
+**gRPC / SSE:** All network I/O is in Rust (`grpc_call`, `sse_connect`, `sse_disconnect`). Overview tabs use shared [`ProtocolOverview`](src/components/editors/ProtocolOverview.tsx) + [`OverviewLayout`](src/components/editors/OverviewLayout.tsx). SSE events flow through [`globalRealtimeBridge`](src/realtime/globalRealtimeBridge.ts) (`"sse"` kind).
 
 ---
 
@@ -148,7 +150,7 @@ Evaluated **top to bottom** (simplified):
 - **Sub-tabs:** `overview`, `params`, `authorization`, `body` (hidden for GET), `headers`, `cookies`. Implemented as a **local button row**, not `TabView`.
 - **Overview tab content:** Often composed with `RequestOverview` / rich layout; uses project env and auth.
 
-### Protocol editors (WebSocket, GraphQL, Socket.IO, MQTT)
+### Protocol editors (WebSocket, GraphQL, Socket.IO, MQTT, gRPC, SSE)
 
 - **Top bar:** Type icon via `RequestTypeIcon`, URL/input, connect/send/disconnect pattern varies by protocol.
 - **Internal structure:** Each editor defines its own **tab state** (e.g. overview / messages / connection) with local buttons or shared UI primitives.

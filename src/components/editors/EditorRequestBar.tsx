@@ -9,6 +9,8 @@ const PROTOCOL_BAR_TYPES = [
 	"graphql",
 	"socketio",
 	"mqtt",
+	"grpc",
+	"sse",
 ] as const;
 export type ProtocolRequestBarType = (typeof PROTOCOL_BAR_TYPES)[number];
 

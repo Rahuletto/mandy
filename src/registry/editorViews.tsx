@@ -1,15 +1,19 @@
 import type { ReactNode } from "react";
 import { GraphQLEditor } from "../components/editors/GraphQLEditor";
+import { GrpcEditor } from "../components/editors/GrpcEditor";
 import { MQTTEditor } from "../components/editors/MQTTEditor";
+import { SseEditor } from "../components/editors/SseEditor";
 import { SocketIOEditor } from "../components/editors/SocketIOEditor";
 import { WebSocketEditor } from "../components/editors/WebSocketEditor";
 import type {
 	GraphQLFile,
+	GrpcFile,
 	ItemOfType,
 	MQTTFile,
 	Project,
 	RequestType,
 	SocketIOFile,
+	SseFile,
 	WebSocketFile,
 } from "../types/project";
 
@@ -36,7 +40,9 @@ export type ProtocolRequestItem =
 	| WebSocketFile
 	| GraphQLFile
 	| SocketIOFile
-	| MQTTFile;
+	| MQTTFile
+	| GrpcFile
+	| SseFile;
 
 export function renderProtocolEditor(
 	item: ProtocolRequestItem,
@@ -108,6 +114,34 @@ export function renderProtocolEditor(
 					onStopLoading={stopLoading}
 				/>
 			);
+		case "grpc":
+			return (
+				<GrpcEditor
+					key={item.id}
+					grpc={item}
+					onUpdate={(updater) => updateItem(item.id, "grpc", updater)}
+					availableVariables={getEnvKeys()}
+					projectAuth={activeProject?.authorization}
+					onOpenProjectSettings={onOpenProjectSettings}
+					resolveVariables={resolveVariables}
+					onStartLoading={startLoading}
+					onStopLoading={stopLoading}
+				/>
+			);
+		case "sse":
+			return (
+				<SseEditor
+					key={item.id}
+					sse={item}
+					onUpdate={(updater) => updateItem(item.id, "sse", updater)}
+					availableVariables={getEnvKeys()}
+					projectAuth={activeProject?.authorization}
+					onOpenProjectSettings={onOpenProjectSettings}
+					resolveVariables={resolveVariables}
+					onStartLoading={startLoading}
+					onStopLoading={stopLoading}
+				/>
+			);
 	}
 }
 
@@ -116,6 +150,6 @@ export function isProtocolRequestItem(
 ): item is ProtocolRequestItem {
 	const t = item?.type;
 	return (
-		t === "websocket" || t === "graphql" || t === "socketio" || t === "mqtt"
+		t === "websocket" || t === "graphql" || t === "socketio" || t === "mqtt" || t === "grpc" || t === "sse"
 	);
 }

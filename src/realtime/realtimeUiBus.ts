@@ -2,6 +2,7 @@ export type WsCloseDetail = { code: number; reason?: string };
 
 const sioDisc = new Map<string, Set<() => void>>();
 const mqttDisc = new Map<string, Set<() => void>>();
+const sseDisc = new Map<string, Set<() => void>>();
 const wsClose = new Map<string, Set<(d: WsCloseDetail) => void>>();
 
 function addListener<T>(
@@ -41,6 +42,16 @@ export function emitMqttRemoteDisconnect(id: string) {
 	}
 }
 
+export function subscribeSseRemoteDisconnect(id: string, fn: () => void) {
+	return addListener(sseDisc, id, fn);
+}
+
+export function emitSseRemoteDisconnect(id: string) {
+	for (const fn of sseDisc.get(id) ?? []) {
+		fn();
+	}
+}
+
 export function subscribeWebSocketRemoteClosed(
 	id: string,
 	fn: (d: WsCloseDetail) => void,
@@ -58,5 +69,6 @@ export function emitWebSocketRemoteClosed(id: string, detail: WsCloseDetail) {
 export function clearAllRealtimeUiSubscribers() {
 	sioDisc.clear();
 	mqttDisc.clear();
+	sseDisc.clear();
 	wsClose.clear();
 }

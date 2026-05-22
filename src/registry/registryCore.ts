@@ -1,6 +1,12 @@
 import type { Edge, Node } from "@xyflow/react";
 import { SiMqtt, SiSocketdotio } from "react-icons/si";
-import { TbBrandGraphql, TbPlugConnected, TbWorld } from "react-icons/tb";
+import {
+	TbArrowsExchange2,
+	TbBrandGraphql,
+	TbBroadcast,
+	TbPlugConnected,
+	TbWorld,
+} from "react-icons/tb";
 import { VscTypeHierarchySub } from "react-icons/vsc";
 import { createDefaultRequest } from "../reqhelpers/rest";
 import type { RequestType } from "../types/project";
@@ -40,6 +46,8 @@ const requestConfig = defineItemType({
 			request: createDefaultRequest(),
 			response: null,
 			useInheritedAuth: true,
+			headerItems: [],
+			cookieItems: [],
 		};
 	},
 
@@ -52,7 +60,14 @@ const requestConfig = defineItemType({
 				...item.request,
 				headers: { ...item.request.headers },
 				query_params: { ...item.request.query_params },
+				cookies: [...item.request.cookies],
 			},
+			headerItems: item.headerItems
+				? JSON.parse(JSON.stringify(item.headerItems))
+				: [],
+			cookieItems: item.cookieItems
+				? JSON.parse(JSON.stringify(item.cookieItems))
+				: [],
 			response: null,
 		};
 	},
@@ -284,6 +299,114 @@ const mqttConfig = defineItemType({
 });
 
 // ---------------------------------------------------------------------------
+// grpc
+// ---------------------------------------------------------------------------
+
+const grpcConfig = defineItemType({
+	type: "grpc",
+	label: "gRPC",
+	shortLabel: "gRPC",
+	icon: TbArrowsExchange2,
+	iconClassName: "text-blue-400",
+	treeIconSize: 14,
+	overviewStripeClass: "bg-blue-400/40",
+	overviewSidebarCellClass: "bg-blue-500/10 text-blue-400",
+	listBadgeClass:
+		"text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-400/20 text-blue-400",
+	isCreatable: true,
+	menuOrder: 5,
+
+	createDefault({ id, name = "New gRPC" }) {
+		return {
+			id,
+			type: "grpc",
+			name,
+			url: "",
+			service: "",
+			method: "",
+			proto:
+				'syntax = "proto3";\n\npackage example;\n\nservice ExampleService {\n  rpc ExampleMethod (ExampleRequest) returns (ExampleResponse);\n}\n\nmessage ExampleRequest {\n  string name = 1;\n}\n\nmessage ExampleResponse {\n  string message = 1;\n}\n',
+			requestBody: "{}",
+			headers: { "Content-Type": "application/grpc" },
+			headerItems: [],
+			auth: "None",
+			useInheritedAuth: true,
+			response: null,
+		};
+	},
+
+	clone(item, { id }) {
+		return {
+			...item,
+			id,
+			name: `${item.name} (copy)`,
+			headers: { ...item.headers },
+			headerItems: item.headerItems
+				? JSON.parse(JSON.stringify(item.headerItems))
+				: undefined,
+			auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
+			requestBody: item.requestBody ?? "{}",
+			response: null,
+		};
+	},
+
+	getRecentMeta(item) {
+		return { methodLabel: "gRPC", url: item.url };
+	},
+});
+
+// ---------------------------------------------------------------------------
+// sse
+// ---------------------------------------------------------------------------
+
+const sseConfig = defineItemType({
+	type: "sse",
+	label: "SSE",
+	shortLabel: "SSE",
+	icon: TbBroadcast,
+	iconClassName: "text-rose-400",
+	treeIconSize: 14,
+	overviewStripeClass: "bg-rose-400/40",
+	overviewSidebarCellClass: "bg-rose-500/10 text-rose-400",
+	listBadgeClass:
+		"text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-400/20 text-rose-400",
+	isCreatable: true,
+	menuOrder: 6,
+
+	createDefault({ id, name = "New SSE" }) {
+		return {
+			id,
+			type: "sse",
+			name,
+			url: "",
+			headers: { Accept: "text/event-stream" },
+			headerItems: [],
+			auth: "None",
+			useInheritedAuth: true,
+			events: [],
+		};
+	},
+
+	clone(item, { id }) {
+		return {
+			...item,
+			id,
+			name: `${item.name} (copy)`,
+			headers: { ...item.headers },
+			headerItems: item.headerItems
+				? JSON.parse(JSON.stringify(item.headerItems))
+				: undefined,
+			auth: item.auth ? JSON.parse(JSON.stringify(item.auth)) : undefined,
+			events: [],
+		};
+	},
+
+	getRecentMeta(item) {
+		return { methodLabel: "SSE", url: item.url };
+	},
+});
+
+// ---------------------------------------------------------------------------
 // workflow
 // ---------------------------------------------------------------------------
 
@@ -384,6 +507,8 @@ export const itemTypeRegistry: {
 	socketio: socketioConfig,
 	mqtt: mqttConfig,
 	workflow: workflowConfig,
+	grpc: grpcConfig,
+	sse: sseConfig,
 };
 
 export function getItemConfig<T extends RequestType>(

@@ -7,7 +7,12 @@ import {
 	useState,
 } from "react";
 import { GiTeapot } from "react-icons/gi";
-import type { ApiResponse, Methods, ResponseRenderer } from "../../bindings";
+import type {
+	ApiResponse,
+	Cookie,
+	Methods,
+	ResponseRenderer,
+} from "../../bindings";
 import {
 	type AuthType,
 	type BodyType,
@@ -18,7 +23,7 @@ import {
 } from "../../reqhelpers/rest";
 import { useProjectStore } from "../../stores/projectStore";
 import { useToastStore } from "../../stores/toastStore";
-import type { Project, RequestFile } from "../../types/project";
+import type { KeyValueItem, Project, RequestFile } from "../../types/project";
 import { formatBytes, getStatusColor, STATUS_TEXT } from "../../utils/format";
 import { playSuccessChime } from "../../utils/sounds";
 import { CodeViewer } from "../CodeMirror";
@@ -133,6 +138,86 @@ export const RestRequestEditor = forwardRef<
 	const [showSizePopover, setShowSizePopover] = useState(false);
 	const timingRef = useRef<HTMLButtonElement>(null);
 	const sizeRef = useRef<HTMLButtonElement>(null);
+
+	// Helper functions to convert between header formats
+	const headersToKeyValueItems = useCallback((): KeyValueItem[] => {
+		const items: KeyValueItem[] = [];
+		const existingItems = activeRequest.headerItems || [];
+		
+		// Create a map of existing items by key for quick lookup
+		const existingMap = new Map<string, KeyValueItem>();
+		for (const item of existingItems) {
+			existingMap.set(item.key, item);
+		}
+		
+		// Convert headers to KeyValueItems, preserving enabled state from existing items
+		for (const [key, value] of Object.entries(activeRequest.request.headers)) {
+			const existing = existingMap.get(key);
+			items.push({
+				id: existing?.id || crypto.randomUUID(),
+				key,
+				value: value || "",
+				description: existing?.description || "",
+				enabled: existing?.enabled ?? true,
+			});
+		}
+		
+		return items;
+	}, [activeRequest.request.headers, activeRequest.headerItems]);
+
+	const cookiesToKeyValueItems = useCallback((): KeyValueItem[] => {
+		const items: KeyValueItem[] = [];
+		const existingItems = activeRequest.cookieItems || [];
+		
+		// Create a map of existing items by cookie name for quick lookup
+		const existingMap = new Map<string, KeyValueItem>();
+		for (const item of existingItems) {
+			existingMap.set(item.key, item);
+		}
+		
+		// Convert cookies to KeyValueItems, preserving enabled state from existing items
+		for (let i = 0; i < activeRequest.request.cookies.length; i++) {
+			const cookie = activeRequest.request.cookies[i];
+			const existing = existingMap.get(cookie.name);
+			items.push({
+				id: existing?.id || crypto.randomUUID(),
+				key: cookie.name,
+				value: cookie.value,
+				description: `${cookie.domain || ""} ${cookie.path || ""}`.trim(),
+				enabled: existing?.enabled ?? true,
+			});
+		}
+		
+		return items;
+	}, [activeRequest.request.cookies, activeRequest.cookieItems]);
+
+	const keyValueItemsToHeaders = useCallback((items: KeyValueItem[]): Record<string, string> => {
+		const headers: Record<string, string> = {};
+		for (const item of items) {
+			if (item.key.trim()) {
+				headers[item.key] = item.value;
+			}
+		}
+		return headers;
+	}, []);
+
+	const keyValueItemsToCookies = useCallback((items: KeyValueItem[]): Cookie[] => {
+		const cookies: Cookie[] = [];
+		for (const item of items) {
+			if (item.key.trim()) {
+				cookies.push({
+					name: item.key,
+					value: item.value,
+					domain: null,
+					path: null,
+					expires: null,
+					http_only: null,
+					secure: null,
+				});
+			}
+		}
+		return cookies;
+	}, []);
 	const timingTimeoutRef = useRef<number | null>(null);
 	const sizeTimeoutRef = useRef<number | null>(null);
 
@@ -174,9 +259,19 @@ export const RestRequestEditor = forwardRef<
 
 	const isItemEnabled = useCallback(
 		(type: "param" | "header" | "cookie", key: string) => {
+			if (type === "header") {
+				const headerItems = activeRequest.headerItems || headersToKeyValueItems();
+				const item = headerItems.find(item => item.key === key);
+				return item?.enabled ?? true;
+			} else if (type === "cookie") {
+				const cookieItems = activeRequest.cookieItems || cookiesToKeyValueItems();
+				const item = cookieItems.find(item => item.key === key);
+				return item?.enabled ?? true;
+			}
+			// For params, still use disabledItems for now
 			return !disabledItems.has(`${activeRequest.id}:${type}:${key}`);
 		},
-		[activeRequest.id, disabledItems],
+		[activeRequest.id, activeRequest.headerItems, activeRequest.cookieItems, headersToKeyValueItems, cookiesToKeyValueItems, disabledItems],
 	);
 
 	const getComputedHeaders = useCallback(() => {
@@ -212,21 +307,19 @@ export const RestRequestEditor = forwardRef<
 			});
 		}
 
-		if (activeRequest.request.cookies.length > 0) {
-			const enabledCookies = activeRequest.request.cookies.filter((_, idx) =>
-				isItemEnabled("cookie", `${idx}`),
-			);
-			if (enabledCookies.length > 0) {
-				computed.push({
-					id: "computed:cookie",
-					key: "Cookie",
-					value: `${enabledCookies.length} cookie${enabledCookies.length > 1 ? "s" : ""}`,
-					description: "Generated from cookies",
-					enabled: true,
-					locked: true,
-					onValueClick: () => setActiveTab("cookies"),
-				});
-			}
+		// Check cookies from cookieItems for enabled state
+		const cookieItems = activeRequest.cookieItems || cookiesToKeyValueItems();
+		const enabledCookies = cookieItems.filter(item => item.enabled);
+		if (enabledCookies.length > 0) {
+			computed.push({
+				id: "computed:cookie",
+				key: "Cookie",
+				value: `${enabledCookies.length} cookie${enabledCookies.length > 1 ? "s" : ""}`,
+				description: "Generated from cookies",
+				enabled: true,
+				locked: true,
+				onValueClick: () => setActiveTab("cookies"),
+			});
 		}
 
 		const auth = activeRequest.request.auth;
@@ -374,18 +467,28 @@ export const RestRequestEditor = forwardRef<
 		try {
 			const resolvedUrl = resolveVariables(activeRequest.request.url);
 
+			// Filter headers based on enabled state in headerItems
 			const resolvedHeaders: Record<string, string> = {};
-			for (const [key, value] of Object.entries(
-				activeRequest.request.headers,
-			)) {
-				if (isItemEnabled("header", key)) {
-					resolvedHeaders[key] = resolveVariables(value || "");
+			const headerItems = activeRequest.headerItems || headersToKeyValueItems();
+			for (const item of headerItems) {
+				if (item.enabled && item.key.trim()) {
+					resolvedHeaders[item.key] = resolveVariables(item.value);
 				}
 			}
 
-			const resolvedCookies = activeRequest.request.cookies
-				.filter((_, idx) => isItemEnabled("cookie", `${idx}`))
-				.map((c) => ({ ...c }));
+			// Filter cookies based on enabled state in cookieItems
+			const cookieItems = activeRequest.cookieItems || cookiesToKeyValueItems();
+			const resolvedCookies = cookieItems
+				.filter(item => item.enabled && item.key.trim())
+				.map(item => ({
+					name: item.key,
+					value: resolveVariables(item.value),
+					domain: null,
+					path: null,
+					expires: null,
+					http_only: null,
+					secure: null,
+				}));
 
 			const isGet = activeRequest.request.method === "GET";
 
@@ -903,35 +1006,22 @@ export const RestRequestEditor = forwardRef<
 											key: key,
 											value: value || "",
 											description: "",
-											enabled: isItemEnabled("param", key),
+											enabled: !disabledItems.has(`${activeRequest.id}:param:${key}`),
 										}),
 									)}
 									onChange={(items) => {
 										const newQueryParams: Record<string, string> = {};
-										const newDisabledItems = new Set(disabledItems);
+										const newDisabledItems = new Set<string>();
 										const activeId = activeRequest.id;
 
 										items.forEach((item) => {
 											if (item.key.trim() || item.value.trim()) {
 												newQueryParams[item.key] = item.value;
-												const disabledKey = `${activeId}:param:${item.key}`;
-												if (item.enabled) {
-													newDisabledItems.delete(disabledKey);
-												} else {
-													newDisabledItems.add(disabledKey);
+												if (!item.enabled) {
+													newDisabledItems.add(`${activeId}:param:${item.key}`);
 												}
 											}
 										});
-
-										Object.keys(activeRequest.request.query_params).forEach(
-											(oldKey) => {
-												if (!newQueryParams[oldKey]) {
-													newDisabledItems.delete(
-														`${activeId}:param:${oldKey}`,
-													);
-												}
-											},
-										);
 
 										setDisabledItems(newDisabledItems);
 										updateItem(activeId, "request", (r) => {
@@ -944,15 +1034,9 @@ export const RestRequestEditor = forwardRef<
 											const urlFragment = r.request.url.includes("#")
 												? r.request.url.slice(r.request.url.indexOf("#"))
 												: "";
-											const prefix = `${activeId}:param:`;
-											const currentDisabledKeys = new Set(
-												Array.from(newDisabledItems)
-													.filter((k) => k.startsWith(prefix))
-													.map((k) => k.slice(prefix.length)),
-											);
 											const queryString = buildQueryString(
 												newQueryParams,
-												currentDisabledKeys,
+												newDisabledItems,
 											);
 											return {
 												...r,
@@ -980,50 +1064,18 @@ export const RestRequestEditor = forwardRef<
 								<KeyValueTable
 									items={[
 										...getComputedHeaders(),
-										...Object.entries(activeRequest.request.headers).map(
-											([key, value]) => ({
-												id: key,
-												key: key,
-												value: value || "",
-												description: "",
-												enabled: isItemEnabled("header", key),
-											}),
-										),
+										...(activeRequest.headerItems || headersToKeyValueItems()),
 									]}
 									onChange={(items) => {
 										const userItems = items.filter(
 											(i) => !i.id.startsWith("computed:"),
 										);
-										const newHeaders: Record<string, string> = {};
-										const newDisabledItems = new Set(disabledItems);
-										const activeId = activeRequest.id;
-
-										userItems.forEach((item) => {
-											if (item.key.trim() || item.value.trim()) {
-												newHeaders[item.key] = item.value;
-												const disabledKey = `${activeId}:header:${item.key}`;
-												if (item.enabled) {
-													newDisabledItems.delete(disabledKey);
-												} else {
-													newDisabledItems.add(disabledKey);
-												}
-											}
-										});
-
-										Object.keys(activeRequest.request.headers).forEach(
-											(oldKey) => {
-												if (!newHeaders[oldKey]) {
-													newDisabledItems.delete(
-														`${activeId}:header:${oldKey}`,
-													);
-												}
-											},
-										);
-
-										setDisabledItems(newDisabledItems);
-										updateItem(activeId, "request", (r) => ({
+										const newHeaders = keyValueItemsToHeaders(userItems);
+										
+										updateItem(activeRequest.id, "request", (r) => ({
 											...r,
 											request: { ...r.request, headers: newHeaders },
+											headerItems: userItems,
 										}));
 									}}
 									availableVariables={envKeys}
@@ -1038,47 +1090,14 @@ export const RestRequestEditor = forwardRef<
 							<div className="flex min-h-0 flex-1 flex-col">
 								<KeyValueTable
 									title="Cookies"
-									items={activeRequest.request.cookies.map((cookie, idx) => ({
-										id: `${idx}`,
-										key: cookie.name,
-										value: cookie.value,
-										description:
-											`${cookie.domain || ""} ${cookie.path || ""}`.trim(),
-										enabled: isItemEnabled("cookie", `${idx}`),
-									}))}
+									items={activeRequest.cookieItems || cookiesToKeyValueItems()}
 									onChange={(items) => {
-										const activeId = activeRequest.id;
-										const newDisabledItems = new Set(disabledItems);
-
-										const newCookies = items.map((i) => {
-											const disabledKey = `${activeId}:cookie:${i.id}`;
-											if (i.enabled) {
-												newDisabledItems.delete(disabledKey);
-											} else {
-												newDisabledItems.add(disabledKey);
-											}
-
-											return {
-												name: i.key,
-												value: i.value,
-												domain: null,
-												path: null,
-												expires: null,
-												http_only: null,
-												secure: null,
-											};
-										});
-
-										activeRequest.request.cookies.forEach((_, idx) => {
-											if (idx >= newCookies.length) {
-												newDisabledItems.delete(`${activeId}:cookie:${idx}`);
-											}
-										});
-
-										setDisabledItems(newDisabledItems);
-										updateItem(activeId, "request", (r) => ({
+										const newCookies = keyValueItemsToCookies(items);
+										
+										updateItem(activeRequest.id, "request", (r) => ({
 											...r,
 											request: { ...r.request, cookies: newCookies },
+											cookieItems: items,
 										}));
 									}}
 									showDescription={false}

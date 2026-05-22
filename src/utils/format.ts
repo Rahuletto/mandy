@@ -90,6 +90,45 @@ export function getStatusText(status: number, fallback?: string): string {
 	return STATUS_TEXT[status] || fallback || "Unknown";
 }
 
+/** gRPC status codes (google.rpc.Code). */
+export const GRPC_STATUS_TEXT: Record<number, string> = {
+	0: "OK",
+	1: "Cancelled",
+	2: "Unknown",
+	3: "Invalid Argument",
+	4: "Deadline Exceeded",
+	5: "Not Found",
+	6: "Already Exists",
+	7: "Permission Denied",
+	8: "Resource Exhausted",
+	9: "Failed Precondition",
+	10: "Aborted",
+	11: "Out of Range",
+	12: "Unimplemented",
+	13: "Internal",
+	14: "Unavailable",
+	15: "Data Loss",
+	16: "Unauthenticated",
+};
+
+export function getGrpcStatusColor(code: number): string {
+	if (code === 0) return "#22c55e";
+	if (code === 1 || code === 4 || code === 10 || code === 11) return "#eab308";
+	if (code >= 3 && code <= 16) return "#ef4444";
+	return "#6b7280";
+}
+
+export function getGrpcStatusLabel(
+	code: number,
+	message?: string | null,
+): string {
+	const name = GRPC_STATUS_TEXT[code];
+	if (name) return `${code} ${name}`;
+	const detail = message?.trim();
+	if (detail) return `${code} ${detail}`;
+	return String(code);
+}
+
 export function hexToRgba(hex: string, alpha: number): string {
 	const r = parseInt(hex.slice(1, 3), 16);
 	const g = parseInt(hex.slice(3, 5), 16);

@@ -19,6 +19,7 @@ mod window;
 use helpers::websocket::WsRegistry;
 use helpers::socketio::SioRegistry;
 use helpers::mqtt::MqttRegistry;
+use helpers::sse::SseRegistry;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -56,6 +57,14 @@ pub fn run() {
         .typ::<types::MqttPublishRequest>()
         .typ::<types::MqttSubscribeRequest>()
         .typ::<types::MqttUnsubscribeRequest>()
+        // ── SSE types ────────────────────────────────────────────────────────
+        .typ::<types::SseConnectRequest>()
+        .typ::<types::SseConnectResponse>()
+        .typ::<types::SseIncomingMessage>()
+        .typ::<types::SseDisconnectedEvent>()
+        // ── gRPC types ───────────────────────────────────────────────────────
+        .typ::<types::GrpcCallRequest>()
+        .typ::<types::GrpcCallResponse>()
         // ── GraphQL types ────────────────────────────────────────────────────
         .typ::<types::GraphQLIntrospectRequest>()
         .typ::<types::GraphQLIntrospectResponse>()
@@ -80,6 +89,9 @@ pub fn run() {
             helpers::mqtt::mqtt_subscribe,
             helpers::mqtt::mqtt_unsubscribe,
             helpers::mqtt::mqtt_disconnect,
+            helpers::sse::sse_connect,
+            helpers::sse::sse_disconnect,
+            helpers::grpc::grpc_call,
         ]);
 
     #[cfg(debug_assertions)]
@@ -90,6 +102,7 @@ pub fn run() {
     let ws_registry = Arc::new(WsRegistry::new());
     let sio_registry = Arc::new(SioRegistry::new());
     let mqtt_registry = Arc::new(MqttRegistry::new());
+    let sse_registry = Arc::new(SseRegistry::new());
 
     let mut tauri_builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -102,6 +115,7 @@ pub fn run() {
         .manage(ws_registry)
         .manage(sio_registry)
         .manage(mqtt_registry)
+        .manage(sse_registry)
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Focused(focused) = event {
                 if let Some(state) = window.app_handle().try_state::<app_focus::AppFocusState>() {

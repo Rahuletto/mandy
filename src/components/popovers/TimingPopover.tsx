@@ -48,7 +48,22 @@ export function TimingPopover({
 }: TimingPopoverProps) {
 	const total = timing.total_ms || 1;
 
+	const proto_compile_ms = Math.max(
+		0.0,
+		timing.transfer_start_ms - timing.tcp_handshake_ms - timing.tls_handshake_ms,
+	);
+
 	const phases = [
+		...(timing.dns_lookup_ms < 0.01 && proto_compile_ms >= 0.01
+			? [
+					{
+						key: "proto",
+						label: "Proto compile",
+						ms: proto_compile_ms,
+						color: "#a855f7",
+					},
+				]
+			: []),
 		{
 			key: "dns",
 			label: "DNS Lookup",

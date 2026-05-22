@@ -15,7 +15,8 @@ export type Language =
 	| "rust"
 	| "java"
 	| "php"
-	| "graphql";
+	| "graphql"
+	| "protobuf";
 
 export const languageExtensions: Record<string, () => Promise<Extension[]>> = {
 	json: async () => {
@@ -73,5 +74,10 @@ export const languageExtensions: Record<string, () => Promise<Extension[]>> = {
 	graphql: async () => {
 		const { graphql } = await import("cm6-graphql");
 		return [graphql()];
+	},
+	protobuf: async () => {
+		const { StreamLanguage } = await import("@codemirror/language");
+		const { protobuf } = await import("@codemirror/legacy-modes/mode/protobuf");
+		return [StreamLanguage.define(protobuf)];
 	},
 };

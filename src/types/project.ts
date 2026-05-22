@@ -1,4 +1,10 @@
-import type { ApiRequest, ApiResponse, AuthType } from "../bindings";
+import type {
+	ApiRequest,
+	ApiResponse,
+	AuthType,
+	SizeInfo,
+	TimingInfo,
+} from "../bindings";
 import type { WorkflowFile } from "./workflow";
 
 export interface EnvironmentVariable {
@@ -23,6 +29,8 @@ export interface RequestFile {
 	request: ApiRequest;
 	response: ApiResponse | null;
 	useInheritedAuth?: boolean;
+	headerItems?: KeyValueItem[];
+	cookieItems?: KeyValueItem[];
 }
 
 export interface KeyValueItem {
@@ -145,6 +153,58 @@ export interface MQTTMessage {
 	retain?: boolean;
 }
 
+export interface GrpcResponse {
+	statusCode: number;
+	statusMessage: string;
+	body: string | null;
+	timingMs: number;
+	timing: TimingInfo;
+	requestSize: SizeInfo;
+	responseSize: SizeInfo;
+	headers: Record<string, string>;
+	trailers: Record<string, string>;
+	error: string | null;
+}
+
+export interface GrpcFile {
+	id: string;
+	type: "grpc";
+	name: string;
+	description?: string;
+	url: string;
+	service: string;
+	method: string;
+	proto: string;
+	requestBody: string;
+	headers: Record<string, string>;
+	headerItems?: KeyValueItem[];
+	auth?: import("../bindings").AuthType;
+	useInheritedAuth?: boolean;
+	response: GrpcResponse | null;
+}
+
+export interface SseFile {
+	id: string;
+	type: "sse";
+	name: string;
+	description?: string;
+	url: string;
+	headers: Record<string, string>;
+	headerItems?: KeyValueItem[];
+	auth?: import("../bindings").AuthType;
+	useInheritedAuth?: boolean;
+	lastEventId?: string;
+	events: SseEvent[];
+}
+
+export interface SseEvent {
+	id: string;
+	timestamp: number;
+	event: string;
+	data: string;
+	sseId?: string;
+}
+
 export interface RecentRequest {
 	requestId: string;
 	name: string;
@@ -183,7 +243,9 @@ export type RequestType =
 	| "graphql"
 	| "socketio"
 	| "mqtt"
-	| "workflow";
+	| "workflow"
+	| "grpc"
+	| "sse";
 
 export type RequestItemMap = {
 	request: RequestFile;
@@ -192,6 +254,8 @@ export type RequestItemMap = {
 	socketio: SocketIOFile;
 	mqtt: MQTTFile;
 	workflow: WorkflowFile;
+	grpc: GrpcFile;
+	sse: SseFile;
 };
 
 export type RequestItem = RequestItemMap[RequestType];
