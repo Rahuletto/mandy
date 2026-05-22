@@ -33,8 +33,8 @@ base64 = "0.22"
 window-vibrancy = "0.7.1"
 tauri-plugin-liquid-glass = "0.1"
 url = "2"
-tauri-plugin-dialog = "2.6.0"
-tauri-plugin-fs = "2.4.5"
+tauri-plugin-dialog = "2.7"
+tauri-plugin-fs = "2.5"
 uuid = { version = "1", features = ["v4"] }
 dashmap = "6"
 rust_socketio = { version = "0.6", features = ["async"] }
