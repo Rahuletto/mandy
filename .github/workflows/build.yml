@@ -53,7 +53,13 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            webkit2gtk-driver \
+            xvfb
 
       - name: Install frontend dependencies
         run: bun install
@@ -86,3 +92,20 @@ jobs:
 
             Use the **.dmg** (macOS), **.msi** / **.exe** (Windows), or **.deb** / **.AppImage** (Linux). The in-app updater reads **latest.json** from this release.
           args: ${{ matrix.args }}
+
+      # Reuses the release binary from tauri-action above (no second compile).
+      - name: Install tauri-driver
+        if: matrix.platform == 'ubuntu-22.04'
+        run: cargo install tauri-driver --locked
+
+      - name: Desktop WebDriver E2E
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          BINARY=$(find src-tauri/target -name 'Mandy' -type f -executable | head -1)
+          if [ -z "$BINARY" ]; then
+            echo "Release binary not found under src-tauri/target"
+            find src-tauri/target -type f -executable 2>/dev/null | head -20 || true
+            exit 1
+          fi
+          echo "Using binary: $BINARY"
+          MANDY_BINARY="$BINARY" xvfb-run node e2e-desktop/run.mjs

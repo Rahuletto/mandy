@@ -22,13 +22,21 @@ if (!SUPPORTED.has(process.platform)) {
 }
 
 const binaryName = process.platform === "win32" ? "Mandy.exe" : "Mandy";
-const application = path.join(
+const defaultBinary = path.join(
 	rootDir,
 	"src-tauri",
 	"target",
 	"debug",
 	binaryName,
 );
+
+function resolveApplication() {
+	const fromEnv = process.env.MANDY_BINARY?.trim();
+	if (fromEnv) {
+		return path.isAbsolute(fromEnv) ? fromEnv : path.resolve(rootDir, fromEnv);
+	}
+	return defaultBinary;
+}
 
 let driver;
 let tauriDriver;
@@ -67,14 +75,21 @@ onShutdown(() => {
 });
 
 async function main() {
-	console.log("[desktop-e2e] building debug binary (no bundle)…");
-	const build = spawnSync(
-		"bun",
-		["run", "tauri", "build", "--debug", "--no-bundle"],
-		{ cwd: rootDir, stdio: "inherit", shell: false },
-	);
-	if (build.status !== 0) {
-		process.exit(build.status ?? 1);
+	const application = resolveApplication();
+	const reuseBinary = Boolean(process.env.MANDY_BINARY?.trim());
+
+	if (reuseBinary) {
+		console.log(`[desktop-e2e] using existing binary: ${application}`);
+	} else {
+		console.log("[desktop-e2e] building debug binary (no bundle)…");
+		const build = spawnSync(
+			"bun",
+			["run", "tauri", "build", "--debug", "--no-bundle"],
+			{ cwd: rootDir, stdio: "inherit", shell: false },
+		);
+		if (build.status !== 0) {
+			process.exit(build.status ?? 1);
+		}
 	}
 
 	if (!fs.existsSync(application)) {
