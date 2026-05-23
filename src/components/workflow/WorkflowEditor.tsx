@@ -1030,7 +1030,10 @@ function WorkflowEditorInner({
 	}, [setNodes, beginUserAction, getViewportCenter]);
 
 	return (
-		<div className="flex h-full flex-col bg-background">
+		<div
+			data-testid="workflow-editor"
+			className="flex h-full flex-col bg-background"
+		>
 			<div className="flex items-center gap-2 border-white/10 border-b px-4 py-3">
 				<input
 					type="text"

@@ -54,6 +54,10 @@ tauri-plugin-notification = "2"
 tauri-plugin-updater = "2.10.1"
 tauri-plugin-process = "2.3.1"
 
+# RUSTSEC-2024-0429: gtk3-rs pins glib 0.18.x; Tauri cannot jump to 0.20+ yet.
+[patch.crates-io]
+glib = { path = "vendor/glib" }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-macos-haptics = "1.0.0"
 objc2 = "0.6.4"

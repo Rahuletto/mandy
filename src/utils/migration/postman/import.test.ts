@@ -4,7 +4,8 @@ import { parsePostmanCollection } from "./import";
 const minimalCollection = {
 	info: {
 		name: "E2E Collection",
-		schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		schema:
+			"https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 	},
 	item: [
 		{

@@ -63,84 +63,114 @@ export function renderProtocolEditor(
 	switch (item.type) {
 		case "websocket":
 			return (
-				<WebSocketEditor
-					key={item.id}
-					ws={item}
-					onUpdate={(updater) => updateItem(item.id, "websocket", updater)}
-					availableVariables={getEnvKeys()}
-					projectAuth={activeProject?.authorization}
-					onOpenProjectSettings={onOpenProjectSettings}
-					onStartLoading={startLoading}
-					onStopLoading={stopLoading}
-					resolveVariables={resolveVariables}
-				/>
+				<div
+					data-testid="websocket-editor"
+					className="flex min-h-0 flex-1 flex-col overflow-hidden"
+				>
+					<WebSocketEditor
+						key={item.id}
+						ws={item}
+						onUpdate={(updater) => updateItem(item.id, "websocket", updater)}
+						availableVariables={getEnvKeys()}
+						projectAuth={activeProject?.authorization}
+						onOpenProjectSettings={onOpenProjectSettings}
+						onStartLoading={startLoading}
+						onStopLoading={stopLoading}
+						resolveVariables={resolveVariables}
+					/>
+				</div>
 			);
 		case "graphql":
 			return (
-				<GraphQLEditor
-					key={item.id}
-					gql={item}
-					onUpdate={(updater) => updateItem(item.id, "graphql", updater)}
-					onSendQuery={onSendGraphQL}
-					loading={loadingItems.has(item.id)}
-					onStartLoading={startLoading}
-					onStopLoading={stopLoading}
-					availableVariables={getEnvKeys()}
-					projectAuth={activeProject?.authorization}
-					onOpenProjectSettings={onOpenProjectSettings}
-				/>
+				<div
+					data-testid="graphql-editor"
+					className="flex min-h-0 flex-1 flex-col overflow-hidden"
+				>
+					<GraphQLEditor
+						key={item.id}
+						gql={item}
+						onUpdate={(updater) => updateItem(item.id, "graphql", updater)}
+						onSendQuery={onSendGraphQL}
+						loading={loadingItems.has(item.id)}
+						onStartLoading={startLoading}
+						onStopLoading={stopLoading}
+						availableVariables={getEnvKeys()}
+						projectAuth={activeProject?.authorization}
+						onOpenProjectSettings={onOpenProjectSettings}
+					/>
+				</div>
 			);
 		case "socketio":
 			return (
-				<SocketIOEditor
-					key={item.id}
-					sio={item}
-					onUpdate={(updater) => updateItem(item.id, "socketio", updater)}
-					availableVariables={getEnvKeys()}
-					resolveVariables={resolveVariables}
-					onStartLoading={startLoading}
-					onStopLoading={stopLoading}
-				/>
+				<div
+					data-testid="socketio-editor"
+					className="flex min-h-0 flex-1 flex-col overflow-hidden"
+				>
+					<SocketIOEditor
+						key={item.id}
+						sio={item}
+						onUpdate={(updater) => updateItem(item.id, "socketio", updater)}
+						availableVariables={getEnvKeys()}
+						resolveVariables={resolveVariables}
+						onStartLoading={startLoading}
+						onStopLoading={stopLoading}
+					/>
+				</div>
 			);
 		case "mqtt":
 			return (
-				<MQTTEditor
-					key={item.id}
-					mqtt={item}
-					onUpdate={(updater) => updateItem(item.id, "mqtt", updater)}
-					availableVariables={getEnvKeys()}
-					resolveVariables={resolveVariables}
-					onStartLoading={startLoading}
-					onStopLoading={stopLoading}
-				/>
+				<div
+					data-testid="mqtt-editor"
+					className="flex min-h-0 flex-1 flex-col overflow-hidden"
+				>
+					<MQTTEditor
+						key={item.id}
+						mqtt={item}
+						onUpdate={(updater) => updateItem(item.id, "mqtt", updater)}
+						availableVariables={getEnvKeys()}
+						resolveVariables={resolveVariables}
+						onStartLoading={startLoading}
+						onStopLoading={stopLoading}
+					/>
+				</div>
 			);
 		case "grpc":
 			return (
-				<GrpcEditor
-					key={item.id}
-					grpc={item}
-					onUpdate={(updater) => updateItem(item.id, "grpc", updater)}
-					availableVariables={getEnvKeys()}
-					projectAuth={activeProject?.authorization}
-					onOpenProjectSettings={onOpenProjectSettings}
-					resolveVariables={resolveVariables}
-					onStartLoading={startLoading}
-					onStopLoading={stopLoading}
-				/>
+				<div
+					data-testid="grpc-editor"
+					className="flex min-h-0 flex-1 flex-col overflow-hidden"
+				>
+					<GrpcEditor
+						key={item.id}
+						grpc={item}
+						onUpdate={(updater) => updateItem(item.id, "grpc", updater)}
+						availableVariables={getEnvKeys()}
+						projectAuth={activeProject?.authorization}
+						onOpenProjectSettings={onOpenProjectSettings}
+						resolveVariables={resolveVariables}
+						onStartLoading={startLoading}
+						onStopLoading={stopLoading}
+					/>
+				</div>
 			);
 		case "sse":
 			return (
-				<SseEditor
-					key={item.id}
-					sse={item}
-					onUpdate={(updater) => updateItem(item.id, "sse", updater)}
-					availableVariables={getEnvKeys()}
-					projectAuth={activeProject?.authorization}
-					onOpenProjectSettings={onOpenProjectSettings}
-					resolveVariables={resolveVariables}
-					onStartLoading={startLoading}
-					onStopLoading={stopLoading}
-				/>
+				<div
+					data-testid="sse-editor"
+					className="flex min-h-0 flex-1 flex-col overflow-hidden"
+				>
+					<SseEditor
+						key={item.id}
+						sse={item}
+						onUpdate={(updater) => updateItem(item.id, "sse", updater)}
+						availableVariables={getEnvKeys()}
+						projectAuth={activeProject?.authorization}
+						onOpenProjectSettings={onOpenProjectSettings}
+						resolveVariables={resolveVariables}
+						onStartLoading={startLoading}
+						onStopLoading={stopLoading}
+					/>
+				</div>
 			);
 	}
 }

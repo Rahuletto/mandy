@@ -68,3 +68,38 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  desktop-e2e:
+    name: Tauri binary (WebDriver)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            webkit2gtk-driver \
+            xvfb
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install tauri-driver
+        run: cargo install tauri-driver --locked
+
+      - name: Desktop E2E (real binary)
+        run: xvfb-run bun run test:desktop

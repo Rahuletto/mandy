@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { sidebar } from "../helpers";
 
-async function createProject(page: import("@playwright/test").Page, name: string) {
+async function createProject(
+	page: import("@playwright/test").Page,
+	name: string,
+) {
 	await page.goto("/");
 	await page.evaluate(() => localStorage.clear());
 	await page.reload();

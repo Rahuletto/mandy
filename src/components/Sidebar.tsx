@@ -173,6 +173,7 @@ export function Sidebar({
 				</div>
 				<button
 					ref={addButtonRef}
+					data-testid="sidebar-add-button"
 					onClick={handleAddClick}
 					disabled={!activeProject}
 					type="button"

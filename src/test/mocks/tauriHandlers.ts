@@ -13,6 +13,17 @@ const zeroTiming = {
 
 const zeroSize = { headers_bytes: 0, body_bytes: 0, total_bytes: 0 };
 
+const MINIMAL_GRAPHQL_INTROSPECTION = {
+	data: {
+		__schema: {
+			queryType: { name: "Query" },
+			mutationType: null,
+			subscriptionType: null,
+			types: [],
+		},
+	},
+};
+
 export function createMockApiResponse(
 	overrides?: Partial<ApiResponse>,
 ): ApiResponse {
@@ -65,10 +76,17 @@ export function createTauriMockHandler(): (
 			case "rest_cancel_request":
 			case "set_dock_badge":
 			case "ws_disconnect":
+			case "ws_send":
 			case "mqtt_disconnect":
+			case "mqtt_publish":
+			case "mqtt_subscribe":
+			case "mqtt_unsubscribe":
 			case "sse_disconnect":
 			case "sio_disconnect":
+			case "sio_emit":
 				return null;
+			case "sio_emit_with_ack":
+				return { event: "test", data: "{}", timed_out: false };
 			case "fetch_url":
 				return {
 					status: 200,
@@ -80,14 +98,49 @@ export function createTauriMockHandler(): (
 					connection_id: "test-ws-connection",
 					protocol: null,
 				};
+			case "graphql_introspect":
+				return {
+					schema_json: JSON.stringify(MINIMAL_GRAPHQL_INTROSPECTION),
+					error: null,
+				};
+			case "sio_connect":
+				return {
+					connection_id: "test-sio-connection",
+					url: "http://localhost",
+					namespace: "/",
+					error: null,
+				};
+			case "mqtt_connect":
+				return {
+					connection_id: "test-mqtt-connection",
+				};
+			case "sse_connect":
+				return {
+					connection_id: "test-sse-connection",
+				};
+			case "grpc_call":
+				return {
+					status_code: 0,
+					status_message: "OK",
+					headers: { "content-type": "application/json" },
+					body: "{}",
+					trailers: {},
+					timing_ms: 12,
+					timing: zeroTiming,
+					request_size: zeroSize,
+					response_size: { headers_bytes: 0, body_bytes: 2, total_bytes: 2 },
+					error: null,
+				};
 			default:
 				if (cmd.startsWith("plugin:")) {
 					return null;
 				}
-				console.warn(
-					`[test mock] unhandled IPC command: ${cmd}`,
-					payload ?? {},
-				);
+				if (process.env.VITE_E2E === "1" || process.env.VITEST) {
+					console.warn(
+						`[test mock] unhandled IPC command: ${cmd}`,
+						payload ?? {},
+					);
+				}
 				return null;
 		}
 	};

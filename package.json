@@ -20,6 +20,7 @@
 		"test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
 		"test:e2e": "playwright test --config e2e/playwright.config.ts",
 		"test:e2e:ui": "playwright test --config e2e/playwright.config.ts --ui",
+		"test:desktop": "node e2e-desktop/run.mjs",
 		"test:all": "bun run test && bun run test:rust && bun run test:e2e",
 		"prepare": "husky"
 	},
@@ -78,6 +79,7 @@
 		"happy-dom": "^20.9.0",
 		"husky": "^9.1.7",
 		"jsdom": "^29.1.1",
+		"selenium-webdriver": "^4.40.0",
 		"typescript": "~5.8.3",
 		"vite": "^7.3.3",
 		"vitest": "^4.1.7"

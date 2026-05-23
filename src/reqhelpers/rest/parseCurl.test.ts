@@ -3,7 +3,7 @@ import { parseCurlCommand } from "./parseCurl";
 
 describe("parseCurlCommand", () => {
 	it("parses a minimal GET request", () => {
-		const parsed = parseCurlCommand('curl https://api.example.com/users');
+		const parsed = parseCurlCommand("curl https://api.example.com/users");
 		expect(parsed.method).toBe("GET");
 		expect(parsed.url).toBe("https://api.example.com/users");
 	});
