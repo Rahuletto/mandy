@@ -21,13 +21,18 @@ sed -i.bak 's/let p: \*mut libc::c_char/let mut p: *mut libc::c_char/' "$VARIANT
 sed -i.bak 's/&p,$/\&mut p,/' "$VARIANT_ITER"
 rm -f "$VARIANT_ITER.bak"
 
-# Use crates.io for workspace siblings (we only vendor the glib crate).
+# Use crates.io for -sys crates so gio/gtk share one glib-sys (path sys breaks gio on Linux).
 perl -i -pe '
+  s|ffi = \{ package = "glib-sys", version = "0\.18", path = "sys" \}|ffi = { package = "glib-sys", version = "0.18" }|;
+  s|gobject_ffi = \{ package = "gobject-sys", version = "0\.18", path = "gobject-sys" \}|gobject_ffi = { package = "gobject-sys", version = "0.18" }|;
   s|glib-macros = \{ path = "\.\./glib-macros", version = "0\.18" \}|glib-macros = { version = "0.18" }|;
   s|gio_ffi = \{ package = "gio-sys", path = "\.\./gio/sys", version = "0\.18", optional = true \}|gio_ffi = { package = "gio-sys", version = "0.18", optional = true }|;
 ' "$DEST/Cargo.toml"
 
+rm -rf "$DEST/sys" "$DEST/gobject-sys"
+
 # Keep in sync with [patch.crates-io] version in src-tauri/Cargo.toml.
 perl -i -pe 's/^version = "0\.18\.[0-9]+"/version = "0.18.6"/' "$DEST/Cargo.toml"
+perl -i -pe 's/^(version = "0\.18\.6")$/# Patched for RUSTSEC-2024-0429 (VariantStrIter); upstream fix is in glib 0.20+.\n$1/' "$DEST/Cargo.toml"
 
 echo "Patched glib vendored at $DEST"

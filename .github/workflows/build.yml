@@ -49,6 +49,10 @@ jobs:
           cache-on-failure: true
           shared-key: ${{ matrix.target }}
 
+      - name: Verify vendored glib patch
+        if: matrix.platform == 'ubuntu-22.04'
+        run: bash scripts/verify-glib-patch.sh
+
       - name: Install dependencies (Ubuntu)
         if: matrix.platform == 'ubuntu-22.04'
         run: |

@@ -33,6 +33,9 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Verify vendored glib patch
+        run: bash scripts/verify-glib-patch.sh
+
       - name: Install Tauri system dependencies (Linux)
         run: |
           sudo apt-get update

@@ -13,3 +13,11 @@ Regenerate from gtk-rs-core `0.18` with:
 ```
 
 Wired via `[patch.crates-io]` in `src-tauri/Cargo.toml`.
+
+**Important:** `glib-sys` / `gobject-sys` must come from crates.io (not `vendor/glib/sys`). A path-pinned sys crate duplicates types and breaks `gio` on Linux (~700 `E0277` errors).
+
+Before push, run:
+
+```bash
+bun run verify:glib
+```
