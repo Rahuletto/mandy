@@ -30,6 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
