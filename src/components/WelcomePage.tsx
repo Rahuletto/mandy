@@ -113,7 +113,10 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 	}, [showProjectSelector]);
 
 	return (
-		<div className="flex h-full flex-1 select-none flex-col items-center justify-center overflow-auto py-20 font-sans text-white/30">
+		<div
+			data-testid="welcome-page"
+			className="flex h-full flex-1 select-none flex-col items-center justify-center overflow-auto py-20 font-sans text-white/30"
+		>
 			<div className="fade-in slide-in-from-bottom-4 mb-10 flex animate-in flex-col items-center duration-1000">
 				<div className="relative mb-2">
 					<Logo className="h-16 w-16 opacity-[0.3]" />
@@ -130,6 +133,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 					<div ref={projectSelectorRef} className="relative z-50">
 						<button
 							type="button"
+							data-testid="project-selector"
 							onClick={() => setShowProjectSelector(!showProjectSelector)}
 							className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-white/2 px-3 py-1.5 text-[13px] text-white/30 outline-none transition-all hover:bg-white/5 hover:text-white/40"
 						>
@@ -164,6 +168,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 								<div className="mx-2 my-1 h-px bg-white/5" />
 								<button
 									type="button"
+									data-testid="create-project-menu"
 									onClick={() => {
 										onNewProject();
 										setShowProjectSelector(false);
@@ -186,6 +191,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 						<div className="relative" ref={requestDropdownRef}>
 							<button
 								type="button"
+								data-testid="new-request-button"
 								onClick={() => setShowRequestTypes(!showRequestTypes)}
 								className={`group flex w-full cursor-pointer items-center gap-3 text-left text-white transition-all duration-200 ${
 									showRequestTypes
@@ -209,6 +215,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
 										<button
 											type="button"
 											key={rt.type}
+											data-testid={`request-type-${rt.type}`}
 											onClick={() => {
 												onNewItem(rt.type);
 												setShowRequestTypes(false);

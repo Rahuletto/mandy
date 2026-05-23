@@ -232,7 +232,7 @@ function App() {
 	}, []);
 
 	useEffect(() => {
-		if (!import.meta.env.PROD) return;
+		if (!import.meta.env.PROD || import.meta.env.VITE_E2E === "1") return;
 
 		let cancelled = false;
 		const timer = window.setTimeout(() => {
@@ -610,6 +610,7 @@ function App() {
 					)}
 					<button
 						type="button"
+						data-testid="homepage-button"
 						onClick={() => {
 							setActiveItem(null);
 							setShowProjectOverview(false);
@@ -639,6 +640,7 @@ function App() {
 					style={{ width: isSidebarCollapsed ? 0 : sidebarWidth }}
 				>
 					<Sidebar
+						testId="sidebar"
 						activeProject={activeProject}
 						onSelect={handleTreeItemSelect}
 						selectedItemId={showProjectOverview ? null : activeItemId}

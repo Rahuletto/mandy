@@ -207,6 +207,7 @@ interface UrlInputProps {
 	className?: string;
 	availableVariables?: string[];
 	disabled?: boolean;
+	"data-testid"?: string;
 }
 
 export function UrlInput({
@@ -217,6 +218,7 @@ export function UrlInput({
 	className = "",
 	availableVariables = [],
 	disabled = false,
+	"data-testid": dataTestId,
 }: UrlInputProps) {
 	const editorRef = useRef<HTMLDivElement>(null);
 	const [isFocused, setIsFocused] = useState(false);
@@ -469,6 +471,7 @@ export function UrlInput({
 		<div className={`relative flex flex-1 items-center ${className}`}>
 			<div
 				ref={editorRef}
+				data-testid={dataTestId}
 				contentEditable={!disabled}
 				spellCheck={false}
 				autoCapitalize="off"

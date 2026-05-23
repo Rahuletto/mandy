@@ -126,7 +126,10 @@ export function NewProjectModal({
 	];
 
 	return (
-		<div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+		<div
+			data-testid="new-project-modal"
+			className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+		>
 			<div
 				className="fade-in absolute inset-0 animate-in bg-black/60 duration-300"
 				onClick={handleClose}
@@ -178,6 +181,7 @@ export function NewProjectModal({
 								<button
 									type="button"
 									key={source.id}
+									data-testid={`new-project-source-${source.id}`}
 									onClick={() => setSelectedSource(source.id)}
 									className="group flex w-full cursor-pointer items-center gap-3 rounded-lg p-2.5 px-3 text-left transition-colors hover:bg-white/5"
 								>
@@ -205,6 +209,7 @@ export function NewProjectModal({
 								</label>
 								<input
 									type="text"
+									data-testid="new-project-name"
 									value={projectName}
 									onChange={(e) => setProjectName(e.target.value)}
 									onKeyDown={(e) => {
@@ -267,6 +272,7 @@ export function NewProjectModal({
 
 						<button
 							type="button"
+							data-testid="new-project-submit"
 							onClick={handleCreate}
 							disabled={
 								loading ||

@@ -692,3 +692,29 @@ pub async fn fetch_url(url: String) -> Result<FetchUrlResponse, String> {
         .await
         .map_err(|e| format!("Task error: {}", e))?
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detect_renderers_includes_json_for_json_content_type() {
+        let body = br#"{"ok":true}"#;
+        let renderers = detect_renderers(Some("application/json"), body);
+        assert!(renderers.contains(&ResponseRenderer::Json));
+        assert!(renderers.contains(&ResponseRenderer::Raw));
+    }
+
+    #[test]
+    fn detect_renderers_includes_html_preview_for_html_body() {
+        let body = b"<!DOCTYPE html><html><body>hi</body></html>";
+        let renderers = detect_renderers(Some("text/html"), body);
+        assert!(renderers.contains(&ResponseRenderer::HtmlPreview));
+    }
+
+    #[test]
+    fn method_to_curl_string_maps_verbs() {
+        assert_eq!(method_to_curl_string(&Methods::GET), "GET");
+        assert_eq!(method_to_curl_string(&Methods::PATCH), "PATCH");
+    }
+}

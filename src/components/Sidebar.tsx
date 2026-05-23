@@ -41,6 +41,8 @@ interface SidebarProps {
 	loadingItems?: Set<string>;
 	completedItems?: Set<string>;
 	legacyProjectSchema?: boolean;
+	/** Stable selector for E2E; omit on duplicate peek overlay instances. */
+	testId?: string;
 }
 
 export function Sidebar({
@@ -70,6 +72,7 @@ export function Sidebar({
 	loadingItems = new Set(),
 	completedItems = new Set(),
 	legacyProjectSchema = false,
+	testId,
 }: SidebarProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isResizing, setIsResizing] = useState(false);
@@ -154,6 +157,7 @@ export function Sidebar({
 	return (
 		<div
 			ref={sidebarRef}
+			{...(testId ? { "data-testid": testId } : {})}
 			className={`flex h-full shrink-0 select-none flex-col bg-transparent ${className}`}
 			style={{ width }}
 		>
@@ -204,6 +208,7 @@ export function Sidebar({
 							</button>
 							<button
 								type="button"
+								data-testid="sidebar-project-settings"
 								onClick={onProjectClick}
 								className={`min-w-0 flex-1 truncate text-left text-xs transition-colors ${
 									showProjectOverview

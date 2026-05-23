@@ -926,7 +926,10 @@ export const RestRequestEditor = forwardRef<
 	const envKeys = getActiveEnvironmentVariables().map((v) => v.key);
 
 	return (
-		<>
+		<div
+			data-testid="rest-editor"
+			className="flex min-h-0 flex-1 flex-col overflow-hidden"
+		>
 			<EditorRequestBar
 				loading={loading}
 				leading={
@@ -937,6 +940,7 @@ export const RestRequestEditor = forwardRef<
 				}
 				urlField={
 					<UrlInput
+						data-testid="rest-url-input"
 						value={activeRequest.request.url}
 						onChange={(v) => updateUrl(v)}
 						onCurlPaste={handleAutoImportCurl}
@@ -949,6 +953,7 @@ export const RestRequestEditor = forwardRef<
 				action={
 					<button
 						type="button"
+						data-testid="rest-send-button"
 						onClick={handleSend}
 						disabled={loading || !activeRequest.request.url}
 						className={EDITOR_PRIMARY_BUTTON_CLASS}
@@ -1213,6 +1218,7 @@ export const RestRequestEditor = forwardRef<
 										<span className="bg-[#ef4444]/20" />
 									</div>
 									<span
+										data-testid="rest-response-status"
 										className={`flex items-center gap-1.5 px-3 py-2 font-bold text-xs ${activeRequest.response?.status === 418 ? "rainbow-bg rainbow-text" : ""}`}
 										style={
 											activeRequest.response?.status !== 418
@@ -1437,6 +1443,6 @@ export const RestRequestEditor = forwardRef<
 				}}
 				isDestructive={true}
 			/>
-		</>
+		</div>
 	);
 });
