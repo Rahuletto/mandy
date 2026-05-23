@@ -16,24 +16,28 @@ fail() {
 [[ -f "$VENDOR_CARGO" ]] || fail "missing vendor/glib (run scripts/vendor-glib-patch.sh)"
 
 # RUSTSEC-2024-0429 fix must be present.
-rg -q 'let mut p: \*mut libc::c_char' "$VARIANT_ITER" || fail "variant_iter.rs missing mut p fix"
-rg -q '&mut p,' "$VARIANT_ITER" || fail "variant_iter.rs missing &mut p fix"
-rg -q '&p,' "$VARIANT_ITER" && fail "variant_iter.rs still has unsound &p"
+grep -qF 'let mut p: *mut libc::c_char' "$VARIANT_ITER" ||
+	fail "variant_iter.rs missing mut p fix"
+grep -qF '&mut p,' "$VARIANT_ITER" || fail "variant_iter.rs missing &mut p fix"
+grep -qE ',[[:space:]]*&p,[[:space:]]*$' "$VARIANT_ITER" &&
+	fail "variant_iter.rs still has unsound &p"
 
 # Must not vendor duplicate -sys crates (breaks gio on Linux).
-rg -q 'path = "sys"' "$VENDOR_CARGO" && fail "vendor/glib still path-pins glib-sys"
-rg -q 'path = "gobject-sys"' "$VENDOR_CARGO" && fail "vendor/glib still path-pins gobject-sys"
+grep -qF 'path = "sys"' "$VENDOR_CARGO" && fail "vendor/glib still path-pins glib-sys"
+grep -qF 'path = "gobject-sys"' "$VENDOR_CARGO" &&
+	fail "vendor/glib still path-pins gobject-sys"
 [[ ! -d "$ROOT/src-tauri/vendor/glib/sys" ]] || fail "remove vendor/glib/sys"
-[[ ! -d "$ROOT/src-tauri/vendor/glib/gobject-sys" ]] || fail "remove vendor/glib/gobject-sys"
+[[ ! -d "$ROOT/src-tauri/vendor/glib/gobject-sys" ]] ||
+	fail "remove vendor/glib/gobject-sys"
 
 # Cargo.lock must unify on a single glib-sys package entry.
-count=$(rg -c '^name = "glib-sys"$' "$LOCK" || true)
+count=$(grep -cE '^name = "glib-sys"$' "$LOCK" || true)
 [[ "$count" == "1" ]] || fail "expected 1 glib-sys in Cargo.lock, found $count"
 
 # Patched glib must depend on unified registry glib-sys (no "glib-sys 0.18.x" version pin).
 glib_deps=$(awk '/^\[\[package\]\]/{p=0} /^name = "glib"$/{p=1} p && /^ \"/{print}' "$LOCK" | head -20)
-echo "$glib_deps" | rg -q '"glib-sys"' || fail "glib package missing glib-sys dep"
-echo "$glib_deps" | rg -q '"glib-sys 0\.' && \
+echo "$glib_deps" | grep -qF '"glib-sys"' || fail "glib package missing glib-sys dep"
+echo "$glib_deps" | grep -qE '"glib-sys 0\.' &&
 	fail "glib must not pin a second glib-sys version (breaks gio)"
 
 echo "verify-glib-patch: OK"
