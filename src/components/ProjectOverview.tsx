@@ -1,6 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+	type ReactElement,
+	startTransition,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { HiChevronDown, HiChevronRight, HiTrash } from "react-icons/hi";
+import {
+	List,
+	type RowComponentProps,
+	useDynamicRowHeight,
+} from "react-window";
 import type { AuthType } from "../bindings";
+import { useListContainerSize } from "../hooks/useListContainerSize";
 import { getItemConfig, RequestTypeIcon } from "../registry";
 import { useProjectStore } from "../stores/projectStore";
 import type {
@@ -122,7 +135,8 @@ const RequestDetails = React.memo(function RequestDetails({
 	isLastInGroup?: boolean;
 	isLoading?: boolean;
 }) {
-	const [expanded, setExpanded] = useState(true);
+	// Keep overview rows lightweight by default; expanded body is expensive.
+	const [expanded, setExpanded] = useState(false);
 
 	const colors = getMethodColorTailwind(request.request.method);
 
@@ -146,7 +160,10 @@ const RequestDetails = React.memo(function RequestDetails({
 	}
 
 	const selectedLanguage = useProjectStore((state) => state.selectedLanguage);
-	const snippetCode = generateSnippet(selectedLanguage, request.request);
+	const snippetCode = useMemo(
+		() => (expanded ? generateSnippet(selectedLanguage, request.request) : ""),
+		[expanded, selectedLanguage, request.request],
+	);
 
 	const currentLang = useMemo(() => {
 		if (selectedLanguage === "javascript") return "javascript";
@@ -344,9 +361,6 @@ const ProtocolOverviewCard = React.memo(function ProtocolOverviewCard({
 			{isLoading ? (
 				<div className="absolute inset-0 z-10 bg-background/30" aria-hidden />
 			) : null}
-			<div
-				className={`absolute top-0 bottom-0 left-0 w-1 ${cfg.overviewStripeClass ?? ""}`}
-			/>
 			<div className="flex h-10 w-full items-stretch">
 				<div
 					className={`flex min-w-[69px] shrink-0 items-center justify-center px-4 ${cfg.overviewSidebarCellClass ?? ""}`}
@@ -407,9 +421,6 @@ const WorkflowCard = React.memo(function WorkflowCard({
 		<div
 			className={`group/card flex flex-col border-white/5 border-x border-b bg-white/2 first:border-t ${borderRadiusClasses} relative overflow-hidden transition-all hover:bg-white/4`}
 		>
-			<div
-				className={`absolute top-0 bottom-0 left-0 w-1 ${wfCfg.overviewStripeClass ?? ""}`}
-			/>
 			<div className="flex h-10 w-full items-stretch">
 				<div
 					className={`flex min-w-[69px] shrink-0 items-center justify-center px-4 ${wfCfg.overviewSidebarCellClass ?? ""}`}
@@ -443,24 +454,147 @@ const WorkflowCard = React.memo(function WorkflowCard({
 	);
 });
 
-const FolderSection = React.memo(function FolderSection({
-	folder,
-	depth = 0,
-	expandedIds,
-	toggleFolder,
-	onSelectRequest,
-	onSelectWorkflow,
-	onSelectWebSocket,
-	onSelectGraphQL,
-	onSelectSocketIO,
-	onSelectMqtt,
-	onSelectGrpc,
-	onSelectSse,
-	onRunRequest,
-	loadingItems,
-}: {
+type OverviewFolderRow = {
+	kind: "folder";
+	id: string;
 	folder: Folder;
-	depth?: number;
+	depth: number;
+	isExpanded: boolean;
+	guideColumns: boolean[];
+};
+
+type OverviewRequestRow = {
+	kind: "request";
+	id: string;
+	request: RequestFile;
+	depth: number;
+	isFirstInGroup: boolean;
+	isLastInGroup: boolean;
+	guideColumns: boolean[];
+};
+
+type OverviewWorkflowRow = {
+	kind: "workflow";
+	id: string;
+	workflow: WorkflowFile;
+	depth: number;
+	isFirstInGroup: boolean;
+	isLastInGroup: boolean;
+	guideColumns: boolean[];
+};
+
+type OverviewProtocolRow = {
+	kind: "protocol";
+	id: string;
+	item: ProtocolOverviewItem;
+	depth: number;
+	isFirstInGroup: boolean;
+	isLastInGroup: boolean;
+	guideColumns: boolean[];
+};
+
+type OverviewRow =
+	| OverviewFolderRow
+	| OverviewRequestRow
+	| OverviewWorkflowRow
+	| OverviewProtocolRow;
+
+function buildOverviewRows(
+	folder: Folder,
+	expandedIds: Set<string>,
+	depth = 0,
+	parentGuideColumns: boolean[] = [],
+	isLastInLevel = true,
+): OverviewRow[] {
+	const isExpanded = expandedIds.has(folder.id);
+	const rows: OverviewRow[] = [
+		{
+			kind: "folder",
+			id: `folder:${folder.id}`,
+			folder,
+			depth,
+			isExpanded,
+			guideColumns: parentGuideColumns,
+		},
+	];
+
+	if (!isExpanded) {
+		return rows;
+	}
+	const childGuideColumns = [...parentGuideColumns, !isLastInLevel];
+
+	for (let index = 0; index < folder.children.length; index += 1) {
+		const child = folder.children[index];
+		if (!child) continue;
+		const isLastChild = index === folder.children.length - 1;
+		if (child.type === "folder") {
+			rows.push(
+				...buildOverviewRows(
+					child,
+					expandedIds,
+					depth + 1,
+					childGuideColumns,
+					isLastChild,
+				),
+			);
+			continue;
+		}
+
+		const prev = folder.children[index - 1];
+		const next = folder.children[index + 1];
+
+		if (child.type === "request") {
+			rows.push({
+				kind: "request",
+				id: `request:${child.id}`,
+				request: child,
+				depth: depth + 1,
+				isFirstInGroup: !prev || prev.type !== "request",
+				isLastInGroup: !next || next.type !== "request",
+				guideColumns: childGuideColumns,
+			});
+			continue;
+		}
+
+		if (child.type === "workflow") {
+			rows.push({
+				kind: "workflow",
+				id: `workflow:${child.id}`,
+				workflow: child,
+				depth: depth + 1,
+				isFirstInGroup: !prev || prev.type !== "workflow",
+				isLastInGroup: !next || next.type !== "workflow",
+				guideColumns: childGuideColumns,
+			});
+			continue;
+		}
+
+		if (
+			child.type === "websocket" ||
+			child.type === "graphql" ||
+			child.type === "socketio" ||
+			child.type === "mqtt" ||
+			child.type === "grpc" ||
+			child.type === "sse"
+		) {
+			const t = child.type;
+			rows.push({
+				kind: "protocol",
+				id: `protocol:${child.id}`,
+				item: child,
+				depth: depth + 1,
+				isFirstInGroup: !prev || prev.type !== t,
+				isLastInGroup: !next || next.type !== t,
+				guideColumns: childGuideColumns,
+			});
+		}
+	}
+
+	return rows;
+}
+
+interface VirtualizedOverviewTreeProps {
+	folder: Folder;
 	expandedIds: Set<string>;
 	toggleFolder: (id: string) => void;
 	onSelectRequest: (id: string) => void;
@@ -473,133 +607,209 @@ const FolderSection = React.memo(function FolderSection({
 	onSelectSse?: (id: string) => void;
 	onRunRequest?: (id: string) => void;
 	loadingItems?: ReadonlySet<string>;
-}) {
-	const isExpanded = expandedIds.has(folder.id);
+}
+
+type OverviewRowData = {
+	rows: OverviewRow[];
+	toggleFolder: (id: string) => void;
+	onSelectRequest: (id: string) => void;
+	onSelectWorkflow?: (id: string) => void;
+	onSelectWebSocket?: (id: string) => void;
+	onSelectGraphQL?: (id: string) => void;
+	onSelectSocketIO?: (id: string) => void;
+	onSelectMqtt?: (id: string) => void;
+	onSelectGrpc?: (id: string) => void;
+	onSelectSse?: (id: string) => void;
+	onRunRequest?: (id: string) => void;
+	loadingItems?: ReadonlySet<string>;
+};
+
+const OverviewVirtualRow = React.memo(function OverviewVirtualRow({
+	index,
+	style,
+	ariaAttributes,
+	rows,
+	toggleFolder,
+	onSelectRequest,
+	onSelectWorkflow,
+	onSelectWebSocket,
+	onSelectGraphQL,
+	onSelectSocketIO,
+	onSelectMqtt,
+	onSelectGrpc,
+	onSelectSse,
+	onRunRequest,
+	loadingItems,
+}: RowComponentProps<OverviewRowData>) {
+	const row = rows[index];
+	if (!row) return null;
+	const indentPx = row.depth * 24;
 
 	return (
-		<div className="w-full">
-			<button
-				type="button"
-				onClick={() => toggleFolder(folder.id)}
-				className="group mt-3 mb-1 flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left transition-colors hover:bg-white/5"
-			>
-				{isExpanded ? (
-					<HiChevronDown
-						size={14}
-						className="shrink-0 text-white/20 group-hover:text-white/40"
+		<div
+			{...ariaAttributes}
+			style={style}
+			className="relative box-border w-full px-1 py-1"
+		>
+			{row.guideColumns.map((show, guideDepth) =>
+				show ? (
+					<div
+						key={`${row.id}-guide-${guideDepth}`}
+						className="pointer-events-none absolute top-0 bottom-0 w-px bg-white/10"
+						style={{ left: `${guideDepth * 24 + 12}px` }}
+					/>
+				) : null,
+			)}
+			<div style={{ paddingLeft: `${indentPx}px` }}>
+				{row.kind === "folder" ? (
+					<button
+						type="button"
+						onClick={() => toggleFolder(row.folder.id)}
+						className="group mt-2 mb-1 flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left transition-colors hover:bg-white/5"
+					>
+						{row.isExpanded ? (
+							<HiChevronDown
+								size={14}
+								className="shrink-0 text-white/20 group-hover:text-white/40"
+							/>
+						) : (
+							<HiChevronRight
+								size={14}
+								className="shrink-0 text-white/20 group-hover:text-white/40"
+							/>
+						)}
+						<span className="truncate font-medium text-white/50 text-xs group-hover:text-white/70">
+							{row.depth === 0 ? "/ (root)" : row.folder.name}
+						</span>
+						<span className="ml-auto shrink-0 pr-1 font-medium text-[10px] text-white/20 group-hover:text-white/40">
+							{row.folder.children.length}
+						</span>
+					</button>
+				) : row.kind === "request" ? (
+					<RequestDetails
+						request={row.request}
+						onSelect={() => onSelectRequest(row.request.id)}
+						onRun={
+							onRunRequest ? () => onRunRequest(row.request.id) : undefined
+						}
+						isFirstInGroup={row.isFirstInGroup}
+						isLastInGroup={row.isLastInGroup}
+						isLoading={loadingItems?.has(row.request.id)}
+					/>
+				) : row.kind === "workflow" ? (
+					<WorkflowCard
+						workflow={row.workflow}
+						onSelect={() => onSelectWorkflow?.(row.workflow.id)}
+						isFirstInGroup={row.isFirstInGroup}
+						isLastInGroup={row.isLastInGroup}
 					/>
 				) : (
-					<HiChevronRight
-						size={14}
-						className="shrink-0 text-white/20 group-hover:text-white/40"
+					<ProtocolOverviewCard
+						item={row.item}
+						onSelect={
+							row.item.type === "websocket"
+								? () => onSelectWebSocket?.(row.item.id)
+								: row.item.type === "graphql"
+									? () => onSelectGraphQL?.(row.item.id)
+									: row.item.type === "socketio"
+										? () => onSelectSocketIO?.(row.item.id)
+										: row.item.type === "mqtt"
+											? () => onSelectMqtt?.(row.item.id)
+											: row.item.type === "grpc"
+												? () => onSelectGrpc?.(row.item.id)
+												: () => onSelectSse?.(row.item.id)
+						}
+						isFirstInGroup={row.isFirstInGroup}
+						isLastInGroup={row.isLastInGroup}
+						isLoading={loadingItems?.has(row.item.id)}
 					/>
 				)}
-				<span className="truncate font-medium text-white/50 text-xs group-hover:text-white/70">
-					{depth === 0 ? "/ (root)" : folder.name}
-				</span>
-				<span className="ml-auto shrink-0 pr-1 font-medium text-[10px] text-white/20 group-hover:text-white/40">
-					{folder.children.length}
-				</span>
-			</button>
+			</div>
+		</div>
+	);
+});
 
-			{isExpanded && (
-				<div
-					className={`flex flex-col gap-2 ${depth > 0 ? "mt-1 mb-1 ml-3 border-white/10 border-l pl-4" : ""}`}
-				>
-					{folder.children.map((child, index) => {
-						if (child.type === "folder") {
-							return (
-								<FolderSection
-									key={child.id}
-									folder={child}
-									depth={depth + 1}
-									expandedIds={expandedIds}
-									toggleFolder={toggleFolder}
-									onSelectRequest={onSelectRequest}
-									onSelectWorkflow={onSelectWorkflow}
-									onSelectWebSocket={onSelectWebSocket}
-									onSelectGraphQL={onSelectGraphQL}
-									onSelectSocketIO={onSelectSocketIO}
-									onSelectMqtt={onSelectMqtt}
-									onSelectGrpc={onSelectGrpc}
-									onSelectSse={onSelectSse}
-									onRunRequest={onRunRequest}
-									loadingItems={loadingItems}
-								/>
-							);
-						}
+const OverviewVirtualListRow = OverviewVirtualRow as (
+	props: RowComponentProps<OverviewRowData>,
+) => ReactElement | null;
 
-						if (child.type === "workflow") {
-							const prev = folder.children[index - 1];
-							const next = folder.children[index + 1];
-							return (
-								<WorkflowCard
-									key={child.id}
-									workflow={child}
-									onSelect={() => onSelectWorkflow?.(child.id)}
-									isFirstInGroup={!prev || prev.type !== "workflow"}
-									isLastInGroup={!next || next.type !== "workflow"}
-								/>
-							);
-						}
+const VirtualizedOverviewTree = React.memo(function VirtualizedOverviewTree({
+	folder,
+	expandedIds,
+	toggleFolder,
+	onSelectRequest,
+	onSelectWorkflow,
+	onSelectWebSocket,
+	onSelectGraphQL,
+	onSelectSocketIO,
+	onSelectMqtt,
+	onSelectGrpc,
+	onSelectSse,
+	onRunRequest,
+	loadingItems,
+}: VirtualizedOverviewTreeProps) {
+	const rows = useMemo(
+		() => buildOverviewRows(folder, expandedIds),
+		[folder, expandedIds],
+	);
+	const {
+		ref: listContainerRef,
+		width: listWidth,
+		height: listHeight,
+	} = useListContainerSize();
+	const rowHeightKey = useMemo(
+		() => `${rows.length}:${Array.from(expandedIds).sort().join(",")}`,
+		[rows.length, expandedIds],
+	);
+	const rowHeight = useDynamicRowHeight({
+		defaultRowHeight: 56,
+		key: rowHeightKey,
+	});
 
-						if (
-							child.type === "websocket" ||
-							child.type === "graphql" ||
-							child.type === "socketio" ||
-							child.type === "mqtt" ||
-							child.type === "grpc" ||
-							child.type === "sse"
-						) {
-							const prev = folder.children[index - 1];
-							const next = folder.children[index + 1];
-							const t = child.type;
-							const onSelect =
-								t === "websocket"
-									? () => onSelectWebSocket?.(child.id)
-									: t === "graphql"
-										? () => onSelectGraphQL?.(child.id)
-										: t === "socketio"
-											? () => onSelectSocketIO?.(child.id)
-											: t === "mqtt"
-												? () => onSelectMqtt?.(child.id)
-												: t === "grpc"
-													? () => onSelectGrpc?.(child.id)
-													: () => onSelectSse?.(child.id);
-							return (
-								<ProtocolOverviewCard
-									key={child.id}
-									item={child}
-									onSelect={onSelect}
-									isFirstInGroup={!prev || prev.type !== t}
-									isLastInGroup={!next || next.type !== t}
-									isLoading={loadingItems?.has(child.id)}
-								/>
-							);
-						}
+	const rowProps = useMemo<OverviewRowData>(
+		() => ({
+			rows,
+			toggleFolder,
+			onSelectRequest,
+			onSelectWorkflow,
+			onSelectWebSocket,
+			onSelectGraphQL,
+			onSelectSocketIO,
+			onSelectMqtt,
+			onSelectGrpc,
+			onSelectSse,
+			onRunRequest,
+			loadingItems,
+		}),
+		[
+			rows,
+			toggleFolder,
+			onSelectRequest,
+			onSelectWorkflow,
+			onSelectWebSocket,
+			onSelectGraphQL,
+			onSelectSocketIO,
+			onSelectMqtt,
+			onSelectGrpc,
+			onSelectSse,
+			onRunRequest,
+			loadingItems,
+		],
+	);
 
-						if (child.type !== "request") {
-							return null;
-						}
-
-						const prev = folder.children[index - 1];
-						const next = folder.children[index + 1];
-						const isFirstInGroup = !prev || prev.type !== "request";
-						const isLastInGroup = !next || next.type !== "request";
-
-						return (
-							<RequestDetails
-								key={child.id}
-								request={child}
-								onSelect={() => onSelectRequest(child.id)}
-								onRun={onRunRequest ? () => onRunRequest(child.id) : undefined}
-								isFirstInGroup={isFirstInGroup}
-								isLastInGroup={isLastInGroup}
-								isLoading={loadingItems?.has(child.id)}
-							/>
-						);
-					})}
-				</div>
+	return (
+		<div className="min-h-0 flex-1" ref={listContainerRef}>
+			{listWidth > 0 && listHeight > 0 ? (
+				<List<OverviewRowData>
+					className="pb-2"
+					style={{ width: listWidth, height: listHeight }}
+					rowCount={rows.length}
+					rowHeight={rowHeight}
+					rowComponent={OverviewVirtualListRow}
+					rowProps={rowProps}
+				/>
+			) : (
+				<div className="h-full animate-pulse rounded-xl bg-white/5" />
 			)}
 		</div>
 	);
@@ -646,7 +856,6 @@ export function ProjectOverview({
 	useEffect(() => {
 		setBaseUrl(project.baseUrl || "");
 	}, [project.baseUrl]);
-
 	const [name, setName] = useState(project.name);
 	const [description, setDescription] = useState(project.description || "");
 	const allRequests = useMemo(
@@ -711,13 +920,17 @@ export function ProjectOverview({
 	};
 
 	const toggleFolder = (id: string) => {
-		const newExpanded = new Set(expandedIds);
-		if (newExpanded.has(id)) {
-			newExpanded.delete(id);
-		} else {
-			newExpanded.add(id);
-		}
-		setExpandedIds(newExpanded);
+		startTransition(() => {
+			setExpandedIds((prev) => {
+				const next = new Set(prev);
+				if (next.has(id)) {
+					next.delete(id);
+				} else {
+					next.add(id);
+				}
+				return next;
+			});
+		});
 	};
 
 	const handleAddEnv = () => {
@@ -921,10 +1134,9 @@ export function ProjectOverview({
 							</div>
 						</div>
 
-						<div className="space-y-4">
-							<FolderSection
+						<div className="flex h-[60vh] min-h-[320px] flex-col gap-4">
+							<VirtualizedOverviewTree
 								folder={project.root}
-								depth={0}
 								expandedIds={expandedIds}
 								toggleFolder={toggleFolder}
 								onSelectRequest={onSelectRequest}

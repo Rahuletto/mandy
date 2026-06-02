@@ -1,0 +1,23 @@
+{
+	"$schema": "./node_modules/oxfmt/configuration_schema.json",
+	"ignorePatterns": [
+		"**/src-tauri/target/**",
+		"**/.vite/**",
+		"**/coverage/**",
+		"src/bindings.ts"
+	],
+	"printWidth": 80,
+	"tabWidth": 2,
+	"useTabs": true,
+	"semi": true,
+	"singleQuote": false,
+	"jsxSingleQuote": false,
+	"trailingComma": "all",
+	"quoteProps": "as-needed",
+	"bracketSpacing": true,
+	"arrowParens": "always",
+	"endOfLine": "lf",
+	"sortImports": false,
+	"sortPackageJson": false,
+	"sortTailwindcss": false
+}

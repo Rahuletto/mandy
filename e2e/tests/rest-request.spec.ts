@@ -37,7 +37,9 @@ test.describe("REST request flow", () => {
 
 		await expect(page.getByTestId("rest-response-status")).toContainText(
 			"200",
-			{ timeout: 15_000 },
+			{
+				timeout: 15_000,
+			},
 		);
 	});
 });

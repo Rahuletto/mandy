@@ -22,6 +22,17 @@ pub fn apply_auth_to_headers(headers: &mut HashMap<String, String>, auth: &AuthT
         } => {
             headers.insert(key.clone(), value.clone());
         }
-        AuthType::None | AuthType::ApiKey { .. } => {}
+        AuthType::OAuth2 { token, .. } => {
+            if let Some(token) = token {
+                if !token.is_empty() {
+                    headers.insert("Authorization".to_string(), format!("Bearer {token}"));
+                }
+            }
+        }
+        AuthType::None
+        | AuthType::Digest { .. }
+        | AuthType::Ntlm { .. }
+        | AuthType::MutualTls { .. }
+        | AuthType::ApiKey { .. } => {}
     }
 }

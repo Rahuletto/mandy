@@ -47,6 +47,23 @@ function parseInsomniaAuth(auth: InsomniaAuthentication | undefined): AuthType {
 			},
 		};
 	}
+	if (auth.type === "digest") {
+		return {
+			Digest: {
+				username: (auth as any).username || "",
+				password: (auth as any).password || "",
+			},
+		};
+	}
+	if (auth.type === "ntlm") {
+		return {
+			Ntlm: {
+				username: (auth as any).username || "",
+				password: (auth as any).password || "",
+				domain: null,
+			},
+		};
+	}
 
 	return "None";
 }

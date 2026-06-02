@@ -410,6 +410,90 @@ export const SocketIOMessageList = ({
 						onRowsRendered={handleRowsRendered}
 						isAtBottom={isAtBottom}
 						onJumpToLatest={jumpToLatest}
+						fallback={
+							<div className="min-h-0 flex-1 overflow-auto py-3">
+								{filteredMessages.map((msg) => {
+									const isExpanded = expandedMessages.has(msg.id);
+									return (
+										<div
+											key={msg.id}
+											className="box-border w-full min-w-0 overflow-hidden border-white/5 border-b"
+										>
+											<div className="h-full overflow-hidden text-xs">
+												<button
+													type="button"
+													onClick={() => toggleExpanded(msg.id)}
+													className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/2"
+												>
+													<span className={getDirectionIconClass(msg)}>
+														{getDirectionIcon(msg)}
+													</span>
+													{shouldShowEventBadge(msg) && (
+														<span
+															className="max-w-[180px] shrink-0 truncate rounded-full px-2 py-0.5 font-extrabold font-mono text-[10px]"
+															style={getEventBadgeStyle(msg.event || "message")}
+														>
+															{msg.event || "message"}
+														</span>
+													)}
+													<span className="flex-1 truncate font-mono text-white/80 text-xs">
+														{msg.data}
+													</span>
+													<span className="ml-auto shrink-0 font-mono text-[10px] text-white/30 tabular-nums">
+														{formatBytes(utf8ByteLength(msg.data))}
+													</span>
+													<span className="shrink-0 font-mono text-[11px] text-white/30 tabular-nums">
+														{formatMessageTimestamp(msg.timestamp)}
+													</span>
+													{isExpanded ? (
+														<TbChevronDown
+															size={14}
+															className="shrink-0 text-white/30"
+														/>
+													) : (
+														<TbChevronRight
+															size={14}
+															className="shrink-0 text-white/30"
+														/>
+													)}
+												</button>
+
+												{isExpanded && (
+													<div
+														className="min-h-0 space-y-4 overflow-y-auto px-6 pt-1 pb-4"
+														style={{
+															maxHeight: VIRTUAL_MESSAGE_ROW_BODY_MAX_PX,
+														}}
+													>
+														{(() => {
+															try {
+																const parsed = JSON.parse(msg.data);
+																return (
+																	<div className="min-h-0 overflow-hidden rounded-md border border-white/5 bg-white/2 text-[11px]">
+																		<CodeViewer
+																			code={JSON.stringify(parsed, null, 2)}
+																			language="json"
+																		/>
+																	</div>
+																);
+															} catch {
+																return (
+																	<div className="rounded-md border border-white/5 bg-white/2 p-3">
+																		<pre className="whitespace-pre-wrap break-all font-mono text-white/70 text-xs">
+																			{msg.data}
+																		</pre>
+																	</div>
+																);
+															}
+														})()}
+													</div>
+												)}
+											</div>
+										</div>
+									);
+								})}
+							</div>
+						}
 					/>
 				)}
 			</div>

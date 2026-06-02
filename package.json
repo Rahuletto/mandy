@@ -2,6 +2,7 @@
 	"name": "mandy",
 	"version": "1.1.0",
 	"description": "",
+	"license": "MIT",
 	"type": "module",
 	"scripts": {
 		"start": "vite",
@@ -10,10 +11,10 @@
 		"serve": "vite preview",
 		"tauri": "tauri",
 		"icons": "bun run scripts/prep-mandy-icon.mjs && cd src-tauri && bunx tauri icon mandy-icon-tauri.png",
-		"lint": "biome check .",
-		"lint:fix": "biome check . --write",
-		"lint:biome": "biome check .",
-		"lint:biome:fix": "biome check . --write",
+		"lint": "oxlint .",
+		"lint:fix": "oxlint --fix .",
+		"format": "oxfmt --check .",
+		"format:fix": "oxfmt --write .",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
@@ -25,7 +26,6 @@
 		"test:all": "bun run verify:glib && bun run test && bun run test:rust && bun run test:e2e",
 		"prepare": "husky"
 	},
-	"license": "MIT",
 	"dependencies": {
 		"@codemirror/autocomplete": "^6.20.0",
 		"@codemirror/commands": "^6.10.1",
@@ -51,6 +51,7 @@
 		"@tauri-apps/api": "^2.11.0",
 		"@tauri-apps/plugin-dialog": "^2.7.1",
 		"@tauri-apps/plugin-fs": "^2.5.1",
+		"@tauri-apps/plugin-opener": "^2.5.4",
 		"@tauri-apps/plugin-process": "^2.3.1",
 		"@tauri-apps/plugin-updater": "^2.10.1",
 		"@vx/curve": "^0.0.199",
@@ -67,7 +68,6 @@
 		"zustand": "^5.0.10"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.10",
 		"@playwright/test": "^1.60.0",
 		"@tauri-apps/cli": "^2.11.2",
 		"@testing-library/jest-dom": "^6.9.1",
@@ -80,6 +80,8 @@
 		"happy-dom": "^20.9.0",
 		"husky": "^9.1.7",
 		"jsdom": "^29.1.1",
+		"oxfmt": "^0.53.0",
+		"oxlint": "^1.68.0",
 		"selenium-webdriver": "^4.40.0",
 		"typescript": "~5.8.3",
 		"vite": "^7.3.3",
@@ -87,8 +89,8 @@
 	},
 	"overrides": {
 		"d3-color": "^3.1.0",
+		"picomatch": "^4.0.4",
 		"postcss": "^8.5.10",
-		"rollup": "^4.59.0",
-		"picomatch": "^4.0.4"
+		"rollup": "^4.59.0"
 	}
 }

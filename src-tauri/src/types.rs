@@ -21,6 +21,34 @@ pub enum AuthType {
     Basic { username: String, password: String },
     Bearer { token: String },
     ApiKey { key: String, value: String, add_to: ApiKeyLocation },
+    Digest { username: String, password: String },
+    Ntlm { username: String, password: String, domain: Option<String> },
+    MutualTls {
+        cert_pem: String,
+        key_pem: String,
+        key_passphrase: Option<String>,
+        ca_pem: Option<String>,
+        insecure_skip_verify: Option<bool>,
+    },
+    OAuth2 {
+        mode: OAuth2Mode,
+        token: Option<String>,
+        client_id: Option<String>,
+        client_secret: Option<String>,
+        token_url: Option<String>,
+        scopes: Option<Vec<String>>,
+        auth_url: Option<String>,
+        redirect_uri: Option<String>,
+        pkce: Option<bool>,
+        refresh_token: Option<String>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub enum OAuth2Mode {
+    ClientCredentials,
+    AuthorizationCodePkce,
+    ManualBearer,
 }
 
 #[derive(Serialize, Deserialize, Type, Clone)]
@@ -141,6 +169,7 @@ pub struct ApiResponse {
     pub headers: HashMap<String, String>,
     pub cookies: Vec<Cookie>,
     pub body_base64: String,
+    pub decoded_body_base64: Option<String>,
     pub timing: TimingInfo,
     pub request_size: SizeInfo,
     pub response_size: SizeInfo,
@@ -150,7 +179,50 @@ pub struct ApiResponse {
     pub available_renderers: Vec<ResponseRenderer>,
     pub detected_content_type: Option<String>,
     pub protocol_used: String,
+    pub content_encoding: Option<String>,
+    pub transfer_encoding: Option<String>,
+    pub decoded_by_curl: bool,
+    pub raw_body_available: bool,
     pub error: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct OAuth2TokenRequest {
+    pub token_url: String,
+    pub client_id: String,
+    pub client_secret: Option<String>,
+    pub scopes: Option<Vec<String>>,
+    pub grant_type: Option<String>,
+    pub refresh_token: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct OAuth2TokenResponse {
+    pub access_token: String,
+    pub token_type: Option<String>,
+    pub expires_in: Option<u32>,
+    pub refresh_token: Option<String>,
+    pub scope: Option<String>,
+    pub raw_json: String,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub struct RestStreamEvent {
+    pub request_key: String,
+    pub kind: RestStreamEventKind,
+    pub chunk_base64: Option<String>,
+    pub chunk_text_preview: Option<String>,
+    pub timestamp_ms: f64,
+    pub error: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Type, Clone)]
+pub enum RestStreamEventKind {
+    Started,
+    Chunk,
+    Completed,
+    Cancelled,
+    Error,
 }
 
 impl Default for ApiRequest {

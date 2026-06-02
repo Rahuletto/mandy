@@ -6,11 +6,11 @@ This document is the **canonical map** of the frontend architecture. Follow it w
 
 ## Commands
 
-| Task | Command |
-|------|---------|
-| Dev (Vite + Tauri as in `package.json`) | `bun run dev` |
-| Production build | `bun run build` |
-| Typecheck | `bunx tsc --noEmit` |
+| Task                                    | Command             |
+| --------------------------------------- | ------------------- |
+| Dev (Vite + Tauri as in `package.json`) | `bun run dev`       |
+| Production build                        | `bun run build`     |
+| Typecheck                               | `bunx tsc --noEmit` |
 
 Fix any TypeScript issues your change introduces, even if the repo has pre-existing warnings elsewhere.
 
@@ -29,7 +29,6 @@ Fix any TypeScript issues your change introduces, even if the repo has pre-exist
 - **State:** `src/stores/projectStore.ts` (Zustand + persist) holds projects, tree, selection, environments, clipboard, etc.
 - **Routing (in-app):** There is no Next.js router for the editor. The **main panel** picks one view from: project overview, workflow editor, protocol editors (WebSocket / GraphQL / Socket.IO / MQTT), REST editor, or welcome/empty state—based on `showProjectOverview`, `activeItemId`, and `activeItem.type`.
 - **Backend integration:** Tauri `commands` in `src/bindings.ts` (and generated types) for HTTP, WS, GraphQL, Socket.IO, MQTT, etc.
-
 
 ---
 
@@ -71,19 +70,19 @@ Each type is defined with **`defineItemType({ ... })`** (see `itemTypes.ts`).
 
 ### `ItemTypeConfig` (`src/registry/itemTypes.ts`)
 
-| Field | Purpose |
-|-------|---------|
-| `type`, `label`, `shortLabel` | Identity; `shortLabel` is used in UI badges and **must not collide** with real HTTP methods for recents unless you set `matchRecentsByShortLabel` (see below). |
-| `icon`, `iconClassName` | React icon component and Tailwind color classes — **single source** for that type’s icon everywhere. |
-| `treeIconSize` | Default pixel size in tree / list badge when not overridden. |
-| `overviewStripeClass`, `overviewSidebarCellClass` | Optional: project overview **card** chrome (workflow / WebSocket columns). |
-| `listBadgeClass` | Optional: pill wrapper for compact rows (GraphQL / Socket.IO / MQTT in `ProjectOverview`). |
-| `matchRecentsByShortLabel` | Default `true`. Set **`false` on `request`**: recents store real HTTP verbs (`GET`, `POST`, …); REST’s `shortLabel` is only a menu default (`GET`) and must not steal recents resolution. |
-| `createDefault({ id, name? })` | Factory for **new** items; used by `addItem` in the store. |
-| `clone(item, { id })` | Deep clone for duplicate; used by `duplicateItem`. |
-| `getRecentMeta(item)` | `{ methodLabel, url }` for persisted **recentRequests** rows. |
-| `isCreatable` | If `false`, type is omitted from creatable menus (e.g. workflow). |
-| `menuOrder` | Sort order in “new” menus. |
+| Field                                             | Purpose                                                                                                                                                                                   |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`, `label`, `shortLabel`                     | Identity; `shortLabel` is used in UI badges and **must not collide** with real HTTP methods for recents unless you set `matchRecentsByShortLabel` (see below).                            |
+| `icon`, `iconClassName`                           | React icon component and Tailwind color classes — **single source** for that type’s icon everywhere.                                                                                      |
+| `treeIconSize`                                    | Default pixel size in tree / list badge when not overridden.                                                                                                                              |
+| `overviewStripeClass`, `overviewSidebarCellClass` | Optional: project overview **card** chrome (workflow / WebSocket columns).                                                                                                                |
+| `listBadgeClass`                                  | Optional: pill wrapper for compact rows (GraphQL / Socket.IO / MQTT in `ProjectOverview`).                                                                                                |
+| `matchRecentsByShortLabel`                        | Default `true`. Set **`false` on `request`**: recents store real HTTP verbs (`GET`, `POST`, …); REST’s `shortLabel` is only a menu default (`GET`) and must not steal recents resolution. |
+| `createDefault({ id, name? })`                    | Factory for **new** items; used by `addItem` in the store.                                                                                                                                |
+| `clone(item, { id })`                             | Deep clone for duplicate; used by `duplicateItem`.                                                                                                                                        |
+| `getRecentMeta(item)`                             | `{ methodLabel, url }` for persisted **recentRequests** rows.                                                                                                                             |
+| `isCreatable`                                     | If `false`, type is omitted from creatable menus (e.g. workflow).                                                                                                                         |
+| `menuOrder`                                       | Sort order in “new” menus.                                                                                                                                                                |
 
 ### Icons in UI: `src/registry/requestTypeIcon.tsx`
 
@@ -128,11 +127,11 @@ Evaluated **top to bottom** (simplified):
 
 **Tabs** (internal state synced from `initialTab` prop):
 
-| Tab id | Label | Role |
-|--------|-------|------|
-| `overview` | Overview | Folder tree of the project: REST cards (`RequestDetails`), workflow/WebSocket cards, GraphQL/Socket.IO/MQTT rows with `RequestTypeListBadge`, nested folders via `FolderSection`. |
-| `configuration` | Config | Project name (header), description, base URL, default authorization (`AuthEditor`), snippet language selector, export entry points. |
-| `variables` | Variables | Environments and variables CRUD. |
+| Tab id          | Label     | Role                                                                                                                                                                              |
+| --------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `overview`      | Overview  | Folder tree of the project: REST cards (`RequestDetails`), workflow/WebSocket cards, GraphQL/Socket.IO/MQTT rows with `RequestTypeListBadge`, nested folders via `FolderSection`. |
+| `configuration` | Config    | Project name (header), description, base URL, default authorization (`AuthEditor`), snippet language selector, export entry points.                                               |
+| `variables`     | Variables | Environments and variables CRUD.                                                                                                                                                  |
 
 **Header:** Icon picker, project title, sticky snippet language dropdown, Export button.
 

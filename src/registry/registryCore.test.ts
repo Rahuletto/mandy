@@ -27,23 +27,27 @@ describe("itemTypeRegistry", () => {
 	});
 });
 
-describe.each(
-	allItemTypes.map((c) => [c.type, c] as const),
-)("item type %s", (_label, cfg) => {
-	it("createDefault + clone", () => {
-		const item = cfg.createDefault({ id: "src-id", name: `Test ${cfg.type}` });
-		expect(item.id).toBe("src-id");
-		expect(item.type).toBe(cfg.type);
+describe.each(allItemTypes.map((c) => [c.type, c] as const))(
+	"item type %s",
+	(_label, cfg) => {
+		it("createDefault + clone", () => {
+			const item = cfg.createDefault({
+				id: "src-id",
+				name: `Test ${cfg.type}`,
+			});
+			expect(item.id).toBe("src-id");
+			expect(item.type).toBe(cfg.type);
 
-		const cloned = cfg.clone(item as never, { id: "clone-id" });
-		expect(cloned.id).toBe("clone-id");
-		expect(cloned.type).toBe(cfg.type);
-	});
+			const cloned = cfg.clone(item as never, { id: "clone-id" });
+			expect(cloned.id).toBe("clone-id");
+			expect(cloned.type).toBe(cfg.type);
+		});
 
-	it("getRecentMeta", () => {
-		const item = cfg.createDefault({ id: "x" });
-		const meta = cfg.getRecentMeta(item as never);
-		expect(meta).toHaveProperty("methodLabel");
-		expect(meta).toHaveProperty("url");
-	});
-});
+		it("getRecentMeta", () => {
+			const item = cfg.createDefault({ id: "x" });
+			const meta = cfg.getRecentMeta(item as never);
+			expect(meta).toHaveProperty("methodLabel");
+			expect(meta).toHaveProperty("url");
+		});
+	},
+);

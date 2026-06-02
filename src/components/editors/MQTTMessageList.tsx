@@ -358,6 +358,16 @@ type SeriesConfig = {
 
 const CHART_ANIM_MS = 340;
 
+function isLikelyTimestampSeries(path: string): boolean {
+	const normalized = path.trim().toLowerCase();
+	if (!normalized) return false;
+	const leaf = normalized.split(".").pop() ?? normalized;
+	// Hide timestamp-like axes by default; they dwarf real metrics and flatten charts.
+	return /^(ts|time|timestamp|date|datetime|epoch|unix|createdat|updatedat)(_|$)/i.test(
+		leaf,
+	);
+}
+
 function easeOutCubic(t: number) {
 	return 1 - (1 - t) ** 3;
 }
@@ -1426,7 +1436,13 @@ function TopicChart({
 			try {
 				const parsed = JSON.parse(message.data);
 				for (const entry of extractNumericFields(parsed)) {
-					if (entry.path && entry.path !== "$") fields.add(entry.path);
+					if (
+						entry.path &&
+						entry.path !== "$" &&
+						!isLikelyTimestampSeries(entry.path)
+					) {
+						fields.add(entry.path);
+					}
 				}
 			} catch {}
 		}
@@ -1772,6 +1788,7 @@ export function MQTTMessageList({
 		}),
 		[filteredMessages, expandedMessages, toggleExpanded],
 	);
+	const canRenderVirtualList = listWidth > 0 && listHeight > 0;
 
 	const dynamicHeightKey = useMemo(
 		() =>
@@ -1974,36 +1991,118 @@ export function MQTTMessageList({
 								? "No MQTT traffic yet. Subscribe to a topic or publish a message to start the stream."
 								: "No messages match your filter"}
 						</div>
+					) : !canRenderVirtualList ? (
+						<div className="min-h-0 flex-1 overflow-auto py-3">
+							{filteredMessages.map((message) => {
+								const isExpanded = expandedMessages.has(message.id);
+								const payloadBytes = utf8ByteLength(message.data);
+								return (
+									<div
+										key={message.id}
+										className="box-border w-full min-w-0 overflow-hidden border-white/5 border-b px-4 py-2"
+									>
+										<button
+											type="button"
+											onClick={() => toggleExpanded(message.id)}
+											className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/2"
+										>
+											<span className="shrink-0">
+												{getMessageIcon(message)}
+											</span>
+											{message.direction !== "system" && (
+												<span
+													className="max-w-[180px] shrink-0 truncate rounded-full px-2 py-0.5 font-bold font-mono text-[10px]"
+													style={getTopicBadgeStyle(message.topic)}
+												>
+													{message.topic}
+												</span>
+											)}
+											{message.retain && (
+												<span className="shrink-0 rounded-full bg-yellow/15 px-1.5 py-0.5 font-bold font-mono text-[10px] text-yellow">
+													RETAIN
+												</span>
+											)}
+											<span className="min-w-0 flex-1 truncate font-mono text-white/80 text-xs">
+												{message.data}
+											</span>
+											<span className="shrink-0 font-mono text-[10px] text-white/30 tabular-nums">
+												{formatBytes(payloadBytes)}
+											</span>
+											<span className="shrink-0 font-mono text-[11px] text-white/30 tabular-nums">
+												{formatTimestamp(message.timestamp)}
+											</span>
+											{isExpanded ? (
+												<TbChevronDown
+													size={14}
+													className="shrink-0 text-white/25"
+												/>
+											) : (
+												<TbChevronRight
+													size={14}
+													className="shrink-0 text-white/25"
+												/>
+											)}
+										</button>
+										{isExpanded && (
+											<div
+												className="min-h-0 space-y-4 overflow-y-auto px-2 pt-1 pb-2"
+												style={{ maxHeight: MQTT_LIST_EXPANDED_MAX_PX }}
+											>
+												{(() => {
+													try {
+														const parsed = JSON.parse(message.data);
+														return (
+															<div className="overflow-hidden rounded-xl border border-white/6 bg-white/2 text-[11px]">
+																<CodeViewer
+																	code={JSON.stringify(parsed, null, 2)}
+																	language="json"
+																/>
+															</div>
+														);
+													} catch {
+														return (
+															<div className="rounded-xl border border-white/6 bg-white/2 p-3">
+																<pre className="whitespace-pre-wrap break-all font-mono text-white/70 text-xs">
+																	{message.data}
+																</pre>
+															</div>
+														);
+													}
+												})()}
+											</div>
+										)}
+									</div>
+								);
+							})}
+						</div>
 					) : (
 						<div
 							ref={listContainerRef}
 							className="relative min-h-0 w-full min-w-0 flex-1 py-3"
 						>
-							{listWidth > 0 && listHeight > 0 ? (
-								<>
-									<List<MqttVirtualRowExtra>
-										listRef={listRef}
-										className="pb-0"
-										style={{ width: listWidth, height: listHeight }}
-										rowCount={filteredMessages.length}
-										rowHeight={dynamicRowHeight}
-										rowComponent={MqttVirtualListRow}
-										rowProps={rowProps}
-										overscanCount={8}
-										onRowsRendered={handleRowsRendered}
-									/>
-									{!isAtBottom && (
-										<button
-											type="button"
-											onClick={jumpToLatest}
-											className="absolute bottom-4 left-1/2 z-10 inline-flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-background/90 text-white/80 shadow-lg backdrop-blur transition-colors hover:bg-background hover:text-white"
-											aria-label="Jump to latest MQTT message"
-										>
-											<TbArrowDown size={18} />
-										</button>
-									)}
-								</>
-							) : null}
+							<>
+								<List<MqttVirtualRowExtra>
+									listRef={listRef}
+									className="pb-0"
+									style={{ width: listWidth, height: listHeight }}
+									rowCount={filteredMessages.length}
+									rowHeight={dynamicRowHeight}
+									rowComponent={MqttVirtualListRow}
+									rowProps={rowProps}
+									overscanCount={8}
+									onRowsRendered={handleRowsRendered}
+								/>
+								{!isAtBottom && (
+									<button
+										type="button"
+										onClick={jumpToLatest}
+										className="absolute bottom-4 left-1/2 z-10 inline-flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-background/90 text-white/80 shadow-lg backdrop-blur transition-colors hover:bg-background hover:text-white"
+										aria-label="Jump to latest MQTT message"
+									>
+										<TbArrowDown size={18} />
+									</button>
+								)}
+							</>
 						</div>
 					)}
 				</div>

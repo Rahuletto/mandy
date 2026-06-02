@@ -732,6 +732,46 @@ export const useProjectStore = create<ProjectState>()(
 						} else if ("ApiKey" in auth) {
 							auth.ApiKey.key = processString(auth.ApiKey.key);
 							auth.ApiKey.value = processString(auth.ApiKey.value);
+						} else if ("Digest" in auth) {
+							auth.Digest.username = processString(auth.Digest.username);
+							auth.Digest.password = processString(auth.Digest.password);
+						} else if ("Ntlm" in auth) {
+							auth.Ntlm.username = processString(auth.Ntlm.username);
+							auth.Ntlm.password = processString(auth.Ntlm.password);
+							auth.Ntlm.domain = auth.Ntlm.domain
+								? processString(auth.Ntlm.domain)
+								: null;
+						} else if ("MutualTls" in auth) {
+							auth.MutualTls.cert_pem = processString(auth.MutualTls.cert_pem);
+							auth.MutualTls.key_pem = processString(auth.MutualTls.key_pem);
+							auth.MutualTls.key_passphrase = auth.MutualTls.key_passphrase
+								? processString(auth.MutualTls.key_passphrase)
+								: null;
+							auth.MutualTls.ca_pem = auth.MutualTls.ca_pem
+								? processString(auth.MutualTls.ca_pem)
+								: null;
+						} else if ("OAuth2" in auth) {
+							auth.OAuth2.token = auth.OAuth2.token
+								? processString(auth.OAuth2.token)
+								: null;
+							auth.OAuth2.client_id = auth.OAuth2.client_id
+								? processString(auth.OAuth2.client_id)
+								: null;
+							auth.OAuth2.client_secret = auth.OAuth2.client_secret
+								? processString(auth.OAuth2.client_secret)
+								: null;
+							auth.OAuth2.token_url = auth.OAuth2.token_url
+								? processString(auth.OAuth2.token_url)
+								: null;
+							auth.OAuth2.auth_url = auth.OAuth2.auth_url
+								? processString(auth.OAuth2.auth_url)
+								: null;
+							auth.OAuth2.redirect_uri = auth.OAuth2.redirect_uri
+								? processString(auth.OAuth2.redirect_uri)
+								: null;
+							auth.OAuth2.refresh_token = auth.OAuth2.refresh_token
+								? processString(auth.OAuth2.refresh_token)
+								: null;
 						}
 					}
 

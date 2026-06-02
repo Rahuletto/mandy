@@ -4,6 +4,7 @@ import { BsThreeDots } from "react-icons/bs";
 export interface DropdownItem {
 	label: string;
 	onClick?: () => void;
+	onContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void;
 	icon?: React.ReactNode;
 	rightAction?: React.ReactNode;
 	danger?: boolean;
@@ -96,6 +97,7 @@ export function Dropdown({
 				) : (
 					<div
 						key={i}
+						onContextMenu={(event) => item.onContextMenu?.(event)}
 						className={`group flex items-center transition-colors ${
 							item.active ? "bg-accent/5" : "hover:bg-white/5"
 						}`}

@@ -8,11 +8,9 @@ Use this section for review hints, explanations or discussion points/todos.
 - Reasoning
 - Additional context
 
-
 ## Screenshots
 
 Screenshots or a screen recording of the visual changes associated with this PR.
-
 
 ## Ready?
 

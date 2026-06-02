@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 
 interface DialogProps {
@@ -12,6 +13,7 @@ interface DialogProps {
 	/** When false: no Cancel, backdrop does not close, Escape does nothing. */
 	dismissible?: boolean;
 	confirmDisabled?: boolean;
+	children?: ReactNode;
 }
 
 export function Dialog({
@@ -25,6 +27,7 @@ export function Dialog({
 	onCancel,
 	dismissible = true,
 	confirmDisabled = false,
+	children,
 }: DialogProps) {
 	const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +72,7 @@ export function Dialog({
 						<p className="text-sm text-white/60">{description}</p>
 					)}
 				</div>
+				{children}
 
 				<div className="mt-2 flex items-center justify-end gap-3">
 					{dismissible && (

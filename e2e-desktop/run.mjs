@@ -85,7 +85,11 @@ async function main() {
 		const build = spawnSync(
 			"bun",
 			["run", "tauri", "build", "--debug", "--no-bundle"],
-			{ cwd: rootDir, stdio: "inherit", shell: false },
+			{
+				cwd: rootDir,
+				stdio: "inherit",
+				shell: false,
+			},
 		);
 		if (build.status !== 0) {
 			process.exit(build.status ?? 1);

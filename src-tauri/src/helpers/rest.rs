@@ -1,21 +1,27 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use curl::easy::{Easy, HttpVersion, List};
+use brotli::Decompressor;
+use curl::easy::{Auth, Easy, HttpVersion, List};
 use dashmap::DashMap;
+use flate2::read::{DeflateDecoder, GzDecoder, ZlibDecoder};
 use std::collections::HashMap;
+use std::fs;
 use std::io::Read;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 use url::Url;
 
 use crate::helpers::request_notify::{
     notify_request_completed_if_background, pick_display_name,
 };
 use crate::types::{
-    ApiKeyLocation, ApiRequest, ApiResponse, AuthType, BodyType, Cookie,
-    FetchUrlResponse, Methods, ResponseRenderer, SizeInfo, TimingInfo,
+    ApiKeyLocation, ApiRequest, ApiResponse, AuthType, BodyType, Cookie, FetchUrlResponse,
+    Methods, OAuth2TokenRequest, OAuth2TokenResponse, RedirectEntry, ResponseRenderer,
+    RestStreamEvent, RestStreamEventKind, SizeInfo, TimingInfo,
 };
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 static REST_CANCEL_FLAGS: OnceLock<DashMap<String, Arc<AtomicBool>>> = OnceLock::new();
 
@@ -146,6 +152,38 @@ fn build_cookie_header(cookies: &[Cookie]) -> String {
         .join("; ")
 }
 
+fn parse_redirects(headers_raw: &[u8]) -> Vec<RedirectEntry> {
+    let headers_str = String::from_utf8_lossy(headers_raw);
+    let mut redirects = Vec::new();
+
+    for block in headers_str.split("\r\n\r\n") {
+        let mut lines = block.lines();
+        let status = lines
+            .next()
+            .and_then(|status_line| status_line.split_whitespace().nth(1))
+            .and_then(|status| status.parse::<u16>().ok());
+
+        if !matches!(status, Some(300..=399)) {
+            continue;
+        }
+
+        let location = lines.find_map(|line| {
+            let (name, value) = line.split_once(':')?;
+            if name.trim().eq_ignore_ascii_case("location") {
+                Some(value.trim().to_string())
+            } else {
+                None
+            }
+        });
+
+        if let (Some(status), Some(url)) = (status, location) {
+            redirects.push(RedirectEntry { url, status });
+        }
+    }
+
+    redirects
+}
+
 fn status_text(status: u16) -> String {
     match status {
         100 => "Continue".to_string(),
@@ -204,6 +242,7 @@ fn build_url_with_params(
 }
 
 fn execute_curl_request(
+    app: AppHandle,
     req: ApiRequest,
     cancel: Option<Arc<AtomicBool>>,
 ) -> Result<ApiResponse, String> {
@@ -265,16 +304,107 @@ fn execute_curl_request(
 
     let mut header_list = List::new();
 
+    let mut has_user_agent_header = false;
     for (key, val) in &req.headers {
+        if key.eq_ignore_ascii_case("user-agent") {
+            has_user_agent_header = true;
+        }
         header_list
             .append(&format!("{}: {}", key, val))
             .map_err(|e| e.to_string())?;
     }
 
+    if !has_user_agent_header {
+        header_list
+            .append(&format!("User-Agent: Mandy/{}", env!("CARGO_PKG_VERSION")))
+            .map_err(|e| e.to_string())?;
+    }
+
+    let mut temp_files: Vec<PathBuf> = Vec::new();
+
     match &req.auth {
         AuthType::Basic { username, password } => {
             easy.username(username).map_err(|e| e.to_string())?;
             easy.password(password).map_err(|e| e.to_string())?;
+        }
+        AuthType::Digest { username, password } => {
+            easy.username(username).map_err(|e| e.to_string())?;
+            easy.password(password).map_err(|e| e.to_string())?;
+            easy.http_auth(Auth::new().digest(true))
+                .map_err(|e| e.to_string())?;
+        }
+        AuthType::Ntlm {
+            username,
+            password,
+            domain,
+        } => {
+            let effective_user = if let Some(d) = domain {
+                if d.is_empty() {
+                    username.clone()
+                } else {
+                    format!(r"{}\{}", d, username)
+                }
+            } else {
+                username.clone()
+            };
+            easy.username(&effective_user).map_err(|e| e.to_string())?;
+            easy.password(password).map_err(|e| e.to_string())?;
+            easy.http_auth(Auth::new().ntlm(true))
+                .map_err(|e| e.to_string())?;
+        }
+        AuthType::MutualTls {
+            cert_pem,
+            key_pem,
+            key_passphrase,
+            ca_pem,
+            insecure_skip_verify,
+        } => {
+            let cert_path = write_temp_pem("cert", cert_pem)?;
+            let key_path = write_temp_pem("key", key_pem)?;
+            easy.ssl_cert(
+                cert_path
+                    .to_str()
+                    .ok_or_else(|| "Invalid cert path".to_string())?,
+            )
+            .map_err(|e| e.to_string())?;
+            easy.ssl_key(
+                key_path
+                    .to_str()
+                    .ok_or_else(|| "Invalid key path".to_string())?,
+            )
+            .map_err(|e| e.to_string())?;
+            if let Some(pass) = key_passphrase {
+                if !pass.is_empty() {
+                    easy.key_password(pass).map_err(|e| e.to_string())?;
+                }
+            }
+            if let Some(ca) = ca_pem {
+                if !ca.is_empty() {
+                    let ca_path = write_temp_pem("ca", ca)?;
+                    easy.cainfo(
+                        ca_path
+                            .to_str()
+                            .ok_or_else(|| "Invalid CA path".to_string())?,
+                    )
+                    .map_err(|e| e.to_string())?;
+                    temp_files.push(ca_path);
+                }
+            }
+            if insecure_skip_verify.unwrap_or(false) {
+                easy.ssl_verify_peer(false).map_err(|e| e.to_string())?;
+                easy.ssl_verify_host(false).map_err(|e| e.to_string())?;
+            }
+            temp_files.push(cert_path);
+            temp_files.push(key_path);
+        }
+        AuthType::OAuth2 { token, .. } => {
+            if let Some(t) = token {
+                if !t.is_empty() {
+                    header_list
+                        .append(&format!("Authorization: Bearer {}", t))
+                        .map_err(|e| e.to_string())?;
+                }
+            }
         }
         AuthType::Bearer { token } => {
             header_list
@@ -403,6 +533,23 @@ fn execute_curl_request(
     let mut response_headers_raw: Vec<u8> = Vec::new();
     let mut response_body: Vec<u8> = Vec::new();
 
+    let request_key = req
+        .cancel_key
+        .clone()
+        .unwrap_or_else(|| format!("{}:{}", req.url, uuid_simple()));
+
+    emit_rest_stream_event(
+        &app,
+        RestStreamEvent {
+            request_key: request_key.clone(),
+            kind: RestStreamEventKind::Started,
+            chunk_base64: None,
+            chunk_text_preview: None,
+            timestamp_ms: unix_now_ms(),
+            error: None,
+        },
+    );
+
     {
         let mut transfer = easy.transfer();
 
@@ -416,6 +563,17 @@ fn execute_curl_request(
         transfer
             .write_function(|data| {
                 response_body.extend_from_slice(data);
+                emit_rest_stream_event(
+                    &app,
+                    RestStreamEvent {
+                        request_key: request_key.clone(),
+                        kind: RestStreamEventKind::Chunk,
+                        chunk_base64: Some(BASE64.encode(data)),
+                        chunk_text_preview: Some(String::from_utf8_lossy(data).to_string()),
+                        timestamp_ms: unix_now_ms(),
+                        error: None,
+                    },
+                );
                 Ok(data.len())
             })
             .map_err(|e| e.to_string())?;
@@ -435,8 +593,30 @@ fn execute_curl_request(
                 .as_ref()
                 .is_some_and(|f| f.load(Ordering::SeqCst))
             {
+                emit_rest_stream_event(
+                    &app,
+                    RestStreamEvent {
+                        request_key: request_key.clone(),
+                        kind: RestStreamEventKind::Cancelled,
+                        chunk_base64: None,
+                        chunk_text_preview: None,
+                        timestamp_ms: unix_now_ms(),
+                        error: Some("Request cancelled".to_string()),
+                    },
+                );
                 return "Request cancelled".to_string();
             }
+            emit_rest_stream_event(
+                &app,
+                RestStreamEvent {
+                    request_key: request_key.clone(),
+                    kind: RestStreamEventKind::Error,
+                    chunk_base64: None,
+                    chunk_text_preview: None,
+                    timestamp_ms: unix_now_ms(),
+                    error: Some(format_curl_error(&e)),
+                },
+            );
             format_curl_error(&e)
         })?;
     }
@@ -525,6 +705,30 @@ fn execute_curl_request(
     };
 
     let body_base64 = BASE64.encode(&response_body);
+    let redirects = parse_redirects(&response_headers_raw);
+    let content_encoding = response_headers
+        .get("content-encoding")
+        .or_else(|| response_headers.get("Content-Encoding"))
+        .cloned();
+    let transfer_encoding = response_headers
+        .get("transfer-encoding")
+        .or_else(|| response_headers.get("Transfer-Encoding"))
+        .cloned();
+    let decoded_body_base64 = decode_body_by_content_encoding(&response_body, content_encoding.as_deref())
+        .map(|bytes| BASE64.encode(bytes));
+
+    emit_rest_stream_event(
+        &app,
+        RestStreamEvent {
+            request_key,
+            kind: RestStreamEventKind::Completed,
+            chunk_base64: None,
+            chunk_text_preview: None,
+            timestamp_ms: unix_now_ms(),
+            error: None,
+        },
+    );
+    cleanup_temp_files(&temp_files);
 
     Ok(ApiResponse {
         status,
@@ -532,17 +736,60 @@ fn execute_curl_request(
         headers: response_headers,
         cookies: response_cookies,
         body_base64,
+        decoded_body_base64,
         timing,
         request_size,
         response_size,
-        redirects: Vec::new(), // TODO: Track redirects if needed
+        redirects,
         remote_addr,
         http_version,
         available_renderers,
         detected_content_type: content_type,
         protocol_used,
+        content_encoding,
+        transfer_encoding,
+        decoded_by_curl: false,
+        raw_body_available: true,
         error: None,
     })
+}
+
+fn decode_body_by_content_encoding(body: &[u8], encoding: Option<&str>) -> Option<Vec<u8>> {
+    let normalized = encoding?
+        .split(',')
+        .next()
+        .map(|s| s.trim().to_ascii_lowercase())?;
+    if normalized.is_empty() {
+        return None;
+    }
+
+    match normalized.as_str() {
+        "gzip" => {
+            let mut decoder = GzDecoder::new(body);
+            let mut out = Vec::new();
+            decoder.read_to_end(&mut out).ok()?;
+            Some(out)
+        }
+        "deflate" => {
+            // Try zlib-wrapped deflate first, then raw deflate.
+            let mut zlib = ZlibDecoder::new(body);
+            let mut out = Vec::new();
+            if zlib.read_to_end(&mut out).is_ok() {
+                return Some(out);
+            }
+            let mut raw = DeflateDecoder::new(body);
+            let mut out_raw = Vec::new();
+            raw.read_to_end(&mut out_raw).ok()?;
+            Some(out_raw)
+        }
+        "br" => {
+            let mut decoder = Decompressor::new(body, 4096);
+            let mut out = Vec::new();
+            decoder.read_to_end(&mut out).ok()?;
+            Some(out)
+        }
+        _ => None,
+    }
 }
 
 fn format_curl_error(e: &curl::Error) -> String {
@@ -573,11 +820,34 @@ fn urlencoding(s: &str) -> String {
 }
 
 fn uuid_simple() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default();
     format!("{:x}{:x}", now.as_secs(), now.subsec_nanos())
+}
+
+fn unix_now_ms() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs_f64() * 1000.0)
+        .unwrap_or_default()
+}
+
+fn write_temp_pem(prefix: &str, body: &str) -> Result<PathBuf, String> {
+    let mut path = std::env::temp_dir();
+    path.push(format!("mandy-{}-{}.pem", prefix, uuid_simple()));
+    fs::write(&path, body).map_err(|e| format!("Failed to write temp cert file: {}", e))?;
+    Ok(path)
+}
+
+fn cleanup_temp_files(paths: &[PathBuf]) {
+    for path in paths {
+        let _ = fs::remove_file(path);
+    }
+}
+
+fn emit_rest_stream_event(app: &AppHandle, event: RestStreamEvent) {
+    let _ = app.emit("rest://stream", event);
 }
 
 fn rest_fallback_label(req: &ApiRequest) -> String {
@@ -608,9 +878,11 @@ pub async fn rest_request(app: AppHandle, req: ApiRequest) -> Result<ApiResponse
     let cancel_key = req.cancel_key.clone();
     let label = req.request_label.clone();
     let fallback = rest_fallback_label(&req);
-    let join_result = tokio::task::spawn_blocking(move || execute_curl_request(req, cancel_flag))
-        .await
-        .map_err(|e| format!("Task error: {}", e));
+    let app_for_request = app.clone();
+    let join_result =
+        tokio::task::spawn_blocking(move || execute_curl_request(app_for_request, req, cancel_flag))
+            .await
+            .map_err(|e| format!("Task error: {}", e));
     if let Some(ref k) = cancel_key {
         rest_cancel_flags().remove(k);
     }
@@ -620,6 +892,95 @@ pub async fn rest_request(app: AppHandle, req: ApiRequest) -> Result<ApiResponse
         notify_request_completed_if_background(&app, &name);
     }
     result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn rest_oauth2_token(req: OAuth2TokenRequest) -> Result<OAuth2TokenResponse, String> {
+    tokio::task::spawn_blocking(move || {
+        let mut easy = Easy::new();
+        easy.url(&req.token_url).map_err(|e| format!("URL error: {}", e))?;
+        easy.post(true).map_err(|e| e.to_string())?;
+        easy.http_version(HttpVersion::V2TLS)
+            .map_err(|e| e.to_string())?;
+        easy.timeout(Duration::from_secs(30))
+            .map_err(|e| e.to_string())?;
+
+        let mut headers = List::new();
+        headers
+            .append("Content-Type: application/x-www-form-urlencoded")
+            .map_err(|e| e.to_string())?;
+        easy.http_headers(headers).map_err(|e| e.to_string())?;
+
+        let mut fields = vec![format!(
+            "grant_type={}",
+            req.grant_type
+                .clone()
+                .unwrap_or_else(|| "client_credentials".to_string())
+        )];
+        fields.push(format!("client_id={}", urlencoding(&req.client_id)));
+        if let Some(secret) = req.client_secret {
+            fields.push(format!("client_secret={}", urlencoding(&secret)));
+        }
+        if let Some(scopes) = req.scopes {
+            if !scopes.is_empty() {
+                fields.push(format!("scope={}", urlencoding(&scopes.join(" "))));
+            }
+        }
+        if let Some(refresh_token) = req.refresh_token {
+            if !refresh_token.is_empty() {
+                fields.push(format!("refresh_token={}", urlencoding(&refresh_token)));
+            }
+        }
+        let form_body = fields.join("&");
+        easy.post_field_size(form_body.len() as u64)
+            .map_err(|e| e.to_string())?;
+
+        let mut response_body: Vec<u8> = Vec::new();
+        {
+            let mut transfer = easy.transfer();
+            let mut reader = std::io::Cursor::new(form_body.into_bytes());
+            transfer
+                .read_function(move |into| {
+                    let read = reader.read(into).unwrap_or(0);
+                    Ok(read)
+                })
+                .map_err(|e| e.to_string())?;
+            transfer
+                .write_function(|data| {
+                    response_body.extend_from_slice(data);
+                    Ok(data.len())
+                })
+                .map_err(|e| e.to_string())?;
+            transfer.perform().map_err(|e| format_curl_error(&e))?;
+        }
+
+        let raw_json = String::from_utf8_lossy(&response_body).to_string();
+        let parsed: serde_json::Value =
+            serde_json::from_slice(&response_body).map_err(|e| format!("Invalid OAuth response: {}", e))?;
+
+        let access_token = parsed
+            .get("access_token")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "OAuth response missing access_token".to_string())?
+            .to_string();
+        Ok(OAuth2TokenResponse {
+            access_token,
+            token_type: parsed.get("token_type").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            expires_in: parsed
+                .get("expires_in")
+                .and_then(|v| v.as_u64())
+                .and_then(|n| u32::try_from(n).ok()),
+            refresh_token: parsed
+                .get("refresh_token")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            scope: parsed.get("scope").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            raw_json,
+        })
+    })
+    .await
+    .map_err(|e| format!("Task error: {}", e))?
 }
 
 fn execute_fetch_url(url: String) -> Result<FetchUrlResponse, String> {

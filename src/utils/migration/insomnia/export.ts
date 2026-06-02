@@ -59,6 +59,27 @@ function convertAuthToInsomnia(auth: AuthType): InsomniaAuthentication {
 			addTo: auth.ApiKey.add_to === "Header" ? "header" : "queryParams",
 		};
 	}
+	if ("Digest" in auth) {
+		return {
+			type: "digest",
+			username: auth.Digest.username,
+			password: auth.Digest.password,
+		} as InsomniaAuthentication;
+	}
+	if ("Ntlm" in auth) {
+		return {
+			type: "ntlm",
+			username: auth.Ntlm.username,
+			password: auth.Ntlm.password,
+			disabled: false,
+		} as InsomniaAuthentication;
+	}
+	if ("OAuth2" in auth) {
+		return {
+			type: "bearer",
+			token: auth.OAuth2.token || "",
+		};
+	}
 	return { type: "none" };
 }
 

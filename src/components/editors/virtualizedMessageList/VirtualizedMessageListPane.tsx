@@ -21,6 +21,8 @@ interface VirtualizedMessageListPaneProps<TRowProps extends object> {
 	jumpLabel?: string;
 	/** Optional slot under the list (inside the scroll region wrapper). */
 	footer?: ReactNode;
+	/** Non-virtual fallback when measured container is temporarily 0x0. */
+	fallback?: ReactNode;
 }
 
 /**
@@ -40,13 +42,16 @@ export function VirtualizedMessageListPane<TRowProps extends object>({
 	onJumpToLatest,
 	jumpLabel = "Jump to latest messages",
 	footer,
+	fallback,
 }: VirtualizedMessageListPaneProps<TRowProps>) {
+	const canRenderVirtualList = listWidth > 0 && listHeight > 0;
+
 	return (
 		<div
 			ref={listContainerRef}
 			className="relative min-h-0 w-full min-w-0 flex-1 py-3"
 		>
-			{listWidth > 0 && listHeight > 0 ? (
+			{canRenderVirtualList ? (
 				<>
 					<List<TRowProps>
 						listRef={listRef}
@@ -71,7 +76,9 @@ export function VirtualizedMessageListPane<TRowProps extends object>({
 						</button>
 					)}
 				</>
-			) : null}
+			) : (
+				(fallback ?? null)
+			)}
 		</div>
 	);
 }

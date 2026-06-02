@@ -2,7 +2,13 @@ import { listen } from "@tauri-apps/api/event";
 import { save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import type { Update } from "@tauri-apps/plugin-updater";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	type MouseEvent as ReactMouseEvent,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { TbLayoutSidebar } from "react-icons/tb";
 import type { Cookie } from "./bindings";
 import {
@@ -184,8 +190,15 @@ function App() {
 
 	const [showProjectDropdown, setShowProjectDropdown] = useState(false);
 	const [showEnvDropdown, setShowEnvDropdown] = useState(false);
+	const [projectContextMenu, setProjectContextMenu] = useState<{
+		projectId: string;
+		left: number;
+		top: number;
+	} | null>(null);
 
 	const [showProjectOverview, setShowProjectOverview] = useState(false);
+	const [isProjectOverviewPending, setIsProjectOverviewPending] =
+		useState(false);
 	const [projectOverviewTab, setProjectOverviewTab] = useState<
 		"overview" | "configuration" | "variables"
 	>("overview");
@@ -193,9 +206,16 @@ function App() {
 	const [showExportModal, setShowExportModal] = useState(false);
 	const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 	const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+	const [projectToDeleteId, setProjectToDeleteId] = useState<string | null>(
+		null,
+	);
+	const [projectDeleteConfirmInput, setProjectDeleteConfirmInput] =
+		useState("");
 	const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
 
 	const pendingUpdateRef = useRef<Update | null>(null);
+	const overviewOpenRafRef = useRef<number | null>(null);
+	const overviewReadyRafRef = useRef<number | null>(null);
 	/** Set when `check()` finds a newer version; header chip + optional install dialog. */
 	const [updateAvailable, setUpdateAvailable] = useState<{
 		version: string;
@@ -216,6 +236,88 @@ function App() {
 		},
 		[activeProject, addItem],
 	);
+
+	const openProjectRootOverview = useCallback(
+		(projectId: string) => {
+			selectProject(projectId);
+			setActiveItem(null);
+			setProjectOverviewTab("overview");
+			setIsProjectOverviewPending(true);
+			if (overviewOpenRafRef.current) {
+				cancelAnimationFrame(overviewOpenRafRef.current);
+			}
+			if (overviewReadyRafRef.current) {
+				cancelAnimationFrame(overviewReadyRafRef.current);
+			}
+			overviewOpenRafRef.current = requestAnimationFrame(() => {
+				setShowProjectOverview(true);
+				overviewReadyRafRef.current = requestAnimationFrame(() => {
+					setIsProjectOverviewPending(false);
+				});
+			});
+		},
+		[selectProject, setActiveItem],
+	);
+
+	const openProjectOverview = useCallback(
+		(tab: "overview" | "configuration" | "variables" = "overview") => {
+			setActiveItem(null);
+			setProjectOverviewTab(tab);
+			setIsProjectOverviewPending(true);
+			if (overviewOpenRafRef.current) {
+				cancelAnimationFrame(overviewOpenRafRef.current);
+			}
+			if (overviewReadyRafRef.current) {
+				cancelAnimationFrame(overviewReadyRafRef.current);
+			}
+			overviewOpenRafRef.current = requestAnimationFrame(() => {
+				setShowProjectOverview(true);
+				overviewReadyRafRef.current = requestAnimationFrame(() => {
+					setIsProjectOverviewPending(false);
+				});
+			});
+		},
+		[setActiveItem],
+	);
+
+	useEffect(() => {
+		const handleNativeContextMenu = (event: MouseEvent) => {
+			event.preventDefault();
+		};
+		document.addEventListener("contextmenu", handleNativeContextMenu);
+		return () => {
+			document.removeEventListener("contextmenu", handleNativeContextMenu);
+		};
+	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (overviewOpenRafRef.current) {
+				cancelAnimationFrame(overviewOpenRafRef.current);
+			}
+			if (overviewReadyRafRef.current) {
+				cancelAnimationFrame(overviewReadyRafRef.current);
+			}
+		};
+	}, []);
+
+	useEffect(() => {
+		if (!projectContextMenu) return;
+		const handleMouseDown = () => setProjectContextMenu(null);
+		const handleEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setProjectContextMenu(null);
+		};
+		document.addEventListener("mousedown", handleMouseDown);
+		document.addEventListener("keydown", handleEscape);
+		return () => {
+			document.removeEventListener("mousedown", handleMouseDown);
+			document.removeEventListener("keydown", handleEscape);
+		};
+	}, [projectContextMenu]);
+
+	useEffect(() => {
+		setProjectDeleteConfirmInput("");
+	}, [projectToDeleteId]);
 
 	useEffect(() => {
 		const openGateIfNeeded = () => {
@@ -517,6 +619,7 @@ function App() {
 							onClick={() => {
 								setShowProjectDropdown(!showProjectDropdown);
 								setShowEnvDropdown(false);
+								setProjectContextMenu(null);
 							}}
 							className="flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 font-semibold text-sm text-white transition-colors hover:bg-white/10"
 						>
@@ -534,11 +637,28 @@ function App() {
 										label: p.name,
 										active: p.id === activeProject?.id,
 										onClick: () => {
-											selectProject(p.id);
+											openProjectRootOverview(p.id);
 											setShowProjectDropdown(false);
-											setActiveItem(null);
-											setProjectOverviewTab("overview");
-											setShowProjectOverview(true);
+										},
+										onContextMenu: (event: ReactMouseEvent<HTMLDivElement>) => {
+											event.preventDefault();
+											event.stopPropagation();
+											const MENU_WIDTH = 144;
+											const MENU_HEIGHT = 78;
+											const PADDING = 8;
+											const clampedLeft = Math.min(
+												Math.max(PADDING, event.clientX),
+												window.innerWidth - MENU_WIDTH - PADDING,
+											);
+											const clampedTop = Math.min(
+												Math.max(PADDING, event.clientY),
+												window.innerHeight - MENU_HEIGHT - PADDING,
+											);
+											setProjectContextMenu({
+												projectId: p.id,
+												left: clampedLeft,
+												top: clampedTop,
+											});
 										},
 									})),
 									{ label: "", onClick: () => {}, divider: true },
@@ -561,6 +681,7 @@ function App() {
 								onClick={() => {
 									setShowEnvDropdown(!showEnvDropdown);
 									setShowProjectDropdown(false);
+									setProjectContextMenu(null);
 								}}
 								className="rounded-full bg-accent/10 px-3 py-0.5 font-medium text-accent text-xs lowercase transition-colors hover:bg-accent/20"
 							>
@@ -584,9 +705,7 @@ function App() {
 										{
 											label: "Manage Environments...",
 											onClick: () => {
-												setProjectOverviewTab("variables");
-												setShowProjectOverview(true);
-												setActiveItem(null);
+												openProjectOverview("variables");
 											},
 										},
 									]}
@@ -622,6 +741,40 @@ function App() {
 					</button>
 				</div>
 			</header>
+
+			{projectContextMenu && (
+				<div
+					className="fixed z-[10000] min-w-[144px] rounded-lg border border-border bg-card p-1 shadow-2xl shadow-black/50"
+					style={{
+						left: projectContextMenu.left,
+						top: projectContextMenu.top,
+					}}
+					onMouseDown={(event) => event.stopPropagation()}
+				>
+					<button
+						type="button"
+						className="w-full rounded-md px-3 py-1.5 text-left text-white/80 text-xs hover:bg-white/5"
+						onClick={() => {
+							openProjectRootOverview(projectContextMenu.projectId);
+							setShowProjectDropdown(false);
+							setProjectContextMenu(null);
+						}}
+					>
+						Edit
+					</button>
+					<button
+						type="button"
+						className="w-full rounded-md px-3 py-1.5 text-left text-red text-xs hover:bg-white/5"
+						onClick={() => {
+							setProjectToDeleteId(projectContextMenu.projectId);
+							setShowProjectDropdown(false);
+							setProjectContextMenu(null);
+						}}
+					>
+						Delete
+					</button>
+				</div>
+			)}
 
 			<div className="relative flex flex-1 overflow-hidden">
 				{isSidebarCollapsed && (
@@ -659,9 +812,7 @@ function App() {
 						width={sidebarWidth}
 						onWidthChange={setSidebarWidth}
 						onProjectClick={() => {
-							setActiveItem(null);
-							setProjectOverviewTab("overview");
-							setShowProjectOverview(true);
+							openProjectOverview("overview");
 						}}
 						onIconChange={(icon) =>
 							activeProject && updateProjectIcon(activeProject.id, icon)
@@ -709,9 +860,7 @@ function App() {
 						width={sidebarWidth}
 						onWidthChange={setSidebarWidth}
 						onProjectClick={() => {
-							setActiveItem(null);
-							setProjectOverviewTab("overview");
-							setShowProjectOverview(true);
+							openProjectOverview("overview");
 						}}
 						onIconChange={(icon) =>
 							activeProject && updateProjectIcon(activeProject.id, icon)
@@ -734,58 +883,70 @@ function App() {
 					className={`m-1 mt-0 flex flex-1 flex-col overflow-hidden bg-background transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isSidebarCollapsed ? "rounded-xl rounded-tl-2xl" : "rounded-xl"}`}
 				>
 					{showProjectOverview && activeProject ? (
-						<ProjectOverview
-							project={activeProject}
-							initialTab={projectOverviewTab}
-							onUpdateProject={(updates) => {
-								if (updates.name) renameProject(activeProject.id, updates.name);
-								if (updates.icon)
-									updateProjectIcon(activeProject.id, updates.icon);
-								if (updates.iconColor)
-									updateProjectIconColor(activeProject.id, updates.iconColor);
-								if (
-									updates.description !== undefined ||
-									updates.baseUrl !== undefined ||
-									updates.authorization !== undefined
-								) {
-									updateProjectConfig(activeProject.id, {
-										description: updates.description,
-										baseUrl: updates.baseUrl,
-										authorization: updates.authorization,
-									});
+						isProjectOverviewPending ? (
+							<div className="flex h-full flex-col p-5">
+								<div className="mb-6 h-8 w-64 animate-pulse rounded-lg bg-white/10" />
+								<div className="mb-4 h-10 w-full animate-pulse rounded-lg bg-white/5" />
+								<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+									<div className="h-40 animate-pulse rounded-xl bg-white/5" />
+									<div className="h-40 animate-pulse rounded-xl bg-white/5" />
+									<div className="h-40 animate-pulse rounded-xl bg-white/5" />
+								</div>
+							</div>
+						) : (
+							<ProjectOverview
+								project={activeProject}
+								initialTab={projectOverviewTab}
+								onUpdateProject={(updates) => {
+									if (updates.name)
+										renameProject(activeProject.id, updates.name);
+									if (updates.icon)
+										updateProjectIcon(activeProject.id, updates.icon);
+									if (updates.iconColor)
+										updateProjectIconColor(activeProject.id, updates.iconColor);
+									if (
+										updates.description !== undefined ||
+										updates.baseUrl !== undefined ||
+										updates.authorization !== undefined
+									) {
+										updateProjectConfig(activeProject.id, {
+											description: updates.description,
+											baseUrl: updates.baseUrl,
+											authorization: updates.authorization,
+										});
+									}
+								}}
+								onExport={() => setShowExportModal(true)}
+								onSelectRequest={openItemFromProjectOverview}
+								onSelectWorkflow={openItemFromProjectOverview}
+								onSelectWebSocket={openItemFromProjectOverview}
+								onSelectGraphQL={openItemFromProjectOverview}
+								onSelectSocketIO={openItemFromProjectOverview}
+								onSelectMqtt={openItemFromProjectOverview}
+								onSelectGrpc={openItemFromProjectOverview}
+								onSelectSse={openItemFromProjectOverview}
+								onRunRequest={(id) => {
+									openItemFromProjectOverview(id);
+									setTimeout(() => restEditorRef.current?.send(), 100);
+								}}
+								onAddEnvironment={(name) =>
+									addEnvironment(activeProject.id, name)
 								}
-							}}
-							onExport={() => setShowExportModal(true)}
-							onSelectRequest={openItemFromProjectOverview}
-							onSelectWorkflow={openItemFromProjectOverview}
-							onSelectWebSocket={openItemFromProjectOverview}
-							onSelectGraphQL={openItemFromProjectOverview}
-							onSelectSocketIO={openItemFromProjectOverview}
-							onSelectMqtt={openItemFromProjectOverview}
-							onSelectGrpc={openItemFromProjectOverview}
-							onSelectSse={openItemFromProjectOverview}
-							onRunRequest={(id) => {
-								openItemFromProjectOverview(id);
-								setTimeout(() => restEditorRef.current?.send(), 100);
-							}}
-							onAddEnvironment={(name) =>
-								addEnvironment(activeProject.id, name)
-							}
-							onUpdateEnvironment={(envId, name) =>
-								updateEnvironment(activeProject.id, envId, name)
-							}
-							onDeleteEnvironment={(envId) =>
-								deleteEnvironment(activeProject.id, envId)
-							}
-							onAddEnvVar={addEnvironmentVariable}
-							onUpdateEnvVar={updateEnvironmentVariable}
-							onDeleteEnvVar={deleteEnvironmentVariable}
-							onDeleteProject={() => {
-								deleteProject(activeProject.id);
-								setShowProjectOverview(false);
-							}}
-							loadingItems={loadingItems}
-						/>
+								onUpdateEnvironment={(envId, name) =>
+									updateEnvironment(activeProject.id, envId, name)
+								}
+								onDeleteEnvironment={(envId) =>
+									deleteEnvironment(activeProject.id, envId)
+								}
+								onAddEnvVar={addEnvironmentVariable}
+								onUpdateEnvVar={updateEnvironmentVariable}
+								onDeleteEnvVar={deleteEnvironmentVariable}
+								onDeleteProject={() => {
+									setProjectToDeleteId(activeProject.id);
+								}}
+								loadingItems={loadingItems}
+							/>
+						)
 					) : activeWorkflow && !showProjectOverview ? (
 						<WorkflowEditor
 							workflow={activeWorkflow}
@@ -1037,21 +1198,20 @@ function App() {
 							startLoading,
 							stopLoading,
 							onOpenProjectSettings: () => {
-								setProjectOverviewTab("configuration");
-								setShowProjectOverview(true);
+								openProjectOverview("configuration");
 							},
 							onSendGraphQL: handleSendGraphQL,
 							loadingItems,
 						})
 					) : !showProjectOverview &&
-						activeItem?.type !== "request" &&
-						activeItem?.type !== "workflow" &&
-						activeItem?.type !== "websocket" &&
-						activeItem?.type !== "graphql" &&
-						activeItem?.type !== "socketio" &&
-						activeItem?.type !== "grpc" &&
-						activeItem?.type !== "sse" &&
-						activeItem?.type !== "mqtt" ? (
+					  activeItem?.type !== "request" &&
+					  activeItem?.type !== "workflow" &&
+					  activeItem?.type !== "websocket" &&
+					  activeItem?.type !== "graphql" &&
+					  activeItem?.type !== "socketio" &&
+					  activeItem?.type !== "grpc" &&
+					  activeItem?.type !== "sse" &&
+					  activeItem?.type !== "mqtt" ? (
 						<WelcomePage
 							onNewItem={handleWelcomeNewItem}
 							onNewFolder={() => {
@@ -1094,8 +1254,7 @@ function App() {
 								}, 2000);
 							}}
 							onOpenProjectSettings={() => {
-								setProjectOverviewTab("configuration");
-								setShowProjectOverview(true);
+								openProjectOverview("configuration");
 							}}
 						/>
 					) : (
@@ -1139,6 +1298,55 @@ function App() {
 				}}
 				onCancel={() => setItemToDelete(null)}
 			/>
+			<Dialog
+				isOpen={!!projectToDeleteId}
+				title="Delete Project"
+				description={
+					projectToDeleteId
+						? `Type ${projectToDeleteId} to confirm deletion. This action cannot be undone.`
+						: "Are you sure you want to delete this project? This action cannot be undone."
+				}
+				confirmLabel="Delete"
+				isDestructive
+				confirmDisabled={
+					!projectToDeleteId || projectDeleteConfirmInput !== projectToDeleteId
+				}
+				onConfirm={() => {
+					if (!projectToDeleteId) return;
+					deleteProject(projectToDeleteId);
+					if (activeProject?.id === projectToDeleteId) {
+						setShowProjectOverview(false);
+					}
+					setProjectToDeleteId(null);
+				}}
+				onCancel={() => {
+					setProjectToDeleteId(null);
+					setProjectDeleteConfirmInput("");
+				}}
+			>
+				{projectToDeleteId && (
+					<div className="space-y-2">
+						<label
+							className="block text-white/70 text-xs"
+							htmlFor="project-delete-id"
+						>
+							Project ID confirmation
+						</label>
+						<input
+							id="project-delete-id"
+							type="text"
+							value={projectDeleteConfirmInput}
+							onChange={(event) =>
+								setProjectDeleteConfirmInput(event.target.value)
+							}
+							placeholder={projectToDeleteId}
+							autoComplete="off"
+							spellCheck={false}
+							className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 font-mono text-white text-xs outline-none transition-colors focus:border-red/40"
+						/>
+					</div>
+				)}
+			</Dialog>
 			<Dialog
 				isOpen={updateModal.open}
 				title={
@@ -1432,6 +1640,24 @@ function App() {
 					const id = createProject(name);
 					selectProject(id);
 					addToast(`Project "${name}" created`, "success");
+				}}
+				onCreateFromMandy={(data: object) => {
+					try {
+						const project = parseMandyJSON(JSON.stringify(data));
+						if (project?.root) {
+							const results = processItemForSecrets(project.root);
+							const id = createProjectFromImport(project);
+							selectProject(id);
+							addToast(
+								`Imported ${project.name || "Mandy Project"}${results.detected > 0 ? ` (${results.detected} secrets secured)` : ""}`,
+								"success",
+							);
+						} else {
+							addToast("Failed to parse Mandy project", "error");
+						}
+					} catch (e: unknown) {
+						addToast(getErrorMessage(e) || "Import failed", "error");
+					}
 				}}
 				onCreateFromPostman={(collection: object) => {
 					try {

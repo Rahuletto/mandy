@@ -101,6 +101,7 @@ export function SseEventList({ events, status, onClear }: SseEventListProps) {
 	});
 
 	const rowProps = useMemo(() => ({ filteredEvents }), [filteredEvents]);
+	const canRenderVirtualList = listWidth > 0 && listHeight > 0;
 
 	const handleClear = useCallback(() => {
 		resetFollowAfterClear();
@@ -174,6 +175,28 @@ export function SseEventList({ events, status, onClear }: SseEventListProps) {
 								? "Waiting for events…"
 								: "Connect to receive SSE events"
 							: "No events match your filter"}
+					</div>
+				) : !canRenderVirtualList ? (
+					<div className="min-h-0 flex-1 overflow-auto py-3">
+						{filteredEvents.map((event) => (
+							<div
+								key={event.id}
+								className="box-border w-full min-w-0 overflow-hidden border-white/5 border-b px-4 py-2"
+							>
+								<div className="flex items-center gap-2 text-white/40 text-xs">
+									<span className="font-bold text-white/60">{event.event}</span>
+									<span>{formatMessageTimestamp(event.timestamp)}</span>
+									{event.sseId ? (
+										<span className="font-mono text-white/30">
+											id={event.sseId}
+										</span>
+									) : null}
+								</div>
+								<pre className="mt-1 whitespace-pre-wrap break-all font-mono text-white/70 text-xs">
+									{event.data}
+								</pre>
+							</div>
+						))}
 					</div>
 				) : (
 					<VirtualizedMessageListPane<{ filteredEvents: SseEvent[] }>

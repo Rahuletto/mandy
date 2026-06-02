@@ -19,7 +19,7 @@ describe("workflowEngine helpers", () => {
 				status: 200,
 				body: { name: "mandy" },
 				headers: {},
-				cookies: [],
+				cookies: {},
 			},
 			currentNodeId: null,
 		});

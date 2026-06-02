@@ -4,6 +4,7 @@ Mandy provides a cleaner way to test APIs.
 Now supports Liquid Glass, MQTT, WebSockets, SocketIO!
 
 With Mandy you can:
+
 - Generate API documentation automatically as you test
 - Share requests with teammates via deep links
 - Use variable-powered environments for dynamic testing
@@ -13,16 +14,17 @@ With Mandy you can:
 
 ![Response View](assets/screenshot.png)
 
-
 ## Features
 
 ### Project Management
+
 - Organize API requests into collections and folders
 - Multi-environment support with variable substitution
 - Import from Postman, Insomnia, and OpenAPI formats
 - Export collections for sharing
 
 ### Request Building
+
 - Full HTTP method support (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS)
 - Multiple body types: JSON, form data, raw text, and file uploads
 - Authentication: Basic, Bearer auth
@@ -30,12 +32,14 @@ With Mandy you can:
 - cURL command import
 
 ### Response Handling
+
 - Syntax-highlighted response viewing
 - JSON auto-formatting and exploration
 - Accurate in-depth response timing analysis
 - Cookie management
 
 ### Workflows
+
 - First of its kind
 - Chain your requests and make a workflow
 - Conditions and Loops
@@ -71,7 +75,7 @@ Mandy supports importing from popular API tools:
 - Insomnia Collection
 - OpenAPI/Swagger specifications
 - cURL commands
-- Mandy Project 
+- Mandy Project
 
 ## Roadmap
 

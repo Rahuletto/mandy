@@ -138,6 +138,37 @@ function convertAuthToPostman(auth: AuthType): PostmanAuth | null {
 			],
 		};
 	}
+	if ("Digest" in auth) {
+		return {
+			type: "digest",
+			digest: [
+				{ key: "username", value: auth.Digest.username, type: "string" },
+				{ key: "password", value: auth.Digest.password, type: "string" },
+			],
+		} as PostmanAuth;
+	}
+	if ("Ntlm" in auth) {
+		return {
+			type: "ntlm",
+			ntlm: [
+				{ key: "username", value: auth.Ntlm.username, type: "string" },
+				{ key: "password", value: auth.Ntlm.password, type: "string" },
+				{
+					key: "domain",
+					value: auth.Ntlm.domain || "",
+					type: "string",
+				},
+			],
+		} as PostmanAuth;
+	}
+	if ("OAuth2" in auth) {
+		return {
+			type: "bearer",
+			bearer: [
+				{ key: "token", value: auth.OAuth2.token || "", type: "string" },
+			],
+		};
+	}
 	return null;
 }
 

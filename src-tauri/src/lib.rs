@@ -29,11 +29,16 @@ pub fn run() {
         .typ::<types::ApiResponse>()
         .typ::<types::Methods>()
         .typ::<types::AuthType>()
+        .typ::<types::OAuth2Mode>()
         .typ::<types::BodyType>()
         .typ::<types::Cookie>()
         .typ::<types::ResponseRenderer>()
         .typ::<types::TimingInfo>()
         .typ::<types::RedirectEntry>()
+        .typ::<types::OAuth2TokenRequest>()
+        .typ::<types::OAuth2TokenResponse>()
+        .typ::<types::RestStreamEvent>()
+        .typ::<types::RestStreamEventKind>()
         // ── WebSocket types ─────────────────────────────────────────────────
         .typ::<types::WsConnectRequest>()
         .typ::<types::WsConnectResponse>()
@@ -74,6 +79,7 @@ pub fn run() {
         .commands(collect_commands![
             helpers::rest::rest_request,
             helpers::rest::rest_cancel_request,
+            helpers::rest::rest_oauth2_token,
             helpers::rest::fetch_url,
             dock_badge::set_dock_badge,
             helpers::websocket::ws_connect,
@@ -107,6 +113,7 @@ pub fn run() {
     let mut tauri_builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_liquid_glass::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())

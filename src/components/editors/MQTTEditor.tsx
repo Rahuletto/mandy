@@ -70,15 +70,26 @@ function isValidMqttUrl(input: string) {
 	}
 }
 const MAX_MQTT_MESSAGES = 600;
+const DEFAULT_PUBLISH_TOPIC = "mandy/test/1";
+const MQTT_TOPIC_EXAMPLES = ["mandy/test/1", "mandy/ws/1", "testbench/metrics"];
 
 /** Publish topic default / reset: only real Topics-tab rows — never a hardcoded demo string. */
 function defaultPublishTopicFromSubscriptions(
 	subscriptions: MQTTSubscription[],
 ): string {
 	const row = subscriptions.find(
-		(s) => s.enabled !== false && s.topic.trim().length > 0,
+		(s) =>
+			s.enabled !== false &&
+			s.topic.trim().length > 0 &&
+			!s.topic.includes("#") &&
+			!s.topic.includes("+"),
 	);
-	return row?.topic.trim() ?? "";
+	return row?.topic.trim() ?? DEFAULT_PUBLISH_TOPIC;
+}
+
+function hasMqttPublishWildcard(topic: string): boolean {
+	const trimmed = topic.trim();
+	return trimmed.includes("#") || trimmed.includes("+");
 }
 
 function collectTopLevelJsonKeysFromTopic(
@@ -388,7 +399,8 @@ export function MQTTEditor({
 					mqtt.subscriptions
 						.filter((s) => s.enabled !== false)
 						.map((s) => s.topic.trim())
-						.filter((t) => t.length > 0),
+						.filter((t) => t.length > 0)
+						.concat(MQTT_TOPIC_EXAMPLES),
 				),
 			).sort((a, b) => a.localeCompare(b)),
 		[mqtt.subscriptions],
@@ -401,6 +413,9 @@ export function MQTTEditor({
 					[
 						...mqtt.subscriptions.map((subscription) => subscription.topic),
 						...mqtt.messages.map((message) => message.topic),
+						"mandy/test/#",
+						"mandy/ws/#",
+						"testbench/metrics",
 					].filter(Boolean),
 				),
 			).sort((a, b) => a.localeCompare(b)),
@@ -426,6 +441,12 @@ export function MQTTEditor({
 		if (!isConnected || !topic.trim() || !payload.trim() || isSending) return;
 		const resolvedTopic = resolve(topic);
 		const resolvedPayload = resolve(payload);
+		if (hasMqttPublishWildcard(resolvedTopic)) {
+			pushSystemMessage(
+				"Publish topic cannot include MQTT wildcards (# or +). Use a concrete topic name.",
+			);
+			return;
+		}
 		setIsSending(true);
 		try {
 			const result = await commands.mqttPublish({
@@ -469,6 +490,8 @@ export function MQTTEditor({
 		retain,
 		topic,
 	]);
+
+	const publishTopicHasWildcard = hasMqttPublishWildcard(topic);
 
 	/** When the publish topic changes, always reset the payload to match the new topic (or `{}`). */
 	useEffect(() => {
@@ -640,7 +663,7 @@ export function MQTTEditor({
 														value={topic}
 														onChange={setTopic}
 														suggestions={subscriptionTopicSuggestions}
-														placeholder="my/topic"
+														placeholder="mandy/test/1"
 														className="min-w-0"
 														inputClassName="w-full py-2 text-sm text-white outline-none placeholder:text-white/20"
 													/>
@@ -676,11 +699,13 @@ export function MQTTEditor({
 												? "Connect to an MQTT broker first"
 												: !topic.trim()
 													? "Enter a topic to publish to"
-													: !payload.trim()
-														? "Enter a payload to publish"
-														: isSending
-															? "Publishing..."
-															: undefined
+													: publishTopicHasWildcard
+														? "Publish topic cannot use wildcards (# or +). Use a concrete topic."
+														: !payload.trim()
+															? "Enter a payload to publish"
+															: isSending
+																? "Publishing..."
+																: undefined
 										}
 										wrapperClassName="inline-flex w-fit h-fit"
 									>
@@ -690,6 +715,7 @@ export function MQTTEditor({
 											disabled={
 												!isConnected ||
 												!topic.trim() ||
+												publishTopicHasWildcard ||
 												!payload.trim() ||
 												isSending
 											}
@@ -721,7 +747,7 @@ export function MQTTEditor({
 													value={subscriptionDraftTopic}
 													onChange={setSubscriptionDraftTopic}
 													suggestions={knownTopics}
-													placeholder="sensor/temperature"
+													placeholder="mandy/test/#"
 													className="min-w-0"
 													inputClassName="w-full py-2 text-sm text-white outline-none placeholder:text-white/20"
 												/>

@@ -434,6 +434,22 @@ export const WebSocketMessageList = ({
 						onRowsRendered={handleRowsRendered}
 						isAtBottom={isAtBottom}
 						onJumpToLatest={jumpToLatest}
+						fallback={
+							<div className="min-h-0 flex-1 overflow-auto py-3">
+								{filteredMessages.map((msg) => (
+									<div
+										key={msg.id}
+										className="box-border w-full min-w-0 overflow-hidden border-white/5 border-b"
+									>
+										<WebSocketRowContent
+											msg={msg}
+											isExpanded={expandedMessages.has(msg.id)}
+											onToggle={() => toggleExpanded(msg.id)}
+										/>
+									</div>
+								))}
+							</div>
+						}
 					/>
 				)}
 			</div>

@@ -7,7 +7,10 @@ import type {
 	HttpProtocol,
 	Methods,
 	MultipartField,
+	OAuth2TokenRequest,
+	OAuth2TokenResponse,
 	ProxyConfig,
+	RestStreamEvent,
 	ResponseRenderer,
 } from "../../bindings";
 import { commands } from "../../bindings";
@@ -21,9 +24,27 @@ export type {
 	HttpProtocol,
 	Methods,
 	MultipartField,
+	OAuth2TokenRequest,
+	OAuth2TokenResponse,
 	ProxyConfig,
+	RestStreamEvent,
 	ResponseRenderer,
 };
+
+type OAuthCacheEntry = {
+	accessToken: string;
+	refreshToken: string | null;
+	expiresAtMs: number | null;
+	refreshTimer: ReturnType<typeof setTimeout> | null;
+	request: OAuth2TokenRequest;
+};
+
+const oauthTokenCache = new Map<string, OAuthCacheEntry>();
+
+function oauthCacheKey(request: OAuth2TokenRequest): string {
+	const scopes = request.scopes?.join(" ") ?? "";
+	return `${request.token_url}|${request.client_id}|${scopes}`;
+}
 
 export function createDefaultRequest(
 	url = "",
@@ -86,6 +107,94 @@ export async function cancelRestRequest(cancelKey: string): Promise<void> {
 	if (result.status === "error") {
 		throw new Error(result.error);
 	}
+}
+
+export async function fetchOAuth2Token(
+	request: OAuth2TokenRequest,
+): Promise<OAuth2TokenResponse> {
+	const result = await commands.restOauth2Token(request);
+	if (result.status === "error") {
+		throw new Error(result.error);
+	}
+	return result.data;
+}
+
+async function refreshOAuthToken(cacheKey: string): Promise<void> {
+	const entry = oauthTokenCache.get(cacheKey);
+	if (!entry) return;
+	const grantType = entry.refreshToken ? "refresh_token" : "client_credentials";
+	const response = await fetchOAuth2Token({
+		...entry.request,
+		grant_type: grantType,
+		refresh_token: entry.refreshToken,
+	});
+	const expiresAtMs = response.expires_in
+		? Date.now() + response.expires_in * 1000
+		: null;
+	const refreshInMs = response.expires_in
+		? Math.max(response.expires_in * 1000 - 60_000, 10_000)
+		: null;
+	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+	if (refreshInMs != null) {
+		refreshTimer = setTimeout(() => {
+			void refreshOAuthToken(cacheKey);
+		}, refreshInMs);
+	}
+	oauthTokenCache.set(cacheKey, {
+		accessToken: response.access_token,
+		refreshToken: response.refresh_token ?? entry.refreshToken,
+		expiresAtMs,
+		refreshTimer,
+		request: entry.request,
+	});
+}
+
+export async function getOAuth2TokenCached(
+	request: OAuth2TokenRequest,
+): Promise<OAuth2TokenResponse> {
+	const cacheKey = oauthCacheKey(request);
+	const cached = oauthTokenCache.get(cacheKey);
+	const now = Date.now();
+	if (
+		cached &&
+		(cached.expiresAtMs == null || cached.expiresAtMs - now > 60_000)
+	) {
+		return {
+			access_token: cached.accessToken,
+			token_type: "Bearer",
+			expires_in:
+				cached.expiresAtMs == null
+					? null
+					: Math.max(Math.floor((cached.expiresAtMs - now) / 1000), 0),
+			refresh_token: cached.refreshToken,
+			scope: request.scopes?.join(" ") ?? null,
+			raw_json: JSON.stringify({ source: "cache" }),
+		};
+	}
+	const response = await fetchOAuth2Token(request);
+	const expiresAtMs = response.expires_in
+		? Date.now() + response.expires_in * 1000
+		: null;
+	const refreshInMs = response.expires_in
+		? Math.max(response.expires_in * 1000 - 60_000, 10_000)
+		: null;
+	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+	if (refreshInMs != null) {
+		refreshTimer = setTimeout(() => {
+			void refreshOAuthToken(cacheKey);
+		}, refreshInMs);
+	}
+	if (cached?.refreshTimer) {
+		clearTimeout(cached.refreshTimer);
+	}
+	oauthTokenCache.set(cacheKey, {
+		accessToken: response.access_token,
+		refreshToken: response.refresh_token ?? null,
+		expiresAtMs,
+		refreshTimer,
+		request,
+	});
+	return response;
 }
 
 export function decodeBody(response: ApiResponse): string {

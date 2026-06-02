@@ -23,7 +23,9 @@ const LEGACY_ACTIVE_ID_KEYS = [
 
 type LegacyPersistSlice = Partial<
 	Record<(typeof LEGACY_ACTIVE_ID_KEYS)[number], string | null>
-> & { activeItemId?: string | null };
+> & {
+	activeItemId?: string | null;
+};
 
 export function migratePersistedZustandState(
 	persisted: unknown,

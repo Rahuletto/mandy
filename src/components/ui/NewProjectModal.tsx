@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { HiX } from "react-icons/hi";
 import { SiInsomnia, SiPostman } from "react-icons/si";
 import { TbArrowLeft, TbChevronRight, TbPlus, TbUpload } from "react-icons/tb";
+import { Logo } from "./Logo";
 
-type NewProjectSource = "blank" | "postman" | "insomnia";
+type NewProjectSource = "blank" | "mandy" | "postman" | "insomnia";
 
 interface NewProjectModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onCreateBlank: (name: string) => void;
+	onCreateFromMandy: (data: object) => void;
 	onCreateFromPostman: (collection: object) => void;
 	onCreateFromInsomnia: (data: object) => void;
 }
@@ -17,6 +19,7 @@ export function NewProjectModal({
 	isOpen,
 	onClose,
 	onCreateBlank,
+	onCreateFromMandy,
 	onCreateFromPostman,
 	onCreateFromInsomnia,
 }: NewProjectModalProps) {
@@ -86,6 +89,10 @@ export function NewProjectModal({
 				const data = JSON.parse(fileContent);
 				onCreateFromInsomnia(data);
 				handleClose();
+			} else if (selectedSource === "mandy") {
+				const data = JSON.parse(fileContent);
+				onCreateFromMandy(data);
+				handleClose();
 			}
 		} catch (err: any) {
 			setError(err.message || "Failed to create project");
@@ -108,6 +115,13 @@ export function NewProjectModal({
 		{
 			id: "blank" as NewProjectSource,
 			label: "Blank Project",
+			icon: TbPlus,
+			color: "text-accent",
+		},
+		{
+			id: "mandy" as NewProjectSource,
+			label: "Import Mandy Project",
+			isLogo: true,
 			icon: TbPlus,
 			color: "text-accent",
 		},
@@ -176,7 +190,6 @@ export function NewProjectModal({
 				{!selectedSource ? (
 					<div className="space-y-1 p-2">
 						{sources.map((source) => {
-							const Icon = source.icon;
 							return (
 								<button
 									type="button"
@@ -185,10 +198,18 @@ export function NewProjectModal({
 									onClick={() => setSelectedSource(source.id)}
 									className="group flex w-full cursor-pointer items-center gap-3 rounded-lg p-2.5 px-3 text-left transition-colors hover:bg-white/5"
 								>
-									<Icon
-										size={16}
-										className="text-white/40 transition-colors group-hover:text-white/80"
-									/>
+									{source.isLogo ? (
+										<Logo
+											width={16}
+											height={16}
+											className="text-white/40 transition-colors group-hover:text-white/80"
+										/>
+									) : (
+										<source.icon
+											size={16}
+											className="text-white/40 transition-colors group-hover:text-white/80"
+										/>
+									)}
 									<span className="flex-1 text-sm text-white/70 transition-colors group-hover:text-white">
 										{source.label}
 									</span>

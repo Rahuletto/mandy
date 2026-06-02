@@ -26,6 +26,7 @@ import {
 import { CodeEditor, CodeViewer } from "../CodeMirror";
 import { KeyValueTable } from "../KeyValueTable";
 import { SizePopover } from "../popovers/SizePopover";
+import { StatusPopover } from "../popovers/StatusPopover";
 import { TimingPopover } from "../popovers/TimingPopover";
 import { UrlInput } from "../ui";
 import { AuthEditor } from "./AuthEditor";
@@ -78,22 +79,32 @@ export function GrpcEditor({
 	const responsePanelRef = useRef<HTMLDivElement>(null);
 	const timingHover = usePopoverHover();
 	const sizeHover = usePopoverHover();
+	const statusHover = usePopoverHover();
 	const timingRef = useRef<HTMLButtonElement>(null);
 	const sizeRef = useRef<HTMLButtonElement>(null);
+	const statusRef = useRef<HTMLButtonElement>(null);
 	const serviceFieldId = useId();
 	const methodFieldId = useId();
 	const protoFieldId = useId();
 
 	const handleTimingEnter = () => {
+		statusHover.setOpen(false);
 		sizeHover.setOpen(false);
 		timingHover.onEnter();
 	};
 	const handleTimingLeave = timingHover.onLeave;
 	const handleSizeEnter = () => {
+		statusHover.setOpen(false);
 		timingHover.setOpen(false);
 		sizeHover.onEnter();
 	};
 	const handleSizeLeave = sizeHover.onLeave;
+	const handleStatusEnter = () => {
+		timingHover.setOpen(false);
+		sizeHover.setOpen(false);
+		statusHover.onEnter();
+	};
+	const handleStatusLeave = statusHover.onLeave;
 
 	useEffect(() => {
 		const handleMouseMove = (e: MouseEvent) => {
@@ -513,7 +524,11 @@ export function GrpcEditor({
 
 							<div className="flex shrink-0 items-center justify-between border-white/10 border-y bg-inset pr-2">
 								<div className="flex items-center gap-1">
-									<span
+									<button
+										ref={statusRef}
+										type="button"
+										onMouseEnter={handleStatusEnter}
+										onMouseLeave={handleStatusLeave}
 										className="flex items-center gap-1.5 px-3 py-2 font-bold text-xs"
 										style={{
 											color: grpcStatusColor,
@@ -521,7 +536,7 @@ export function GrpcEditor({
 										}}
 									>
 										{grpcStatusLabel}
-									</span>
+									</button>
 									<button
 										ref={timingRef}
 										type="button"
@@ -564,6 +579,18 @@ export function GrpcEditor({
 									onClose={() => sizeHover.setOpen(false)}
 									onMouseEnter={handleSizeEnter}
 									onMouseLeave={handleSizeLeave}
+								/>
+							)}
+							{statusRef.current && (
+								<StatusPopover
+									statusCode={response.statusCode}
+									statusText={response.statusMessage}
+									protocol="grpc"
+									anchorRef={statusRef}
+									open={statusHover.open}
+									onClose={() => statusHover.setOpen(false)}
+									onMouseEnter={handleStatusEnter}
+									onMouseLeave={handleStatusLeave}
 								/>
 							)}
 

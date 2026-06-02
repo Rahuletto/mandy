@@ -10,6 +10,7 @@ import { playSuccessChime } from "../../utils/sounds";
 import { CodeEditor, CodeViewer, GraphQLCodeEditor } from "../CodeMirror";
 import { KeyValueTable } from "../KeyValueTable";
 import { SizePopover } from "../popovers/SizePopover";
+import { StatusPopover } from "../popovers/StatusPopover";
 import { TimingPopover } from "../popovers/TimingPopover";
 import { UrlInput } from "../ui";
 import { AuthEditor } from "./AuthEditor";
@@ -81,16 +82,24 @@ export function GraphQLEditor({
 
 	const [showTimingPopover, setShowTimingPopover] = useState(false);
 	const [showSizePopover, setShowSizePopover] = useState(false);
+	const [showStatusPopover, setShowStatusPopover] = useState(false);
+	const statusRef = useRef<HTMLButtonElement>(null);
 	const timingRef = useRef<HTMLButtonElement>(null);
 	const sizeRef = useRef<HTMLButtonElement>(null);
 	const timingTimeoutRef = useRef<number | null>(null);
 	const sizeTimeoutRef = useRef<number | null>(null);
+	const statusTimeoutRef = useRef<number | null>(null);
 
 	const handleTimingEnter = () => {
 		if (timingTimeoutRef.current) {
 			clearTimeout(timingTimeoutRef.current);
 			timingTimeoutRef.current = null;
 		}
+		if (statusTimeoutRef.current) {
+			clearTimeout(statusTimeoutRef.current);
+			statusTimeoutRef.current = null;
+		}
+		setShowStatusPopover(false);
 		setShowSizePopover(false);
 		setShowTimingPopover(true);
 	};
@@ -106,6 +115,11 @@ export function GraphQLEditor({
 			clearTimeout(sizeTimeoutRef.current);
 			sizeTimeoutRef.current = null;
 		}
+		if (statusTimeoutRef.current) {
+			clearTimeout(statusTimeoutRef.current);
+			statusTimeoutRef.current = null;
+		}
+		setShowStatusPopover(false);
 		setShowTimingPopover(false);
 		setShowSizePopover(true);
 	};
@@ -113,6 +127,22 @@ export function GraphQLEditor({
 	const handleSizeLeave = () => {
 		sizeTimeoutRef.current = window.setTimeout(() => {
 			setShowSizePopover(false);
+		}, 200);
+	};
+
+	const handleStatusEnter = () => {
+		if (statusTimeoutRef.current) {
+			clearTimeout(statusTimeoutRef.current);
+			statusTimeoutRef.current = null;
+		}
+		setShowTimingPopover(false);
+		setShowSizePopover(false);
+		setShowStatusPopover(true);
+	};
+
+	const handleStatusLeave = () => {
+		statusTimeoutRef.current = window.setTimeout(() => {
+			setShowStatusPopover(false);
 		}, 200);
 	};
 
@@ -600,7 +630,11 @@ export function GraphQLEditor({
 
 							<div className="flex shrink-0 items-center justify-between border-white/10 border-y bg-inset pr-2">
 								<div className="flex items-center gap-1">
-									<span
+									<button
+										ref={statusRef}
+										type="button"
+										onMouseEnter={handleStatusEnter}
+										onMouseLeave={handleStatusLeave}
 										className="flex items-center gap-1.5 px-3 py-2 font-bold text-xs"
 										style={{
 											color: getStatusColor(response.status),
@@ -609,7 +643,7 @@ export function GraphQLEditor({
 									>
 										{response.status}{" "}
 										{STATUS_TEXT[response.status] || response.status_text}
-									</span>
+									</button>
 
 									{response.timing && (
 										<>
@@ -665,6 +699,17 @@ export function GraphQLEditor({
 									onClose={() => setShowSizePopover(false)}
 									onMouseEnter={handleSizeEnter}
 									onMouseLeave={handleSizeLeave}
+								/>
+							)}
+							{statusRef.current && response.status != null && (
+								<StatusPopover
+									statusCode={response.status}
+									statusText={response.status_text}
+									anchorRef={statusRef as React.RefObject<HTMLElement>}
+									open={showStatusPopover}
+									onClose={() => setShowStatusPopover(false)}
+									onMouseEnter={handleStatusEnter}
+									onMouseLeave={handleStatusLeave}
 								/>
 							)}
 

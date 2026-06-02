@@ -28,22 +28,35 @@ curl = "0.4"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
 tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 native-tls = "0.2"
-futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+futures-util = { version = "0.3", default-features = false, features = [
+	"sink",
+	"std",
+] }
 base64 = "0.22"
 window-vibrancy = "0.7.1"
 tauri-plugin-liquid-glass = "0.1"
 url = "2"
 tauri-plugin-dialog = "2.7"
 tauri-plugin-fs = "2.5"
+tauri-plugin-opener = "2"
 uuid = { version = "1", features = ["v4"] }
 dashmap = "6"
 rust_socketio = { version = "0.6", features = ["async"] }
 rumqttc = { version = "0.25", default-features = false, features = [
 	"use-native-tls",
 ] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
-tonic = { version = "0.12", features = ["transport", "tls-webpki-roots", "tls-native-roots"] }
+reqwest = { version = "0.12", default-features = false, features = [
+	"rustls-tls",
+	"stream",
+] }
+tonic = { version = "0.12", features = [
+	"transport",
+	"tls-webpki-roots",
+	"tls-native-roots",
+] }
 prost = "0.13"
+flate2 = "1"
+brotli = "7"
 prost-reflect = { version = "0.14", features = ["serde"] }
 prost-types = "0.13"
 protoc-bin-vendored = "3"
@@ -62,22 +75,22 @@ glib = { path = "vendor/glib" }
 tauri-plugin-macos-haptics = "1.0.0"
 objc2 = "0.6.4"
 objc2-app-kit = { version = "0.3.2", default-features = false, features = [
-    "NSApplication",
-    "NSAppearance",
-    "NSDockTile",
-    "NSImage",
-    "NSResponder",
-    "NSAttributedString",
-    "NSParagraphStyle",
-    "NSText",
-    "NSFont",
+	"NSApplication",
+	"NSAppearance",
+	"NSDockTile",
+	"NSImage",
+	"NSResponder",
+	"NSAttributedString",
+	"NSParagraphStyle",
+	"NSText",
+	"NSFont",
 ] }
 objc2-foundation = { version = "0.3.2", default-features = false, features = [
-    "NSString",
-    "NSAttributedString",
-    "NSDictionary",
-    "NSRange",
-    "NSObject",
-    "NSNotification",
-    "NSDistributedNotificationCenter",
+	"NSString",
+	"NSAttributedString",
+	"NSDictionary",
+	"NSRange",
+	"NSObject",
+	"NSNotification",
+	"NSDistributedNotificationCenter",
 ] }

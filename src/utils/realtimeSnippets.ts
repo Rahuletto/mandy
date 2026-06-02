@@ -184,17 +184,37 @@ $client->close();`,
 }
 
 function getMqttSnippetParts(mqtt: MQTTFile) {
+	const subscriptions = mqtt.subscriptions || [];
 	const activeSubscription =
-		mqtt.subscriptions.find(
-			(sub) => sub.enabled !== false && sub.topic.trim(),
-		) || mqtt.subscriptions.find((sub) => sub.topic.trim());
+		subscriptions.find((sub) => sub.enabled !== false && sub.topic.trim()) ||
+		subscriptions.find((sub) => sub.topic.trim());
+	const concreteSubscription =
+		subscriptions.find(
+			(sub) =>
+				sub.enabled !== false &&
+				sub.topic.trim() &&
+				!sub.topic.includes("#") &&
+				!sub.topic.includes("+"),
+		) ||
+		subscriptions.find(
+			(sub) =>
+				sub.topic.trim() &&
+				!sub.topic.includes("#") &&
+				!sub.topic.includes("+"),
+		);
+	const subscribeTopic = activeSubscription?.topic?.trim() || "demo/topic/#";
+	const publishTopic =
+		concreteSubscription?.topic?.trim() ||
+		activeSubscription?.topic?.trim().replace(/[/]?[#]$/, "/1") ||
+		"demo/topic/1";
 
 	return {
 		url: mqtt.url?.trim() || "mqtt://broker.emqx.io:1883",
 		clientId: mqtt.clientId?.trim() || "mandy-client",
 		cleanSession: mqtt.cleanSession !== false,
 		keepAlive: mqtt.keepAliveSecs || 30,
-		topic: activeSubscription?.topic?.trim() || "demo/topic",
+		subscribeTopic,
+		publishTopic,
 		qos: activeSubscription?.qos ?? 0,
 	};
 }
@@ -203,8 +223,15 @@ export function generateMqttSnippet(
 	mqtt: MQTTFile,
 	lang: MqttSnippetLang,
 ): { code: string; language: Language } {
-	const { url, clientId, cleanSession, keepAlive, topic, qos } =
-		getMqttSnippetParts(mqtt);
+	const {
+		url,
+		clientId,
+		cleanSession,
+		keepAlive,
+		subscribeTopic,
+		publishTopic,
+		qos,
+	} = getMqttSnippetParts(mqtt);
 
 	switch (lang) {
 		case "JavaScript":
@@ -220,8 +247,8 @@ const client = mqtt.connect("${url}", {
 
 client.on("connect", () => {
   console.log("connected");
-  client.subscribe("${topic}", { qos: ${qos} });
-  client.publish("${topic}", JSON.stringify({ hello: "world" }), { qos: ${qos} });
+  client.subscribe("${subscribeTopic}", { qos: ${qos} });
+  client.publish("${publishTopic}", JSON.stringify({ hello: "world" }), { qos: ${qos} });
 });
 
 client.on("message", (topic, payload) => {
@@ -237,8 +264,8 @@ client = mqtt.Client(client_id="${clientId}", clean_session=${cleanSession ? "Tr
 
 def on_connect(client, userdata, flags, rc):
     print("connected", rc)
-    client.subscribe("${topic}", qos=${qos})
-    client.publish("${topic}", '{"hello":"world"}', qos=${qos})
+    client.subscribe("${subscribeTopic}", qos=${qos})
+    client.publish("${publishTopic}", '{"hello":"world"}', qos=${qos})
 
 def on_message(client, userdata, msg):
     print(msg.topic, msg.payload.decode())
@@ -269,11 +296,11 @@ func main() {
 \t\tpanic(token.Error())
 \t}
 
-\tclient.Subscribe("${topic}", ${qos}, func(_ MQTT.Client, msg MQTT.Message) {
+\tclient.Subscribe("${subscribeTopic}", ${qos}, func(_ MQTT.Client, msg MQTT.Message) {
 \t\tfmt.Println(msg.Topic(), string(msg.Payload()))
 \t})
 
-\tclient.Publish("${topic}", ${qos}, false, []byte("{\\"hello\\":\\"world\\"}"))
+\tclient.Publish("${publishTopic}", ${qos}, false, []byte("{\\"hello\\":\\"world\\"}"))
 \tselect {}`,
 			};
 		case "Rust":
@@ -288,8 +315,8 @@ fn main() {
     options.set_clean_session(${cleanSession});
 
     let (mut client, mut connection) = Client::new(options, 10);
-    client.subscribe("${topic}", QoS::AtLeastOnce).unwrap();
-    client.publish("${topic}", QoS::AtLeastOnce, false, r#"{"hello":"world"}"#).unwrap();
+    client.subscribe("${subscribeTopic}", QoS::AtLeastOnce).unwrap();
+    client.publish("${publishTopic}", QoS::AtLeastOnce, false, r#"{"hello":"world"}"#).unwrap();
 
     for event in connection.iter() {
         if let Ok(Event::Incoming(Incoming::Publish(packet))) = event {
@@ -311,8 +338,8 @@ public class Main {
         options.setKeepAliveInterval(${keepAlive});
 
         client.connect(options);
-        client.subscribe("${topic}", ${qos});
-        client.publish("${topic}", new MqttMessage("{\\"hello\\":\\"world\\"}".getBytes()));
+        client.subscribe("${subscribeTopic}", ${qos});
+        client.publish("${publishTopic}", new MqttMessage("{\\"hello\\":\\"world\\"}".getBytes()));
     }
 }`,
 			};
@@ -320,10 +347,10 @@ public class Main {
 			return {
 				language: "shell",
 				code: `# Subscribe
-mosquitto_sub -h ${url.replace(/^mqtts?:\/\//, "").replace(/:\d+.*$/, "")} -p ${Number(url.match(/:(\d+)/)?.[1] || 1883)} -t "${topic}" -q ${qos}
+mosquitto_sub -h ${url.replace(/^mqtts?:\/\//, "").replace(/:\d+.*$/, "")} -p ${Number(url.match(/:(\d+)/)?.[1] || 1883)} -t "${subscribeTopic}" -q ${qos}
 
 # Publish
-mosquitto_pub -h ${url.replace(/^mqtts?:\/\//, "").replace(/:\d+.*$/, "")} -p ${Number(url.match(/:(\d+)/)?.[1] || 1883)} -t "${topic}" -q ${qos} -m '{"hello":"world"}'`,
+mosquitto_pub -h ${url.replace(/^mqtts?:\/\//, "").replace(/:\d+.*$/, "")} -p ${Number(url.match(/:(\d+)/)?.[1] || 1883)} -t "${publishTopic}" -q ${qos} -m '{"hello":"world"}'`,
 			};
 	}
 }

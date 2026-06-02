@@ -24,6 +24,7 @@ function request(id: string, name: string): RequestFile {
 			request_label: null,
 			cancel_key: null,
 		},
+		response: null,
 	};
 }
 

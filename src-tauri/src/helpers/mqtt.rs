@@ -63,6 +63,20 @@ fn qos_from_u8(value: u8) -> Result<QoS, String> {
     }
 }
 
+fn validate_publish_topic(topic: &str) -> Result<(), String> {
+    let trimmed = topic.trim();
+    if trimmed.is_empty() {
+        return Err("Publish topic cannot be empty".to_string());
+    }
+    if trimmed.contains('#') || trimmed.contains('+') {
+        return Err(
+            "Publish topic cannot contain wildcards ('#' or '+'). Use a concrete topic."
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
 fn effective_client_id(req: &MqttConnectRequest) -> String {
     if req.client_id.trim().is_empty() {
         format!("mandy-{}", uuid::Uuid::new_v4())
@@ -202,6 +216,8 @@ pub async fn mqtt_publish(
     req: MqttPublishRequest,
     registry: tauri::State<'_, Arc<MqttRegistry>>,
 ) -> Result<(), String> {
+    validate_publish_topic(&req.topic)?;
+
     let client = registry
         .get_client(&req.connection_id)
         .ok_or_else(|| format!("No active MQTT connection '{}'", req.connection_id))?;

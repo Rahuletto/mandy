@@ -1,0 +1,43 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"ignorePatterns": [
+		"**/src-tauri/target/**",
+		"**/.vite/**",
+		"**/coverage/**",
+		"src/bindings.ts"
+	],
+	"plugins": ["jsx-a11y", "typescript", "unicorn", "oxc"],
+	"categories": {
+		"correctness": "error"
+	},
+	"rules": {
+		"eslint/no-unused-vars": "warn",
+		"eslint/no-unused-expressions": "warn",
+		"typescript/no-explicit-any": "warn",
+		"typescript/no-non-null-assertion": "warn",
+		"jsx-a11y/control-has-associated-label": "warn",
+		"jsx-a11y/label-has-associated-control": "warn",
+		"jsx-a11y/no-noninteractive-element-interactions": "warn",
+		"jsx-a11y/no-static-element-interactions": "warn",
+		"jsx-a11y/click-events-have-key-events": "warn",
+		"jsx-a11y/media-has-caption": "warn",
+		"unicorn/no-useless-fallback-in-spread": "warn"
+	},
+	"overrides": [
+		{
+			"files": [
+				"src/utils/migration/**/*.ts",
+				"src/migration/**/*.ts",
+				"src/utils/hardenedsandbox.ts",
+				"src/utils/overviewUtils.ts",
+				"src/types/overview.ts"
+			],
+			"rules": {
+				"typescript/no-explicit-any": "off"
+			}
+		}
+	],
+	"env": {
+		"builtin": true
+	}
+}

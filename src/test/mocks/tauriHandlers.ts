@@ -46,6 +46,7 @@ export function createMockApiResponse(
 		headers: { "content-type": "application/json" },
 		cookies: [],
 		body_base64,
+		decoded_body_base64: null,
 		timing: zeroTiming,
 		request_size: { headers_bytes: 120, body_bytes: 0, total_bytes: 120 },
 		response_size: {
@@ -59,6 +60,10 @@ export function createMockApiResponse(
 		available_renderers: ["Raw", "Json"],
 		detected_content_type: "application/json",
 		protocol_used: "HTTP/2",
+		content_encoding: null,
+		transfer_encoding: null,
+		decoded_by_curl: true,
+		raw_body_available: false,
 		error: null,
 		...overrides,
 	};
@@ -74,6 +79,7 @@ export function createTauriMockHandler(): (
 			case "rest_request":
 				return createMockApiResponse();
 			case "rest_cancel_request":
+			case "rest_oauth2_token":
 			case "set_dock_badge":
 			case "ws_disconnect":
 			case "ws_send":

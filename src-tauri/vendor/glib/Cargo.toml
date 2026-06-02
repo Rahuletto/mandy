@@ -9,9 +9,7 @@ version = "0.18.6"
 keywords = ["glib", "gtk-rs", "gnome", "GUI"]
 repository = "https://github.com/gtk-rs/gtk-rs-core"
 license = "MIT"
-exclude = [
-    "gir-files/*",
-]
+exclude = ["gir-files/*"]
 edition = "2021"
 rust-version = "1.70"
 
@@ -31,7 +29,11 @@ ffi = { package = "glib-sys", version = "0.18" }
 gobject_ffi = { package = "gobject-sys", version = "0.18" }
 glib-macros = { version = "0.18" }
 rs-log = { package = "log", version = "0.4", optional = true }
-smallvec = { version = "1.0", features = ["union", "const_generics", "const_new"] }
+smallvec = { version = "1.0", features = [
+	"union",
+	"const_generics",
+	"const_new",
+] }
 thiserror = "1"
 gio_ffi = { package = "gio-sys", version = "0.18", optional = true }
 memchr = "2.5.0"

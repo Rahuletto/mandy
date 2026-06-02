@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { BiChevronDown, BiLinkExternal, BiShieldQuarter } from "react-icons/bi";
 import type { ApiKeyLocation, AuthType } from "../../bindings";
+import { getOAuth2TokenCached } from "../../reqhelpers/rest";
 import { Dropdown, EnvInput } from "../ui";
 
 interface AuthEditorProps {
@@ -14,13 +15,25 @@ interface AuthEditorProps {
 	isProject?: boolean;
 }
 
-type AuthMethod = "None" | "Basic" | "Bearer" | "ApiKey";
+type AuthMethod =
+	| "None"
+	| "Basic"
+	| "Bearer"
+	| "ApiKey"
+	| "Digest"
+	| "Ntlm"
+	| "MutualTls"
+	| "OAuth2";
 
 const AUTH_METHODS: { id: AuthMethod; label: string }[] = [
 	{ id: "None", label: "None" },
 	{ id: "Basic", label: "Basic Auth" },
 	{ id: "Bearer", label: "Bearer" },
 	{ id: "ApiKey", label: "API Key" },
+	{ id: "Digest", label: "Digest Auth" },
+	{ id: "Ntlm", label: "NTLM" },
+	{ id: "MutualTls", label: "mTLS" },
+	{ id: "OAuth2", label: "OAuth 2.0" },
 ];
 
 function getAuthMethod(auth: AuthType): AuthMethod {
@@ -29,6 +42,10 @@ function getAuthMethod(auth: AuthType): AuthMethod {
 		if ("Basic" in auth) return "Basic";
 		if ("Bearer" in auth) return "Bearer";
 		if ("ApiKey" in auth) return "ApiKey";
+		if ("Digest" in auth) return "Digest";
+		if ("Ntlm" in auth) return "Ntlm";
+		if ("MutualTls" in auth) return "MutualTls";
+		if ("OAuth2" in auth) return "OAuth2";
 	}
 	return "None";
 }
@@ -44,6 +61,8 @@ export function AuthEditor({
 	isProject,
 }: AuthEditorProps) {
 	const [showSelector, setShowSelector] = useState(false);
+	const [oauthTokenLoading, setOauthTokenLoading] = useState(false);
+	const [oauthTokenError, setOauthTokenError] = useState<string | null>(null);
 
 	const hasProjectAuth = projectAuth && projectAuth !== "None";
 	const effectiveAuth = isInherited && hasProjectAuth ? projectAuth : auth;
@@ -69,6 +88,39 @@ export function AuthEditor({
 				break;
 			case "ApiKey":
 				onChange({ ApiKey: { key: "", value: "", add_to: "Header" } });
+				break;
+			case "Digest":
+				onChange({ Digest: { username: "", password: "" } });
+				break;
+			case "Ntlm":
+				onChange({ Ntlm: { username: "", password: "", domain: null } });
+				break;
+			case "MutualTls":
+				onChange({
+					MutualTls: {
+						cert_pem: "",
+						key_pem: "",
+						key_passphrase: null,
+						ca_pem: null,
+						insecure_skip_verify: null,
+					},
+				});
+				break;
+			case "OAuth2":
+				onChange({
+					OAuth2: {
+						mode: "ClientCredentials",
+						token: null,
+						client_id: null,
+						client_secret: null,
+						token_url: null,
+						scopes: null,
+						auth_url: null,
+						redirect_uri: null,
+						pkce: null,
+						refresh_token: null,
+					},
+				});
 				break;
 		}
 		setShowSelector(false);
@@ -222,17 +274,359 @@ export function AuthEditor({
 													authValue.ApiKey.add_to === loc
 														? "border-accent/20 bg-accent/10 text-accent"
 														: "border-white/5 bg-white/5 text-white/40" +
-															(
-																!disabled
-																	? "hover:bg-white/10 hover:text-white/60"
-																	: ""
-															)
+															(!disabled
+																? "hover:bg-white/10 hover:text-white/60"
+																: "")
 												} ${disabled ? "cursor-default" : "cursor-pointer"}`}
 											>
 												{loc}
 											</button>
 										))}
 									</div>
+								</div>
+							</>
+						)}
+					{method === "Digest" &&
+						typeof authValue === "object" &&
+						"Digest" in authValue && (
+							<>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Username
+									</label>
+									<EnvInput
+										value={authValue.Digest.username}
+										onChange={(v) =>
+											!disabled &&
+											onChange({
+												Digest: { ...authValue.Digest, username: v },
+											})
+										}
+										placeholder="Username"
+										availableVariables={availableVariables}
+										disabled={disabled}
+										className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Password
+									</label>
+									<EnvInput
+										type="password"
+										value={authValue.Digest.password}
+										onChange={(v) =>
+											!disabled &&
+											onChange({
+												Digest: { ...authValue.Digest, password: v },
+											})
+										}
+										placeholder="Password"
+										availableVariables={availableVariables}
+										disabled={disabled}
+										className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+									/>
+								</div>
+							</>
+						)}
+					{method === "Ntlm" &&
+						typeof authValue === "object" &&
+						"Ntlm" in authValue && (
+							<>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Username
+									</label>
+									<EnvInput
+										value={authValue.Ntlm.username}
+										onChange={(v) =>
+											!disabled &&
+											onChange({ Ntlm: { ...authValue.Ntlm, username: v } })
+										}
+										placeholder="Username"
+										availableVariables={availableVariables}
+										disabled={disabled}
+										className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Password
+									</label>
+									<EnvInput
+										type="password"
+										value={authValue.Ntlm.password}
+										onChange={(v) =>
+											!disabled &&
+											onChange({ Ntlm: { ...authValue.Ntlm, password: v } })
+										}
+										placeholder="Password"
+										availableVariables={availableVariables}
+										disabled={disabled}
+										className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Domain (optional)
+									</label>
+									<EnvInput
+										value={authValue.Ntlm.domain ?? ""}
+										onChange={(v) =>
+											!disabled &&
+											onChange({
+												Ntlm: {
+													...authValue.Ntlm,
+													domain: v.trim() ? v : null,
+												},
+											})
+										}
+										placeholder="MYDOMAIN"
+										availableVariables={availableVariables}
+										disabled={disabled}
+										className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+									/>
+								</div>
+							</>
+						)}
+					{method === "MutualTls" &&
+						typeof authValue === "object" &&
+						"MutualTls" in authValue && (
+							<>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Client certificate PEM
+									</label>
+									<textarea
+										value={authValue.MutualTls.cert_pem}
+										onChange={(e) =>
+											!disabled &&
+											onChange({
+												MutualTls: {
+													...authValue.MutualTls,
+													cert_pem: e.target.value,
+												},
+											})
+										}
+										placeholder="-----BEGIN CERTIFICATE-----"
+										disabled={disabled}
+										className="h-24 w-full resize-none rounded-lg border border-white/5 bg-white/5 p-2.5 font-mono text-xs transition-all focus:border-accent/30 focus:outline-none"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Client private key PEM
+									</label>
+									<textarea
+										value={authValue.MutualTls.key_pem}
+										onChange={(e) =>
+											!disabled &&
+											onChange({
+												MutualTls: {
+													...authValue.MutualTls,
+													key_pem: e.target.value,
+												},
+											})
+										}
+										placeholder="-----BEGIN PRIVATE KEY-----"
+										disabled={disabled}
+										className="h-24 w-full resize-none rounded-lg border border-white/5 bg-white/5 p-2.5 font-mono text-xs transition-all focus:border-accent/30 focus:outline-none"
+									/>
+								</div>
+							</>
+						)}
+					{method === "OAuth2" &&
+						typeof authValue === "object" &&
+						"OAuth2" in authValue && (
+							<>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Mode
+									</label>
+									<div className="flex gap-2">
+										{(
+											[
+												{
+													id: "ClientCredentials",
+													label: "Client Credentials",
+												},
+												{
+													id: "AuthorizationCodePkce",
+													label: "Auth Code + PKCE",
+												},
+												{ id: "ManualBearer", label: "Manual Bearer" },
+											] as const
+										).map((m) => (
+											<button
+												type="button"
+												key={m.id}
+												disabled={disabled}
+												onClick={() =>
+													!disabled &&
+													onChange({
+														OAuth2: {
+															...authValue.OAuth2,
+															mode: m.id,
+														},
+													})
+												}
+												className={`rounded-lg border px-3 py-2 font-medium text-xs transition-all ${
+													authValue.OAuth2.mode === m.id
+														? "border-accent/20 bg-accent/10 text-accent"
+														: "border-white/5 bg-white/5 text-white/40"
+												}`}
+											>
+												{m.label}
+											</button>
+										))}
+									</div>
+								</div>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Access token
+									</label>
+									<EnvInput
+										value={authValue.OAuth2.token ?? ""}
+										onChange={(v) =>
+											!disabled &&
+											onChange({
+												OAuth2: { ...authValue.OAuth2, token: v || null },
+											})
+										}
+										placeholder="Bearer token"
+										availableVariables={availableVariables}
+										disabled={disabled}
+										className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Token URL
+									</label>
+									<EnvInput
+										value={authValue.OAuth2.token_url ?? ""}
+										onChange={(v) =>
+											!disabled &&
+											onChange({
+												OAuth2: { ...authValue.OAuth2, token_url: v || null },
+											})
+										}
+										placeholder="https://auth.example.com/oauth/token"
+										availableVariables={availableVariables}
+										disabled={disabled}
+										className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+									/>
+								</div>
+								<div className="grid grid-cols-2 gap-3">
+									<div className="space-y-1.5">
+										<label className="px-1 font-medium text-[10px] text-white/30">
+											Client ID
+										</label>
+										<EnvInput
+											value={authValue.OAuth2.client_id ?? ""}
+											onChange={(v) =>
+												!disabled &&
+												onChange({
+													OAuth2: { ...authValue.OAuth2, client_id: v || null },
+												})
+											}
+											placeholder="client_id"
+											availableVariables={availableVariables}
+											disabled={disabled}
+											className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<label className="px-1 font-medium text-[10px] text-white/30">
+											Client Secret
+										</label>
+										<EnvInput
+											type="password"
+											value={authValue.OAuth2.client_secret ?? ""}
+											onChange={(v) =>
+												!disabled &&
+												onChange({
+													OAuth2: {
+														...authValue.OAuth2,
+														client_secret: v || null,
+													},
+												})
+											}
+											placeholder="client_secret"
+											availableVariables={availableVariables}
+											disabled={disabled}
+											className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+										/>
+									</div>
+								</div>
+								<div className="space-y-1.5">
+									<label className="px-1 font-medium text-[10px] text-white/30">
+										Scopes (space separated)
+									</label>
+									<EnvInput
+										value={authValue.OAuth2.scopes?.join(" ") ?? ""}
+										onChange={(v) =>
+											!disabled &&
+											onChange({
+												OAuth2: {
+													...authValue.OAuth2,
+													scopes: v.trim() ? v.trim().split(/\s+/) : null,
+												},
+											})
+										}
+										placeholder="read write"
+										availableVariables={availableVariables}
+										disabled={disabled}
+										className="w-full rounded-lg border border-white/5 bg-white/5 py-2.5 transition-all focus-within:border-accent/30"
+									/>
+								</div>
+								<div className="flex items-center gap-2">
+									<button
+										type="button"
+										disabled={
+											disabled ||
+											oauthTokenLoading ||
+											!authValue.OAuth2.token_url ||
+											!authValue.OAuth2.client_id
+										}
+										onClick={async () => {
+											try {
+												setOauthTokenError(null);
+												setOauthTokenLoading(true);
+												const tokenResp = await getOAuth2TokenCached({
+													token_url: authValue.OAuth2.token_url || "",
+													client_id: authValue.OAuth2.client_id || "",
+													client_secret: authValue.OAuth2.client_secret,
+													scopes: authValue.OAuth2.scopes,
+													grant_type: "client_credentials",
+													refresh_token: authValue.OAuth2.refresh_token,
+												});
+												onChange({
+													OAuth2: {
+														...authValue.OAuth2,
+														token: tokenResp.access_token,
+														refresh_token: tokenResp.refresh_token,
+													},
+												});
+											} catch (error) {
+												setOauthTokenError(
+													error instanceof Error
+														? error.message
+														: "Token fetch failed",
+												);
+											} finally {
+												setOauthTokenLoading(false);
+											}
+										}}
+										className="rounded-lg bg-accent px-3 py-2 font-medium text-background text-xs transition-all hover:bg-accent/80 disabled:cursor-not-allowed disabled:opacity-50"
+									>
+										{oauthTokenLoading ? "Fetching..." : "Fetch token"}
+									</button>
+									{oauthTokenError && (
+										<span className="text-[11px] text-red">
+											{oauthTokenError}
+										</span>
+									)}
 								</div>
 							</>
 						)}
@@ -275,6 +669,14 @@ export function AuthEditor({
 							"The authorization header will be generated automatically as Basic base64(user:pass)."}
 						{method === "Bearer" &&
 							"The authorization header will be generated as Bearer <token>."}
+						{method === "Digest" &&
+							"Digest challenge-response is negotiated by Mandy automatically."}
+						{method === "Ntlm" &&
+							"NTLM challenge-response is negotiated by Mandy automatically."}
+						{method === "MutualTls" &&
+							"Client certificate is attached during TLS handshake."}
+						{method === "OAuth2" &&
+							"OAuth 2.0 uses the configured bearer token for this request."}
 					</p>
 				)}
 			</div>

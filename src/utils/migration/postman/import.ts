@@ -57,6 +57,25 @@ function parsePostmanAuth(auth: PostmanAuth | null | undefined): AuthType {
 			},
 		};
 	}
+	if (auth.type === "digest" && (auth as any).digest) {
+		const digestAttrs = (auth as any).digest as Array<{
+			key: string;
+			value?: string;
+		}>;
+		const username = digestAttrs.find((a) => a.key === "username")?.value || "";
+		const password = digestAttrs.find((a) => a.key === "password")?.value || "";
+		return { Digest: { username, password } };
+	}
+	if (auth.type === "ntlm" && (auth as any).ntlm) {
+		const ntlmAttrs = (auth as any).ntlm as Array<{
+			key: string;
+			value?: string;
+		}>;
+		const username = ntlmAttrs.find((a) => a.key === "username")?.value || "";
+		const password = ntlmAttrs.find((a) => a.key === "password")?.value || "";
+		const domain = ntlmAttrs.find((a) => a.key === "domain")?.value || null;
+		return { Ntlm: { username, password, domain } };
+	}
 
 	return "None";
 }
