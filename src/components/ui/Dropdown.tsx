@@ -46,8 +46,15 @@ export function Dropdown({
 		? "min(17rem, calc(100vh - 72px))"
 		: maxHeight;
 	const ref = useRef<HTMLDivElement>(null);
+	const searchInputRef = useRef<HTMLInputElement>(null);
 	const [isVisible, setIsVisible] = useState(false);
 	const [pos, setPos] = useState({ left: -9999, top: -9999 });
+
+	useEffect(() => {
+		if (hasSearch) {
+			searchInputRef.current?.focus();
+		}
+	}, [hasSearch]);
 
 	useLayoutEffect(() => {
 		if (!ref.current) return;
@@ -109,7 +116,7 @@ export function Dropdown({
 			style={{ left: pos.left, top: pos.top }}
 		>
 			{hasSearch ? (
-				<label
+				<div
 					className="flex shrink-0 items-center gap-2 border-white/10 border-b px-3 py-2"
 					onMouseDown={(event) => event.stopPropagation()}
 				>
@@ -125,14 +132,15 @@ export function Dropdown({
 						<path d="m20 20-3.5-3.5" />
 					</svg>
 					<input
+						ref={searchInputRef}
 						type="search"
 						value={searchValue}
 						onChange={(event) => onSearchValueChange(event.target.value)}
 						placeholder={searchPlaceholder}
-						autoFocus
+						aria-label={searchPlaceholder}
 						className="min-w-0 flex-1 border-none bg-transparent text-xs text-white outline-none placeholder:text-white/30"
 					/>
-				</label>
+				</div>
 			) : null}
 			<div
 				className="overflow-y-auto overscroll-contain py-2"
