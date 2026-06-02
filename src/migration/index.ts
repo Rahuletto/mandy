@@ -10,7 +10,7 @@ import { generateId } from "../utils/migration/shared";
 export const CURRENT_PROJECT_SCHEMA_VERSION = 1;
 
 /** Zustand persist key version (localStorage layout); separate from project schema. */
-export const ZUSTAND_PERSIST_VERSION = 2 as const;
+export const ZUSTAND_PERSIST_VERSION = 3 as const;
 
 const LEGACY_ACTIVE_ID_KEYS = [
 	"activeRequestId",

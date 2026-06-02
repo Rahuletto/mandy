@@ -1,9 +1,11 @@
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use dashmap::DashMap;
 use rumqttc::{
-    AsyncClient, Event, Incoming, MqttOptions, QoS, TlsConfiguration, Transport,
+    AsyncClient, ConnectReturnCode, Event, Incoming, MqttOptions, QoS, TlsConfiguration,
+    Transport,
 };
 use tauri::{AppHandle, Emitter};
 use tokio::task::JoinHandle;
@@ -17,25 +19,64 @@ use crate::types::{
 struct MqttConnection {
     client: AsyncClient,
     task: JoinHandle<()>,
+    generation: u64,
 }
 
-pub struct MqttRegistry(DashMap<String, MqttConnection>);
+pub struct MqttRegistry {
+    connections: DashMap<String, MqttConnection>,
+    generation: AtomicU64,
+}
 
 impl MqttRegistry {
     pub fn new() -> Self {
-        Self(DashMap::new())
+        Self {
+            connections: DashMap::new(),
+            generation: AtomicU64::new(0),
+        }
+    }
+
+    fn next_generation(&self) -> u64 {
+        self.generation.fetch_add(1, Ordering::Relaxed)
     }
 
     fn insert(&self, id: String, connection: MqttConnection) -> Option<MqttConnection> {
-        self.0.insert(id, connection)
+        self.connections.insert(id, connection)
     }
 
     fn remove(&self, id: &str) -> Option<(String, MqttConnection)> {
-        self.0.remove(id)
+        self.connections.remove(id)
     }
 
     fn get_client(&self, id: &str) -> Option<AsyncClient> {
-        self.0.get(id).map(|entry| entry.client.clone())
+        self.connections.get(id).map(|entry| entry.client.clone())
+    }
+
+    fn active_generation(&self, id: &str) -> Option<u64> {
+        self.connections.get(id).map(|entry| entry.generation)
+    }
+}
+
+const MQTT_CONNACK_TIMEOUT: Duration = Duration::from_secs(15);
+
+async fn wait_for_connack(event_loop: &mut rumqttc::EventLoop) -> Result<(), String> {
+    let deadline = tokio::time::Instant::now() + MQTT_CONNACK_TIMEOUT;
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        if remaining.is_zero() {
+            return Err("Connection timed out waiting for broker".to_string());
+        }
+
+        match tokio::time::timeout(remaining, event_loop.poll()).await {
+            Ok(Ok(Event::Incoming(Incoming::ConnAck(connack)))) => {
+                if connack.code == ConnectReturnCode::Success {
+                    return Ok(());
+                }
+                return Err(format!("Broker refused connection: {:?}", connack.code));
+            }
+            Ok(Ok(_)) => continue,
+            Ok(Err(error)) => return Err(error.to_string()),
+            Err(_) => return Err("Connection timed out waiting for broker".to_string()),
+        }
     }
 }
 
@@ -143,6 +184,8 @@ pub async fn mqtt_connect(
 
     let (client, mut event_loop) = AsyncClient::new(options, 50);
 
+    wait_for_connack(&mut event_loop).await?;
+
     for subscription in &req.subscriptions {
         client
             .subscribe(subscription.topic.clone(), qos_from_u8(subscription.qos)?)
@@ -154,6 +197,7 @@ pub async fn mqtt_connect(
     let conn_id_for_task = conn_id.clone();
     let app_handle = app.clone();
     let registry_for_task = Arc::clone(&registry);
+    let generation = registry.next_generation();
 
     let task = tokio::spawn(async move {
         loop {
@@ -177,14 +221,19 @@ pub async fn mqtt_connect(
                 }
                 Ok(_) => {}
                 Err(error) => {
-                    registry_for_task.remove(&conn_id_for_task);
-                    let _ = app_handle.emit(
-                        &mqtt_disconnected_event(&conn_id_for_task),
-                        MqttDisconnectedEvent {
-                            connection_id: conn_id_for_task.clone(),
-                            reason: error.to_string(),
-                        },
-                    );
+                    let still_active = registry_for_task
+                        .active_generation(&conn_id_for_task)
+                        .is_some_and(|active| active == generation);
+                    if still_active {
+                        registry_for_task.remove(&conn_id_for_task);
+                        let _ = app_handle.emit(
+                            &mqtt_disconnected_event(&conn_id_for_task),
+                            MqttDisconnectedEvent {
+                                connection_id: conn_id_for_task.clone(),
+                                reason: error.to_string(),
+                            },
+                        );
+                    }
                     break;
                 }
             }
@@ -196,6 +245,7 @@ pub async fn mqtt_connect(
         MqttConnection {
             client: client.clone(),
             task,
+            generation,
         },
     ) {
         let _ = previous.client.disconnect().await;

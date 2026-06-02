@@ -640,7 +640,7 @@ function App() {
 											openProjectRootOverview(p.id);
 											setShowProjectDropdown(false);
 										},
-										onContextMenu: (event: ReactMouseEvent<HTMLDivElement>) => {
+										onContextMenu: (event: ReactMouseEvent) => {
 											event.preventDefault();
 											event.stopPropagation();
 											const MENU_WIDTH = 144;

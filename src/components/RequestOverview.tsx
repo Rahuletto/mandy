@@ -1,24 +1,22 @@
 import type React from "react";
 import { useMemo, useState } from "react";
 import { decodeBody } from "../reqhelpers/rest";
+import { useProjectStore } from "../stores/projectStore";
 import type { ObjectDefinition } from "../types/overview";
 import type { RequestFile } from "../types/project";
+import {
+	generateRestSnippet,
+	getDefaultRestSnippetId,
+	getLegacyLanguageSnippetId,
+	listRestSnippetProfiles,
+} from "../utils/restSnippets";
 import {
 	extractDefinitions,
 	getTypeColor,
 	scrollToId,
 } from "../utils/overviewUtils";
-import {
-	generateCurl,
-	generateFetch,
-	generateGo,
-	generateJava,
-	generatePHP,
-	generatePythonRequests,
-	generateRust,
-} from "../utils/snippets";
 import { OverviewLayout } from "./editors/OverviewLayout";
-import type { MenuItem } from "./ui";
+import type { DropdownItem } from "./ui";
 
 interface RequestOverviewProps {
 	activeRequest: RequestFile;
@@ -29,18 +27,6 @@ interface RequestOverviewProps {
 	onSwitchToBody: () => void;
 }
 
-const SNIPPET_OPTIONS = [
-	"Shell cURL",
-	"JavaScript Fetch",
-	"Python Requests",
-	"Go Native",
-	"Rust Reqwest",
-	"Java HttpClient",
-	"PHP Guzzle",
-] as const;
-
-type SnippetLang = (typeof SNIPPET_OPTIONS)[number];
-
 export const RequestOverview: React.FC<RequestOverviewProps> = ({
 	activeRequest,
 	onRun,
@@ -49,51 +35,27 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
 	onUpdatePropertyDescription,
 	onSwitchToBody,
 }) => {
-	const [snippetLang, setSnippetLang] = useState<SnippetLang>("Shell cURL");
 	const [showSnippetDropdown, setShowSnippetDropdown] = useState(false);
+	const [snippetSearch, setSnippetSearch] = useState("");
 	const [editingProperty, setEditingProperty] = useState<string | null>(null);
 	const [propDescValue, setPropDescValue] = useState("");
+	const selectedLanguage = useProjectStore((state) => state.selectedLanguage);
+	const selectedRestSnippetId = useProjectStore(
+		(state) => state.selectedRestSnippetId,
+	);
+	const setSelectedRestSnippetId = useProjectStore(
+		(state) => state.setSelectedRestSnippetId,
+	);
 
-	const getSnippet = () => {
-		switch (snippetLang) {
-			case "Shell cURL":
-				return {
-					code: generateCurl(activeRequest.request),
-					lang: "shell" as const,
-				};
-			case "JavaScript Fetch":
-				return {
-					code: generateFetch(activeRequest.request),
-					lang: "javascript" as const,
-				};
-			case "Python Requests":
-				return {
-					code: generatePythonRequests(activeRequest.request),
-					lang: "python" as const,
-				};
-			case "Go Native":
-				return { code: generateGo(activeRequest.request), lang: "go" as const };
-			case "Rust Reqwest":
-				return {
-					code: generateRust(activeRequest.request),
-					lang: "rust" as const,
-				};
-			case "Java HttpClient":
-				return {
-					code: generateJava(activeRequest.request),
-					lang: "java" as const,
-				};
-			case "PHP Guzzle":
-				return {
-					code: generatePHP(activeRequest.request),
-					lang: "php" as const,
-				};
-			default:
-				return { code: "", lang: "text" as const };
-		}
-	};
-
-	const { code: snippetCode, lang: currentLang } = getSnippet();
+	const snippetProfiles = useMemo(() => listRestSnippetProfiles(), []);
+	const activeSnippetId =
+		selectedRestSnippetId ||
+		getLegacyLanguageSnippetId(selectedLanguage) ||
+		getDefaultRestSnippetId();
+	const { code: snippetCode, language: currentLang } = generateRestSnippet(
+		activeSnippetId,
+		activeRequest.request,
+	);
 
 	const definitions = useMemo(() => {
 		let allDefs: ObjectDefinition[] = [];
@@ -271,13 +233,35 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
 						? "bg-red/20 text-red"
 						: "bg-gray-500/20 text-gray-400";
 
-	const snippetDropdownItems: MenuItem[] = SNIPPET_OPTIONS.map((label) => ({
-		label,
-		onClick: () => {
-			setSnippetLang(label);
-			setShowSnippetDropdown(false);
-		},
-	}));
+	const filteredSnippetProfiles = useMemo(() => {
+		const query = snippetSearch.trim().toLowerCase();
+		if (!query) return snippetProfiles;
+		return snippetProfiles.filter((profile) =>
+			`${profile.languageGroup} ${profile.clientLabel} ${profile.label}`
+				.toLowerCase()
+				.includes(query),
+		);
+	}, [snippetProfiles, snippetSearch]);
+
+	const snippetDropdownItems: DropdownItem[] = useMemo(() => {
+		const items: DropdownItem[] = [];
+		let previousGroup = "";
+		for (const profile of filteredSnippetProfiles) {
+			if (previousGroup !== profile.languageGroup) {
+				previousGroup = profile.languageGroup;
+				items.push({ label: previousGroup, header: true });
+			}
+			items.push({
+				label: profile.clientLabel,
+				active: profile.id === activeSnippetId,
+				onClick: () => {
+					setSelectedRestSnippetId(profile.id);
+					setShowSnippetDropdown(false);
+				},
+			});
+		}
+		return items;
+	}, [activeSnippetId, filteredSnippetProfiles, setSelectedRestSnippetId]);
 
 	const leftFooter = (
 		<>
@@ -372,10 +356,16 @@ export const RequestOverview: React.FC<RequestOverviewProps> = ({
 			panelBadge={activeRequest.request.method}
 			panelBadgeClassName={methodBadgeClassName}
 			panelSubtitle={activeRequest.name || "/"}
-			snippetDropdownLabel={snippetLang}
+			snippetDropdownLabel={
+				snippetProfiles.find((profile) => profile.id === activeSnippetId)
+					?.label ?? "Snippet"
+			}
 			snippetDropdownOpen={showSnippetDropdown}
 			onSnippetDropdownOpenChange={setShowSnippetDropdown}
 			snippetDropdownItems={snippetDropdownItems}
+			snippetDropdownSearchValue={snippetSearch}
+			onSnippetDropdownSearchChange={setSnippetSearch}
+			snippetDropdownSearchPlaceholder="Filter…"
 			snippetCode={snippetCode}
 			snippetViewerLanguage={currentLang}
 			action={

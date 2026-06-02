@@ -1,6 +1,6 @@
 import { type ReactNode, useState } from "react";
 import type { Language } from "../CodeMirror";
-import type { MenuItem } from "../ui";
+import type { DropdownItem } from "../ui";
 import { OverviewLayout } from "./OverviewLayout";
 
 export interface ProtocolOverviewProps {
@@ -37,7 +37,7 @@ export function ProtocolOverview({
 		snippetLang || snippetLangs[0]?.lang || "",
 	);
 
-	const snippetDropdownItems: MenuItem[] = snippetLangs.map((item) => ({
+	const snippetDropdownItems: DropdownItem[] = snippetLangs.map((item) => ({
 		label: item.label,
 		onClick: () => {
 			setSnippetLang(item.lang);

@@ -1,3 +1,4 @@
+import type { StreamParser } from "@codemirror/language";
 import { linter } from "@codemirror/lint";
 import type { Extension } from "@codemirror/state";
 
@@ -14,11 +15,33 @@ export type Language =
 	| "go"
 	| "rust"
 	| "java"
+	| "kotlin"
 	| "php"
 	| "graphql"
-	| "protobuf";
+	| "protobuf"
+	| "c"
+	| "csharp"
+	| "clojure"
+	| "dart"
+	| "fsharp"
+	| "objectivec"
+	| "ocaml"
+	| "powershell"
+	| "r"
+	| "ruby"
+	| "swift"
+	| "http";
 
-export const languageExtensions: Record<string, () => Promise<Extension[]>> = {
+async function legacyStreamLanguage(
+	load: () => Promise<object>,
+	key: string,
+): Promise<Extension[]> {
+	const { StreamLanguage } = await import("@codemirror/language");
+	const mod = (await load()) as Record<string, StreamParser<unknown>>;
+	return [StreamLanguage.define(mod[key])];
+}
+
+export const languageExtensions: Record<Language, () => Promise<Extension[]>> = {
 	json: async () => {
 		const { json, jsonParseLinter } = await import("@codemirror/lang-json");
 		return [json(), linter(jsonParseLinter())];
@@ -39,7 +62,6 @@ export const languageExtensions: Record<string, () => Promise<Extension[]>> = {
 		const { javascript } = await import("@codemirror/lang-javascript");
 		return [javascript({ typescript: true })];
 	},
-
 	python: async () => {
 		const { python } = await import("@codemirror/lang-python");
 		return [python()];
@@ -56,28 +78,91 @@ export const languageExtensions: Record<string, () => Promise<Extension[]>> = {
 		const { java } = await import("@codemirror/lang-java");
 		return [java()];
 	},
+	kotlin: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/clike"),
+			"kotlin",
+		),
 	php: async () => {
 		const { php } = await import("@codemirror/lang-php");
-		return [php()];
+		// Snippets are often bare PHP (e.g. Laravel Http facade) without an opening tag.
+		return [php({ plain: true })];
 	},
-	shell: async () => {
-		const { StreamLanguage } = await import("@codemirror/language");
-		const { shell } = await import("@codemirror/legacy-modes/mode/shell");
-		return [StreamLanguage.define(shell)];
-	},
-	bash: async () => {
-		const { StreamLanguage } = await import("@codemirror/language");
-		const { shell } = await import("@codemirror/legacy-modes/mode/shell");
-		return [StreamLanguage.define(shell)];
-	},
+	shell: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/shell"),
+			"shell",
+		),
+	bash: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/shell"),
+			"shell",
+		),
+	c: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/clike"),
+			"c",
+		),
+	csharp: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/clike"),
+			"csharp",
+		),
+	clojure: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/clojure"),
+			"clojure",
+		),
+	dart: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/clike"),
+			"dart",
+		),
+	fsharp: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/mllike"),
+			"fSharp",
+		),
+	objectivec: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/clike"),
+			"objectiveC",
+		),
+	ocaml: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/mllike"),
+			"oCaml",
+		),
+	powershell: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/powershell"),
+			"powerShell",
+		),
+	r: async () =>
+		legacyStreamLanguage(() => import("@codemirror/legacy-modes/mode/r"), "r"),
+	ruby: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/ruby"),
+			"ruby",
+		),
+	swift: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/swift"),
+			"swift",
+		),
+	http: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/http"),
+			"http",
+		),
 	text: async () => [],
 	graphql: async () => {
 		const { graphql } = await import("cm6-graphql");
 		return [graphql()];
 	},
-	protobuf: async () => {
-		const { StreamLanguage } = await import("@codemirror/language");
-		const { protobuf } = await import("@codemirror/legacy-modes/mode/protobuf");
-		return [StreamLanguage.define(protobuf)];
-	},
+	protobuf: async () =>
+		legacyStreamLanguage(
+			() => import("@codemirror/legacy-modes/mode/protobuf"),
+			"protobuf",
+		),
 };

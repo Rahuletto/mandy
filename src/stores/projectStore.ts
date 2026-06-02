@@ -23,6 +23,7 @@ import type {
 	SortMode,
 	TreeItem,
 } from "../types/project";
+import { getDefaultRestSnippetId } from "../utils/restSnippets";
 import { findSecrets } from "../utils/secretDetection";
 
 function scheduleRealtimeFullTeardown() {
@@ -267,6 +268,8 @@ interface ProjectState {
 	migrateLegacyProjects: () => boolean;
 	selectedLanguage: string;
 	setSelectedLanguage: (lang: string) => void;
+	selectedRestSnippetId: string;
+	setSelectedRestSnippetId: (snippetId: string) => void;
 }
 
 const initialProject = createEmptyProject("My Project");
@@ -280,8 +283,11 @@ export const useProjectStore = create<ProjectState>()(
 			selectedItemId: null,
 			clipboard: null,
 			selectedLanguage: "shell",
+			selectedRestSnippetId: getDefaultRestSnippetId(),
 
 			setSelectedLanguage: (lang) => set({ selectedLanguage: lang }),
+			setSelectedRestSnippetId: (snippetId) =>
+				set({ selectedRestSnippetId: snippetId }),
 
 			// ── Generic methods ──────────────────────────────────────────
 
@@ -1132,6 +1138,7 @@ export const useProjectStore = create<ProjectState>()(
 						activeItemId: string | null;
 						selectedItemId: string | null;
 						selectedLanguage: string;
+						selectedRestSnippetId: string;
 					};
 				}
 				return persistedState as {
@@ -1140,6 +1147,7 @@ export const useProjectStore = create<ProjectState>()(
 					activeItemId: string | null;
 					selectedItemId: string | null;
 					selectedLanguage: string;
+					selectedRestSnippetId: string;
 				};
 			},
 			partialize: (state) => ({
@@ -1148,6 +1156,7 @@ export const useProjectStore = create<ProjectState>()(
 				activeItemId: state.activeItemId,
 				selectedItemId: state.selectedItemId,
 				selectedLanguage: state.selectedLanguage,
+				selectedRestSnippetId: state.selectedRestSnippetId,
 			}),
 			onRehydrateStorage: () => (state) => {
 				if (state) {
@@ -1217,6 +1226,9 @@ export const useProjectStore = create<ProjectState>()(
 							},
 						];
 						state.activeProjectId = state.projects[0].id;
+					}
+					if (!state.selectedRestSnippetId) {
+						state.selectedRestSnippetId = getDefaultRestSnippetId();
 					}
 				}
 			},

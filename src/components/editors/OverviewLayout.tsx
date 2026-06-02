@@ -8,7 +8,7 @@ import {
 import { autoSizeTextarea } from "../../utils";
 import { CodeViewer } from "../CodeMirror";
 import type { Language } from "../CodeMirror/languageExtensions";
-import { Dropdown, type MenuItem } from "../ui";
+import { Dropdown, type DropdownItem } from "../ui";
 
 export interface OverviewLayoutProps {
 	/** Short label in the snippet panel header (e.g. WS, MQTT). */
@@ -19,7 +19,10 @@ export interface OverviewLayoutProps {
 	snippetDropdownLabel: string;
 	snippetDropdownOpen: boolean;
 	onSnippetDropdownOpenChange: (open: boolean) => void;
-	snippetDropdownItems: MenuItem[];
+	snippetDropdownItems: DropdownItem[];
+	snippetDropdownSearchValue?: string;
+	onSnippetDropdownSearchChange?: (value: string) => void;
+	snippetDropdownSearchPlaceholder?: string;
 	/** When set, replaces the CodeViewer (e.g. GraphQL query + variables layout). */
 	snippetPanelBody?: ReactNode;
 	snippetCode?: string;
@@ -46,6 +49,9 @@ export const OverviewLayout = ({
 	snippetDropdownOpen,
 	onSnippetDropdownOpenChange,
 	snippetDropdownItems,
+	snippetDropdownSearchValue,
+	onSnippetDropdownSearchChange,
+	snippetDropdownSearchPlaceholder,
 	snippetPanelBody,
 	snippetCode,
 	snippetViewerLanguage,
@@ -131,7 +137,7 @@ export const OverviewLayout = ({
 								</span>
 							</div>
 
-							{snippetDropdownItems.length > 0 ? (
+							{snippetDropdownLabel ? (
 								<div className="relative shrink-0">
 									<button
 										type="button"
@@ -154,16 +160,24 @@ export const OverviewLayout = ({
 									</button>
 									{snippetDropdownOpen && (
 										<Dropdown
-											className="top-full right-0 mt-1"
-											onClose={() => onSnippetDropdownOpenChange(false)}
+											align="end"
+											onClose={() => {
+												onSnippetDropdownOpenChange(false);
+												onSnippetDropdownSearchChange?.("");
+											}}
 											items={snippetDropdownItems}
+											emptyMessage="No matches"
+											width={
+												onSnippetDropdownSearchChange
+													? "w-[200px]"
+													: undefined
+											}
+											searchValue={snippetDropdownSearchValue}
+											onSearchValueChange={onSnippetDropdownSearchChange}
+											searchPlaceholder={snippetDropdownSearchPlaceholder}
 										/>
 									)}
 								</div>
-							) : snippetDropdownLabel ? (
-								<span className="shrink-0 text-[11px] text-white/30">
-									{snippetDropdownLabel}
-								</span>
 							) : null}
 						</div>
 

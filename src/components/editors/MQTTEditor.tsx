@@ -179,6 +179,7 @@ export function MQTTEditor({
 	const [isResizing, setIsResizing] = useState(false);
 	const splitContainerRef = useRef<HTMLDivElement>(null);
 	const connectedRef = useRef(persistedMqttSessionIds.has(mqtt.id));
+	const connectAttemptRef = useRef(0);
 	const previousSubscriptionsRef = useRef<MQTTSubscription[]>(
 		mqtt.subscriptions,
 	);
@@ -201,7 +202,7 @@ export function MQTTEditor({
 		setIsConnecting(false);
 		connectedRef.current = resumed;
 		previousSubscriptionsRef.current = mqtt.subscriptions;
-	}, [mqtt.id, mqtt.subscriptions]);
+	}, [mqtt.id]);
 
 	useEffect(() => {
 		if (isConnected || isConnecting) onStartLoading?.(mqtt.id);
@@ -251,6 +252,7 @@ export function MQTTEditor({
 
 	useEffect(() => {
 		return subscribeMqttRemoteDisconnect(mqtt.id, () => {
+			connectAttemptRef.current += 1;
 			setIsConnected(false);
 			setIsConnecting(false);
 			connectedRef.current = false;
@@ -321,6 +323,7 @@ export function MQTTEditor({
 
 	const connect = useCallback(async () => {
 		if (!url || isConnecting || isConnected) return;
+		const attempt = ++connectAttemptRef.current;
 		setIsConnecting(true);
 		try {
 			await ensureRealtimeBridge(mqtt.id, "mqtt");
@@ -346,6 +349,8 @@ export function MQTTEditor({
 				throw new Error(String(result.error));
 			}
 
+			if (attempt !== connectAttemptRef.current) return;
+
 			onUpdate((prev) => ({
 				...prev,
 				clientId: result.data.client_id || prev.clientId,
@@ -357,10 +362,14 @@ export function MQTTEditor({
 			pushSystemMessage(`Connected to ${result.data.url}`);
 			playSuccessChime();
 		} catch (error: any) {
-			releaseRealtimeBridge(mqtt.id);
-			pushSystemMessage(error?.message || "Failed to connect");
+			if (attempt === connectAttemptRef.current) {
+				releaseRealtimeBridge(mqtt.id);
+				pushSystemMessage(error?.message || "Failed to connect");
+			}
 		} finally {
-			setIsConnecting(false);
+			if (attempt === connectAttemptRef.current) {
+				setIsConnecting(false);
+			}
 		}
 	}, [
 		isConnected,
@@ -379,6 +388,7 @@ export function MQTTEditor({
 	]);
 
 	const disconnect = useCallback(async () => {
+		connectAttemptRef.current += 1;
 		try {
 			releaseRealtimeBridge(mqtt.id);
 			await commands.mqttDisconnect(mqtt.id);
