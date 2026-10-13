@@ -433,12 +433,11 @@ export const RestRequestEditor = forwardRef<
 		if (!STREAM_TOOLING_ENABLED) return false;
 		if (streamEvents.length === 0) return false;
 		if (loading) return true;
-		const transferEncoding =
-			activeRequest.response?.transfer_encoding?.toLowerCase() ?? "";
 		const contentType =
 			activeRequest.response?.detected_content_type?.toLowerCase() ?? "";
+		// Chunked transport also carries ordinary bodies; only stream formats
+		// should keep the timeline after the response has completed.
 		return (
-			transferEncoding.includes("chunked") ||
 			contentType.includes("text/event-stream") ||
 			contentType.includes("application/x-ndjson") ||
 			contentType.includes("application/ndjson")
